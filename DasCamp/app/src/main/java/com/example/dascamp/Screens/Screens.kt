@@ -3,16 +3,24 @@ package com.example.dascamp.Screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.waterfallPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButtonDefaults.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -25,10 +33,77 @@ import androidx.navigation.compose.rememberNavController
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.dascamp.R
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 
-// General Screens
+// Scaffold for screens, use this for screens w/ header and navbar!
+@Composable
+fun AppScaffold(
+    onBackClick: (() -> Unit)? = null,
+    showNavBar: Boolean = true,
+    NavBar: @Composable () -> Unit = {},
+    content: @Composable (PaddingValues) -> Unit
+) {
+    val appTitle = stringResource(R.string.app_name) // references: res/values/strings.xml
 
+    Scaffold(
+        topBar = { Header(appTitle, onBackClick) },
+        bottomBar = { if (showNavBar) NavBar() },
+        content = content
+    )
+}
+
+// Header
+@Composable
+fun Header(
+    appTitle: String,
+    onBackClick: (() -> Unit)?
+) {
+    // Parent for header
+    Surface(color = MaterialTheme.colorScheme.primary) {
+
+        // Parent for header contents
+        Box(
+            modifier = Modifier
+                .statusBarsPadding()
+                .fillMaxWidth()
+                .height(64.dp)
+                .padding(horizontal = 16.dp),
+        ) {
+            if (onBackClick != null) {
+                IconButton(onClick = onBackClick) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            }
+            Text(
+                text = appTitle,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.CenterHorizontally as Alignment)
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+fun HeaderPreview(){
+    Header("DasCamp", onBackClick = {null})
+}
+
+// Navbar
+
+// Sign-Up Screen
 @Composable
 fun SignUpScreen(navController: NavController) {
 

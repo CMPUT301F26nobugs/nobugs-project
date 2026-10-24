@@ -13,12 +13,13 @@ import androidx.navigation.compose.rememberNavController
 @Composable
 fun EntrantDashboard(navController: NavController) {
 
+    // Screen Container
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-
+        
     }
 }
 
