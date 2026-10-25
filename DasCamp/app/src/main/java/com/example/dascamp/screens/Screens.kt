@@ -1,4 +1,4 @@
-package com.example.dascamp.Screens
+package com.example.dascamp.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,9 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.waterfallPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.IconButton
@@ -43,7 +41,6 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Icon
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CardDefaults
 
@@ -51,9 +48,9 @@ import androidx.compose.material3.CardDefaults
 // REUSABLE SCREEN LAYOUT CALL W/ HEADER AND NAVBAR (MAKE YOUR OWN NAVBAR)
 @Composable
 fun AppScaffold(
-    onBackClick: (() -> Unit)? = null,
-    navBar: @Composable () -> Unit = {},
-    content: @Composable (PaddingValues) -> Unit
+    onBackClick: (() -> Unit)? = null, // default is null, so arrow only shows when you pass a function
+    navBar: @Composable () -> Unit = {}, // navbar slot, put your navbar function here
+    content: @Composable (PaddingValues) -> Unit // this is the content of the screen, it takes the scaffolds padding values (i.e. how much space the header/navbar takes)
 ) {
     val appTitle = stringResource(R.string.app_name) // references: res/values/strings.xml
 
@@ -70,13 +67,7 @@ fun AppScaffoldPreview() {
     AppScaffold(
         onBackClick = {},
         navBar = {
-            EntrantNavBar(
-                onHomeClick = {},
-                onCampsitesClick = {},
-                onNotificationsClick = {},
-                onMessagesClick = {},
-                onProfileClick = {}
-            )
+            EntrantNavBar(rememberNavController())
         }
     ) { innerPadding ->
         Box(
@@ -136,15 +127,9 @@ fun HeaderPreview(){
     Header("DasCamp", onBackClick = {})
 }
 
-// ENTRANT NAVBAR (YOU CAN REFERENCE THIS WHEN MAKING YOURS)
+// ENTRANT NAVBAR
 @Composable
-fun EntrantNavBar(
-    onHomeClick: () -> Unit,
-    onCampsitesClick: () -> Unit,
-    onNotificationsClick: () -> Unit,
-    onMessagesClick: () -> Unit,
-    onProfileClick: () -> Unit
-) {
+fun EntrantNavBar(navController: NavController) {
     // Parent for navbar
     Surface(color = MaterialTheme.colorScheme.primary) {
 
@@ -158,9 +143,10 @@ fun EntrantNavBar(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
+
             // Home Button
             IconButton(
-                onClick = { onHomeClick }
+                onClick = { navController.navigate("entrantDashboard") }
             ) {
                 Icon(
                     imageVector = Icons.Default.Home, // takes home icon from default icon library
@@ -171,7 +157,7 @@ fun EntrantNavBar(
 
             // Campsites Button
             IconButton(
-                onClick = { onCampsitesClick }
+                onClick = { navController.navigate("campsiteList") }
             ) {
                 Icon(
                     imageVector = Icons.Default.Place,
@@ -182,7 +168,7 @@ fun EntrantNavBar(
 
             // Notifications Button
             IconButton(
-                onClick = { onNotificationsClick }
+                onClick = { navController.navigate("notificationList") }
             ) {
                 Icon(
                     imageVector = Icons.Default.Notifications,
@@ -193,7 +179,7 @@ fun EntrantNavBar(
 
             // Messages Button
             IconButton(
-                onClick = { onMessagesClick }
+                onClick = { navController.navigate("messageList") }
             ) {
                 Icon(
                     imageVector = Icons.Default.Email,
@@ -204,7 +190,7 @@ fun EntrantNavBar(
 
             // Profile Button
             IconButton(
-                onClick = { onProfileClick }
+                onClick = { navController.navigate("profileScreen") }
             ) {
                 Icon(
                     imageVector = Icons.Default.Person,
@@ -220,13 +206,7 @@ fun EntrantNavBar(
 @Preview
 @Composable
 fun EntrantNavBarPreview() {
-    EntrantNavBar(
-        onHomeClick = {},
-        onProfileClick = {},
-        onMessagesClick = {},
-        onCampsitesClick = {},
-        onNotificationsClick = {}
-    )
+    EntrantNavBar(rememberNavController())
 }
 
 // SIGN-UP SCREEN
