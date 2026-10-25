@@ -6,6 +6,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -14,10 +18,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.dascamp.ui.theme.DasCampTheme
 
 // DASHBOARD SCREEN
 @Composable
@@ -50,44 +56,76 @@ fun EntrantDashboard(navController: NavController) {
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(text = "Welcome Back,", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        text = "Welcome Back,",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
                     Spacer(modifier = Modifier.padding(4.dp))
-                    Text(text = "User", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        text = "User",
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center
+                    )
                 }
 
                 // Campsite button & reservations button container
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(16.dp)
                 ) {
-                    Card() {
-                        // View campsites button
-                        Button(
-                            onClick = { navController.navigate("campsiteList") }
-                        ) { }
-                    }
-                    // View reservations button
-                    Button(
-                        onClick = { navController.navigate("reservationList") }
-                    ) { }
+                    // Campsite list button
+                    BigButton(
+                        onClickAction = { navController.navigate("campsiteList") },
+                        icon = Icons.Default.LocationOn,
+                        iconDesc = "campsites",
+                        label = "View \n Campsites"
+                    )
+
+                    Spacer(modifier = Modifier.padding(8.dp))
+
+                    // Reservation list button
+                    BigButton(
+                        onClickAction = { navController.navigate("reservationList") },
+                        icon = Icons.Default.DateRange,
+                        iconDesc = "reservations",
+                        label = "View Reservations"
+                    )
                 }
 
                 // Notifications, messages, and scan QR code buttons
-                Column() {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                ) {
                     // Notification logs button
                     Button(
+                        modifier = Modifier.fillMaxWidth(),
                         onClick = { navController.navigate("notificationList") }
-                    ) { }
+                    ) {
+                        Text("Notifications")
+                    }
+
+                    Spacer(modifier = Modifier.padding(4.dp))
 
                     // Message logs button
                     Button(
+                        modifier = Modifier.fillMaxWidth(),
                         onClick = { navController.navigate("messageList") }
-                    ) { }
+                    ) {
+                        Text("Messages")
+                    }
+
+                    Spacer(modifier = Modifier.padding(4.dp))
 
                     // Scan QR code button
                     Button(
+                        modifier = Modifier.fillMaxWidth(),
                         onClick = { navController.navigate("qrCodeScreen") }
-                    ) { }
+                    ) {
+                        Text("Scan QR")
+                    }
                 }
             }
         }
@@ -97,7 +135,9 @@ fun EntrantDashboard(navController: NavController) {
 @Preview
 @Composable
 fun EntrantDashboardPreview() {
-    EntrantDashboard(rememberNavController())
+    DasCampTheme {
+        EntrantDashboard(rememberNavController())
+    }
 }
 
 // CAMPSITE LIST SCREEN

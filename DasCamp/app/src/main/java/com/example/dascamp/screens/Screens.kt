@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -22,7 +23,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -43,6 +43,11 @@ import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CardDefaults
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
+import com.example.dascamp.ui.theme.DasCampTheme
 
 
 // REUSABLE SCREEN LAYOUT CALL W/ HEADER AND NAVBAR (MAKE YOUR OWN NAVBAR)
@@ -64,19 +69,21 @@ fun AppScaffold(
 @Preview
 @Composable
 fun AppScaffoldPreview() {
-    AppScaffold(
-        onBackClick = {},
-        navBar = {
-            EntrantNavBar(rememberNavController())
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Screen content")
+    DasCampTheme {
+        AppScaffold(
+            onBackClick = {},
+            navBar = {
+                EntrantNavBar(rememberNavController())
+            }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Screen content")
+            }
         }
     }
 }
@@ -124,7 +131,9 @@ fun Header(
 @Preview
 @Composable
 fun HeaderPreview(){
-    Header("DasCamp", onBackClick = {})
+    DasCampTheme {
+        Header("DasCamp", onBackClick = {})
+    }
 }
 
 // ENTRANT NAVBAR
@@ -206,8 +215,52 @@ fun EntrantNavBar(navController: NavController) {
 @Preview
 @Composable
 fun EntrantNavBarPreview() {
-    EntrantNavBar(rememberNavController())
+    DasCampTheme {
+        EntrantNavBar(rememberNavController())
+    }
 }
+
+// BIG BUTTON SKELETON (can be used for big buttons on dashboards)
+@Composable
+fun BigButton(
+    onClickAction: () -> Unit,
+    icon: ImageVector,
+    iconDesc: String,
+    label: String
+) {
+    Card(
+        modifier = Modifier.size(136.dp),
+        onClick = { onClickAction },
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                modifier = Modifier.size(64.dp),
+                imageVector = icon,
+                contentDescription = iconDesc,
+                tint = MaterialTheme.colorScheme.onPrimary
+            )
+
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+fun BigButtonPreview() {
+    DasCampTheme {
+        BigButton({}, Icons.Default.Home, "home", "Go Home")
+    }
+}
+
 
 // SIGN-UP SCREEN
 @Composable
@@ -308,6 +361,9 @@ fun SignUpScreen(navController: NavController) {
 @Preview
 @Composable
 fun SignUpScreenPreview() {
-    val mockNavController = rememberNavController() // for previewing
-    SignUpScreen(mockNavController)
+    DasCampTheme {
+        val mockNavController = rememberNavController() // for previewing
+        SignUpScreen(mockNavController)
+    }
 }
+
