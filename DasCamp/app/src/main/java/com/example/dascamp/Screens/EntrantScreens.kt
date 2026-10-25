@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 
+// ENTRANT DASHBOARD SCREEN
 @Composable
 fun EntrantDashboard(navController: NavController) {
 
@@ -19,7 +20,20 @@ fun EntrantDashboard(navController: NavController) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        
+        AppScaffold(
+            onBackClick = { navController.popBackStack() },
+            navBar = {
+                EntrantNavBar(
+                    onHomeClick = { navController.navigate("home") },
+                    onCampsitesClick = { navController.navigate("campsites") },
+                    onNotificationsClick = { navController.navigate("notifications") },
+                    onMessagesClick = { navController.navigate("messages") },
+                    onProfileClick = { navController.navigate("profile") }
+                )
+            }
+        ) {
+
+        }
     }
 }
 
@@ -29,3 +43,4 @@ fun EntrantDashboardPreview() {
     val mockNavController = rememberNavController() // for previewing
     EntrantDashboard(mockNavController)
 }
+

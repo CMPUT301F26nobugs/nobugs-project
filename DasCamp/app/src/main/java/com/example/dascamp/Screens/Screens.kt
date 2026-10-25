@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -19,7 +20,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButtonDefaults.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,27 +37,60 @@ import androidx.compose.ui.res.stringResource
 import com.example.dascamp.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CardDefaults
 
-// Scaffold for screens, use this for screens w/ header and navbar!
+
+// REUSABLE SCREEN LAYOUT CALL W/ HEADER AND NAVBAR (MAKE YOUR OWN NAVBAR)
 @Composable
 fun AppScaffold(
     onBackClick: (() -> Unit)? = null,
-    showNavBar: Boolean = true,
-    NavBar: @Composable () -> Unit = {},
+    navBar: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit
 ) {
     val appTitle = stringResource(R.string.app_name) // references: res/values/strings.xml
 
     Scaffold(
         topBar = { Header(appTitle, onBackClick) },
-        bottomBar = { if (showNavBar) NavBar() },
+        bottomBar = { navBar() },
         content = content
     )
 }
 
-// Header
+@Preview
+@Composable
+fun AppScaffoldPreview() {
+    AppScaffold(
+        onBackClick = {},
+        navBar = {
+            EntrantNavBar(
+                onHomeClick = {},
+                onCampsitesClick = {},
+                onNotificationsClick = {},
+                onMessagesClick = {},
+                onProfileClick = {}
+            )
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Screen content")
+        }
+    }
+}
+
+// REUSABLE HEADER
 @Composable
 fun Header(
     appTitle: String,
@@ -75,9 +108,12 @@ fun Header(
                 .padding(horizontal = 16.dp),
         ) {
             if (onBackClick != null) {
-                IconButton(onClick = onBackClick) {
+                IconButton(
+                    onClick = onBackClick,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
                     Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = MaterialTheme.colorScheme.onPrimary
                     )
@@ -88,8 +124,7 @@ fun Header(
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.CenterHorizontally as Alignment)
+                    .align(Alignment.Center)
             )
         }
     }
@@ -98,12 +133,103 @@ fun Header(
 @Preview
 @Composable
 fun HeaderPreview(){
-    Header("DasCamp", onBackClick = {null})
+    Header("DasCamp", onBackClick = {})
 }
 
-// Navbar
+// ENTRANT NAVBAR (YOU CAN REFERENCE THIS WHEN MAKING YOURS)
+@Composable
+fun EntrantNavBar(
+    onHomeClick: () -> Unit,
+    onCampsitesClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
+    onMessagesClick: () -> Unit,
+    onProfileClick: () -> Unit
+) {
+    // Parent for navbar
+    Surface(color = MaterialTheme.colorScheme.primary) {
 
-// Sign-Up Screen
+        // Parent for navbar contents
+        Row(
+            modifier = Modifier
+                .navigationBarsPadding()
+                .fillMaxWidth()
+                .height(64.dp)
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Home Button
+            IconButton(
+                onClick = { onHomeClick }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Home, // takes home icon from default icon library
+                    contentDescription = "Home",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            // Campsites Button
+            IconButton(
+                onClick = { onCampsitesClick }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Place,
+                    contentDescription = "Campsites",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            // Notifications Button
+            IconButton(
+                onClick = { onNotificationsClick }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = "Notifications",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            // Messages Button
+            IconButton(
+                onClick = { onMessagesClick }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Email,
+                    contentDescription = "Messages",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            // Profile Button
+            IconButton(
+                onClick = { onProfileClick }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Profile",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        }
+    }
+
+}
+
+@Preview
+@Composable
+fun EntrantNavBarPreview() {
+    EntrantNavBar(
+        onHomeClick = {},
+        onProfileClick = {},
+        onMessagesClick = {},
+        onCampsitesClick = {},
+        onNotificationsClick = {}
+    )
+}
+
+// SIGN-UP SCREEN
 @Composable
 fun SignUpScreen(navController: NavController) {
 
@@ -119,7 +245,11 @@ fun SignUpScreen(navController: NavController) {
         // Sign-up Info Container
         Card(
             modifier = Modifier
-                .size(width = 350.dp, height = 600.dp)
+                .width(400.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant, // Background
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant   // Text/Icon color
+            )
         ) {
 
             // Text-Fields and Button Container
