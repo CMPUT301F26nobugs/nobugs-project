@@ -232,7 +232,7 @@ fun BigButton(
 ) {
     Card(
         modifier = Modifier.size(136.dp),
-        onClick = { onClickAction },
+        onClick = onClickAction,
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),

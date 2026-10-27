@@ -500,19 +500,73 @@ private fun CalendarGrid() {
 // NOTIFICATION LIST SCREEN
 @Composable
 fun NotificationList(navController: NavController) {
+    EntrantPage(
+        navController = navController,
+        showBack = false,
+    ) {
 
+        // Title
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Notifications",
+                style = MaterialTheme.typography.titleLarge,
+            )
+        }
+
+        // Display Notifications
+        EmptyCard { navController.navigate("notification") }
+    }
 }
 
 // RESERVATION LIST SCREEN
 @Composable
 fun ReservationList(navController: NavController) {
+    EntrantPage(
+        navController = navController,
+        showBack = false,
+    ) {
 
+        // Title
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Reservations",
+                style = MaterialTheme.typography.titleLarge,
+            )
+        }
+
+        // Display Reservations
+        EmptyCard { navController.navigate("reservation") }
+    }
 }
 
 // MESSAGE LIST SCREEN
 @Composable
 fun MessageList(navController: NavController) {
+    EntrantPage(
+        navController = navController,
+        showBack = false,
+    ) {
 
+        // Title
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Messages",
+                style = MaterialTheme.typography.titleLarge,
+            )
+        }
+
+        // Display Messages
+        EmptyCard { navController.navigate("message") }
+    }
 }
 
 // MESSAGE SCREEN
@@ -541,11 +595,47 @@ fun MessageScreen(navController: NavController) {
 // PROFILE SCREEN
 @Composable
 fun ProfileScreen(navController: NavController) {
+    EntrantPage(
+        navController = navController,
+        showBack = false,
+    ) {
 
+        // Title
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Profile",
+                style = MaterialTheme.typography.titleLarge,
+            )
+        }
+
+        // Display Profile
+        EmptyCard { navController.navigate("profile") }
+    }
 }
 
 // QR CODE SCREEN
 @Composable
 fun QrCodeScreen(navController: NavController) {
+    EntrantPage(
+        navController = navController,
+        showBack = false,
+    ) {
 
+        // Title
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "QR Code Scanner",
+                style = MaterialTheme.typography.titleLarge,
+            )
+        }
+
+        // Display QR Code
+        EmptyCard { navController.navigate("qrCode") }
+    }
 }

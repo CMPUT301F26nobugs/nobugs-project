@@ -11,6 +11,7 @@ import com.example.dascamp.screens.MessageScreen
 import com.example.dascamp.screens.NotificationList
 import com.example.dascamp.screens.ProfileScreen
 import com.example.dascamp.screens.QrCodeScreen
+import com.example.dascamp.screens.ReservationList
 import com.example.dascamp.screens.SignUpScreen
 
 @Composable
@@ -31,6 +32,7 @@ fun DasCampApp() {
         composable("messageScreen") { MessageScreen(navController) }
         composable("profileScreen") { ProfileScreen(navController) }
         composable("qrCodeScreen") { QrCodeScreen(navController) }
+        composable("reservationList") { ReservationList(navController) }
 
         // OWNER NAVIGATION
 
