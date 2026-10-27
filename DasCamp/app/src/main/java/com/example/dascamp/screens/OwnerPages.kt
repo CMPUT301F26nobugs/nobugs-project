@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
+
 /**
  * Owner home. The two large buttons open the campsite list and the lottery list.
  * The three wide buttons open alerts, message logs, and reservations.
@@ -182,14 +183,34 @@ fun OwnerBookedDates(navController: NavController) {
 /** Map layout. The box is where the pin will be drawn from the campsite coordinates. */
 @Composable
 fun OwnerMapLocation(navController: NavController) {
+    var query by remember { mutableStateOf("") }
     OwnerPage(navController, showBack = true) {
         Text("Map location", style = MaterialTheme.typography.titleLarge)
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Search Location") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+            singleLine = true
+        )
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             BlockBox(220)
-            Icon(Icons.Default.LocationOn, contentDescription = "Map pin", modifier = Modifier.size(48.dp))
+            Icon(
+                Icons.Default.LocationOn,
+                contentDescription = "Map pin",
+                modifier = Modifier.size(48.dp)
+            )
         }
+
+
         EmptyValue(0.5f)
         EmptyValue(0.5f)
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { navController.popBackStack() }) {
+            Text("Confirm Location")
+        }
     }
 }
 
@@ -202,19 +223,39 @@ fun OwnerQrCode(navController: NavController) {
     OwnerPage(navController, showBack = true, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("QR code", style = MaterialTheme.typography.titleLarge)
         Box(Modifier.size(220.dp)) { BlockBox(220) }
-        EmptyValue(0.4f)
+        Text("ID: CAMP-HTN")
+        Text("Entrants can scan this code to view details and join the lottery")
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {}) {
+            Text("Download QR Code")}
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {}) {
+            Text("Share link")}
+        }
     }
-}
+
 
 /** Lottery list, opened from My Lotteries. The blank card opens one lottery's layout. */
 @Composable
 fun OwnerLotteryList(navController: NavController) {
+    var query by remember { mutableStateOf("") }
     OwnerPage(navController, showBack = true) {
-        Text("Lotteries", style = MaterialTheme.typography.titleLarge)
-        EmptyCard { navController.navigate(OwnerRoutes.LOTTERY) }
-        Button(
+        Text("My Lotteries", style = MaterialTheme.typography.titleLarge)
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate(OwnerRoutes.CREATE) }) { Text("Create lottery") }
+            placeholder = { Text("Search Lotteries") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+            singleLine = true
+        )
+        TextButton(onClick = { navController.navigate(OwnerRoutes.CREATE) }) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Text("Create Lottery")
+        }
+        EmptyCard { navController.navigate(OwnerRoutes.LOTTERY) }
     }
 }
 
@@ -223,7 +264,7 @@ fun OwnerLotteryList(navController: NavController) {
 fun OwnerCreateLottery(navController: NavController) {
     LotteryForm(navController, "Create lottery", "Publish lottery") {
         navController.popBackStack()
-        navController.navigate(OwnerRoutes.LOTTERY)
+        navController.navigate(OwnerRoutes.LOTTERIES)
     }
 }
 
@@ -246,9 +287,9 @@ fun OwnerLotteryDetails(navController: NavController) {
         EmptyValue()
         Text("Campsites", style = MaterialTheme.typography.titleMedium)
         Button(onClick = { navController.navigate(OwnerRoutes.CAMPSITE) }) { Text("Campsite") }
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {}) { Text("Draw winners") }
+        Text(
+            "Winners are drawn automatically when registration ends.",
+            style = MaterialTheme.typography.bodyMedium )
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { navController.navigate(OwnerRoutes.EDIT_LOTTERY) }) { Text("Edit lottery") }
@@ -309,13 +350,20 @@ fun OwnerReservationDetails(navController: NavController) {
         EmptyValue(0.3f)
         EmptyValue(0.5f)
         EmptyValue(0.6f)
+        Row(verticalAlignment = Alignment.CenterVertically){
+            Checkbox(checked = true, onCheckedChange = null)
+            Text("Rules & Policies Confirmed")
+        }
         FormField("Reason for rejection")
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = {}) { Text("Reject reservation") }
+            onClick = {navController.popBackStack()}) { Text("Reject reservation") }
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { navController.navigate(OwnerRoutes.MESSAGE) }) { Text("Message") }
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { navController.navigate(OwnerRoutes.BOOKED)}){Text("View Dates")}
     }
 }
 
@@ -331,13 +379,28 @@ fun OwnerNotifications(navController: NavController) {
 /** Send page opened from a lottery. The message field is empty. */
 @Composable
 fun OwnerSendNotification(navController: NavController) {
+    var send by remember {mutableStateOf("All Waitlist")}
     OwnerPage(navController, showBack = true) {
         Text("Send notification", style = MaterialTheme.typography.titleLarge)
-        EmptyValue(0.7f)
+        Text("Send to", style = MaterialTheme.typography.titleMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("All Waitlist", "Winners", "Not Selected").forEach{label ->
+                if(label == send)
+                    Button(onClick = {send = label}){
+                        Text(label)
+                    } else OutlinedButton(
+                        onClick = {
+                            send = label
+                        }
+                    ) {
+                        Text(label)
+                }
+            }
+        }
         FormField("Message")
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = {}) { Text("Send") }
+            onClick = {navController.openOwnerTab(OwnerRoutes.ALERTS)}) { Text("Send") }
     }
 }
 
