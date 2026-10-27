@@ -55,7 +55,7 @@ import com.example.dascamp.ui.theme.DasCampTheme
 // REUSABLE SCREEN LAYOUT CALL W/ HEADER AND NAVBAR (MAKE YOUR OWN NAVBAR)
 @Composable
 fun AppScaffold(
-    onBackClick: (() -> Unit)? = null, // default is null, so arrow only shows when you pass a function
+    onBackClick: (() -> Unit)? = null,  // default is null, so arrow only shows when you pass a function
     navBar: @Composable () -> Unit = {}, // navbar slot, put your navbar function here
     content: @Composable (PaddingValues) -> Unit // this is the content of the screen, it takes the scaffolds padding values (i.e. how much space the header/navbar takes)
 ) {

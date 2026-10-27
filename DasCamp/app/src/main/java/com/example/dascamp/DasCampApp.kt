@@ -7,6 +7,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.screens.CampsiteList
 import com.example.dascamp.screens.EntrantDashboard
 import com.example.dascamp.screens.MessageList
+import com.example.dascamp.screens.MessageScreen
 import com.example.dascamp.screens.NotificationList
 import com.example.dascamp.screens.ProfileScreen
 import com.example.dascamp.screens.QrCodeScreen
@@ -27,6 +28,7 @@ fun DasCampApp() {
         composable("campsiteList") { CampsiteList(navController) }
         composable("notificationList") { NotificationList(navController) }
         composable("messageList") { MessageList(navController) }
+        composable("messageScreen") { MessageScreen(navController) }
         composable("profileScreen") { ProfileScreen(navController) }
         composable("qrCodeScreen") { QrCodeScreen(navController) }
 

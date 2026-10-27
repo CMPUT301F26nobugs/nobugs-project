@@ -2,22 +2,28 @@ package com.example.dascamp.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -34,6 +40,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -319,6 +326,177 @@ private fun FilterField(
     }
 }
 
+// CAMPSITE SCREEN
+@Composable
+fun CampsiteScreen(navController: NavController) {
+    EntrantPage(
+        navController = navController,
+        showBack = true
+    ) {
+        // Title
+        Text(
+            modifier = Modifier.fillMaxWidth(),
+            text = "Campsite",
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center
+        )
+
+        // Image (PLACEHOLDER will generate real images later when models and DB)
+        Card(
+            modifier = Modifier
+                .size(width = 400.dp, height = 200.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant, // Background
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant   // Text/Icon color
+            )
+        ) {
+            Icon(Icons.Default.Image, "na", modifier = Modifier.fillMaxSize())
+        }
+
+        // Details
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            // Summary
+            Text(
+                text = "Location | Rating | Max Occ.",
+                style = MaterialTheme.typography.labelLarge,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.padding(vertical = 16.dp))
+
+            // Container for description + Rules & Policies
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Description
+                Text(
+                    text = "Here are more details.",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+
+                // Rules & Policies
+                Text(
+                    text = "Rules & Policies",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+
+            Spacer(modifier = Modifier.padding(vertical = 16.dp))
+
+            // Container for geolocation
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Title
+                Text(
+                    text = "Geolocation",
+                    style = MaterialTheme.typography.labelLarge,
+                    textAlign = TextAlign.Center
+                )
+
+                // PLACEHOLDER FOR GEOLOCATION
+                Box(
+                    modifier = Modifier
+                        .height(150.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+                ) {
+                    Icon(
+                        Icons.Default.LocationOn,
+                        "na",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.padding(vertical = 16.dp))
+
+            // Container for calendar
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Title
+                Text(
+                    text = "Availability",
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                CalendarGrid()
+
+                // Legend
+                Row() {
+                    // Available
+                    Text("Available = ")
+                    Box(modifier = Modifier.size(20.dp).background(Color.Red))
+
+                    Spacer(modifier = Modifier.padding(8.dp))
+
+                    // Unavailable
+                    Text("Unavailable = ")
+                    Box(modifier = Modifier.size(20.dp).background(Color.Green))
+                }
+            }
+
+            Spacer(modifier = Modifier.padding(vertical = 16.dp))
+
+            // Container for booking/enter-lottery buttons
+            Row(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Enter lottery button
+                Button(
+                    onClick = {/*TODO("Implement booking logic")*/}
+                ) { Text("Enter Lottery") }
+
+                Spacer(modifier = Modifier.padding(20.dp))
+
+                // Waiting list display
+                Column() {
+                    Text("Current Pool: 5/10")
+                    Text("End Date: May 10, 2026")
+                }
+            }
+
+            // Chat owner button
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate("messageScreen") }
+            ) { Text("Message Owner") }
+        }
+    }
+}
+
+@Preview
+@Composable
+fun CampsiteScreenPreview() {
+    DasCampTheme() {
+        CampsiteScreen(rememberNavController())
+    }
+}
+
+@Composable
+private fun CalendarGrid() {
+    Row(Modifier.fillMaxWidth()) {
+        listOf("S", "M", "T", "W", "T", "F", "S").forEach {
+            Text(it, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        }
+    }
+    repeat(5) {
+        Row(Modifier.fillMaxWidth().height(36.dp), verticalAlignment = Alignment.CenterVertically) {
+            repeat(7) {
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Box(
+                        Modifier
+                            .size(28.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                    )
+                }
+            }
+        }
+    }
+}
+
 // NOTIFICATION LIST SCREEN
 @Composable
 fun NotificationList(navController: NavController) {
@@ -336,6 +514,29 @@ fun ReservationList(navController: NavController) {
 fun MessageList(navController: NavController) {
 
 }
+
+// MESSAGE SCREEN
+@Composable
+fun MessageScreen(navController: NavController) {
+    EntrantPage(
+        navController,
+        showBack = true
+    ) {
+        // Title
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Owner Name",
+                style = MaterialTheme.typography.titleLarge,
+            )
+        }
+
+        // Display Messages (to be implemented)
+    }
+}
+
 
 // PROFILE SCREEN
 @Composable
