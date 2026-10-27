@@ -1,5 +1,6 @@
 package com.example.dascamp.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -258,6 +260,26 @@ fun BigButton(
 fun BigButtonPreview() {
     DasCampTheme {
         BigButton({}, Icons.Default.Home, "home", "Go Home")
+    }
+}
+
+@Composable
+fun EmptyValue(widthFraction: Float = 1f) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(widthFraction)
+            .height(18.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(6.dp))
+    )
+}
+
+@Composable
+fun EmptyCard(onClick: () -> Unit) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            EmptyValue(0.7f)
+            EmptyValue(0.4f)
+        }
     }
 }
 
