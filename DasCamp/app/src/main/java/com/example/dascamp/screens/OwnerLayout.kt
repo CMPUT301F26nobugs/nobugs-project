@@ -20,7 +20,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -123,27 +122,7 @@ fun OwnerPage(
     }
 }
 
-/**OwnerModel will be shown later */
-@Composable
-fun EmptyValue(widthFraction: Float = 1f) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth(widthFraction)
-            .height(18.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(6.dp))
-    )
-}
 
-/** onClick opens the details layout for that kind of row */
-@Composable
-fun EmptyCard(onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            EmptyValue(0.7f)
-            EmptyValue(0.4f)
-        }
-    }
-}
 
 @Composable
 fun BlockBox(height: Int) {
