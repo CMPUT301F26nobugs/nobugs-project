@@ -16,6 +16,16 @@ import com.example.dascamp.screens.EntrantReservationList
 import com.example.dascamp.screens.EntrantRoutes
 import com.example.dascamp.screens.SignUpScreen
 
+import com.example.dascamp.screens.adminScreens.AdminDashboard
+import com.example.dascamp.screens.adminScreens.AdminProfileList
+import com.example.dascamp.screens.adminScreens.AdminRoutes
+import com.example.dascamp.screens.adminScreens.AdminViewProfile
+import com.example.dascamp.screens.adminScreens.ApprovedLog
+import com.example.dascamp.screens.adminScreens.NotificationLog
+import com.example.dascamp.screens.adminScreens.OtherLog
+import com.example.dascamp.screens.adminScreens.ProfileType
+import com.example.dascamp.screens.adminScreens.RequestLog
+
 @Composable
 fun DasCampApp() {
 
@@ -42,6 +52,19 @@ fun DasCampApp() {
         // OWNER NAVIGATION
 
         // ADMIN NAVIGATION
-
+        composable(AdminRoutes.DASHBOARD) { AdminDashboard(navController) }
+        composable(AdminRoutes.PROFILE_LIST) { AdminProfileList(navController) }
+        composable(AdminRoutes.PROFILE) { entry ->
+            val type = ProfileType.valueOf(           // turn text into enum
+                entry.arguments
+                    ?.getString("profileType")  // ENTRANT or OWNER -> check is inside AdminViewProfile
+                    ?: "ENTRANT"                      // default to ENTRANT if getString returns null
+            )
+            AdminViewProfile(navController, type)     // show the screen
+        }
+        composable(AdminRoutes.NOTIFICATION_LOG) { NotificationLog(navController) }
+        composable(AdminRoutes.REQUEST_LOG) { RequestLog(navController) }
+        composable(AdminRoutes.APPROVED_LOG) { ApprovedLog(navController) }
+        composable(AdminRoutes.OTHER_LOG) { OtherLog(navController) }
     }
 }
