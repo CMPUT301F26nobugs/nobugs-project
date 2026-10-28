@@ -1,4 +1,4 @@
-package com.example.dascamp.screens
+package com.example.dascamp.screens.entrantScreens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,6 +46,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.ui.theme.DasCampTheme
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ChevronRight
@@ -57,6 +58,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.example.dascamp.screens.BigButton
+import com.example.dascamp.screens.EmptyCard
 
 // DASHBOARD SCREEN
 @Composable
@@ -152,7 +155,7 @@ fun EntrantCampsiteList(navController: NavController) {
 
     EntrantPage(
         navController = navController,
-        showBack = false,
+        showBack = false
     ) {
         // Title
         Row(
@@ -239,7 +242,7 @@ fun EntrantCampsiteListPreview() {
 fun EntrantCampsiteScreen(navController: NavController) {
     EntrantPage(
         navController = navController,
-        showBack = true
+        showBack = true,
     ) {
         // Title
         Row(
@@ -458,7 +461,7 @@ fun EntrantNotificationRow(
 fun EntrantReservationList(navController: NavController) {
     EntrantPage(
         navController = navController,
-        showBack = false,
+        showBack = false
     ) {
 
         // Title
@@ -468,7 +471,11 @@ fun EntrantReservationList(navController: NavController) {
         ) { Text(text = "Reservations", style = MaterialTheme.typography.titleLarge) }
 
         // Display Reservations
-        EmptyCard { navController.navigate(EntrantRoutes.RESERVATION) }
+        EmptyCard {
+            navController.navigate(
+                EntrantRoutes.RESERVATION
+            )
+        }
     }
 }
 

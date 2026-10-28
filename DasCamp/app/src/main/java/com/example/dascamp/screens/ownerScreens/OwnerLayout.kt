@@ -1,4 +1,4 @@
-package com.example.dascamp.screens
+package com.example.dascamp.screens.ownerScreens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -105,8 +105,10 @@ fun OwnerPage(
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    AppScaffold(
-        onBackClick = if (showBack) {{ navController.popBackStack() }} else null,
+    _root_ide_package_.com.example.dascamp.screens.AppScaffold(
+        onBackClick = if (showBack) {
+            { navController.popBackStack() }
+        } else null,
         navBar = { OwnerNavBar(navController) }
     ) { innerPadding ->
         Column(

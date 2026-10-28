@@ -4,38 +4,37 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.dascamp.screens.EntrantCampsiteList
-import com.example.dascamp.screens.EntrantCampsiteScreen
-import com.example.dascamp.screens.EntrantDashboard
-import com.example.dascamp.screens.EntrantMessageList
-import com.example.dascamp.screens.EntrantMessageScreen
-import com.example.dascamp.screens.EntrantNotificationList
-import com.example.dascamp.screens.EntrantProfileScreen
-import com.example.dascamp.screens.EntrantQrCodeScreen
-import com.example.dascamp.screens.EntrantReservationList
-import com.example.dascamp.screens.EntrantRoutes
+import com.example.dascamp.screens.entrantScreens.EntrantCampsiteList
+import com.example.dascamp.screens.entrantScreens.EntrantCampsiteScreen
+import com.example.dascamp.screens.entrantScreens.EntrantDashboard
+import com.example.dascamp.screens.entrantScreens.EntrantMessageList
+import com.example.dascamp.screens.entrantScreens.EntrantMessageScreen
+import com.example.dascamp.screens.entrantScreens.EntrantNotificationList
+import com.example.dascamp.screens.entrantScreens.EntrantProfileScreen
+import com.example.dascamp.screens.entrantScreens.EntrantQrCodeScreen
+import com.example.dascamp.screens.entrantScreens.EntrantReservationList
+import com.example.dascamp.screens.entrantScreens.EntrantRoutes
 import com.example.dascamp.screens.SignUpScreen
-import com.example.dascamp.screens.OwnerAddCampsite
-import com.example.dascamp.screens.OwnerBookedDates
-import com.example.dascamp.screens.OwnerCampsite
-import com.example.dascamp.screens.OwnerCampsitesList
-import com.example.dascamp.screens.OwnerCreateLottery
-import com.example.dascamp.screens.OwnerDashboard
-import com.example.dascamp.screens.OwnerEditCampsite
-import com.example.dascamp.screens.OwnerEditLottery
-import com.example.dascamp.screens.OwnerLotteryDetails
-import com.example.dascamp.screens.OwnerLotteryList
-import com.example.dascamp.screens.OwnerMapLocation
-import com.example.dascamp.screens.OwnerMessageList
-import com.example.dascamp.screens.OwnerMessages
-import com.example.dascamp.screens.OwnerNotifications
-import com.example.dascamp.screens.OwnerProfile
-import com.example.dascamp.screens.OwnerQrCode
-import com.example.dascamp.screens.OwnerReservationDetails
-import com.example.dascamp.screens.OwnerReservations
-import com.example.dascamp.screens.OwnerRoutes
-import com.example.dascamp.screens.OwnerSendNotification
-
+import com.example.dascamp.screens.ownerScreens.OwnerAddCampsite
+import com.example.dascamp.screens.ownerScreens.OwnerBookedDates
+import com.example.dascamp.screens.ownerScreens.OwnerCampsite
+import com.example.dascamp.screens.ownerScreens.OwnerCampsitesList
+import com.example.dascamp.screens.ownerScreens.OwnerCreateLottery
+import com.example.dascamp.screens.ownerScreens.OwnerDashboard
+import com.example.dascamp.screens.ownerScreens.OwnerEditCampsite
+import com.example.dascamp.screens.ownerScreens.OwnerEditLottery
+import com.example.dascamp.screens.ownerScreens.OwnerLotteryDetails
+import com.example.dascamp.screens.ownerScreens.OwnerLotteryList
+import com.example.dascamp.screens.ownerScreens.OwnerMapLocation
+import com.example.dascamp.screens.ownerScreens.OwnerMessageList
+import com.example.dascamp.screens.ownerScreens.OwnerMessages
+import com.example.dascamp.screens.ownerScreens.OwnerNotifications
+import com.example.dascamp.screens.ownerScreens.OwnerProfile
+import com.example.dascamp.screens.ownerScreens.OwnerQrCode
+import com.example.dascamp.screens.ownerScreens.OwnerReservationDetails
+import com.example.dascamp.screens.ownerScreens.OwnerReservations
+import com.example.dascamp.screens.ownerScreens.OwnerRoutes
+import com.example.dascamp.screens.ownerScreens.OwnerSendNotification
 import com.example.dascamp.screens.adminScreens.AdminDashboard
 import com.example.dascamp.screens.adminScreens.AdminProfileList
 import com.example.dascamp.screens.adminScreens.AdminRoutes
@@ -51,7 +50,9 @@ fun DasCampApp() {
 
     // Page Navigation
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = OwnerRoutes.DASHBOARD) {
+    val startDestination = EntrantRoutes.DASHBOARD // CHANGE HERE TO SWITCH LANDING PAGE (owner: OwnerRoutes.DASHBOARD, admin: AdminRoutes.DASHBOARD)
+
+    NavHost(navController = navController, startDestination = startDestination) {
 
         // First-time download landing page (i.e. devices not in FireBase)
         composable("signUpScreen") { SignUpScreen(navController) }

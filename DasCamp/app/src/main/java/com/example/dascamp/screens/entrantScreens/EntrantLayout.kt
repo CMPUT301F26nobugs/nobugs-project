@@ -1,4 +1,4 @@
-package com.example.dascamp.screens
+package com.example.dascamp.screens.entrantScreens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.screens.AppScaffold
 
 // ENTRANT ROUTES
 object EntrantRoutes {
@@ -67,7 +68,9 @@ fun EntrantPage(
     content: @Composable ColumnScope.() -> Unit
 ) {
     AppScaffold(
-        onBackClick = if (showBack) {{ navController.popBackStack() }} else null,
+        onBackClick = if (showBack) {
+            { navController.popBackStack() }
+        } else null,
         navBar = { EntrantNavBar(navController) }
     ) { innerPadding ->
         Column(

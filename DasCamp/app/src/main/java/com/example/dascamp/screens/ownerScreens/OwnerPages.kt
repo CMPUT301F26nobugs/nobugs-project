@@ -1,4 +1,4 @@
-package com.example.dascamp.screens
+package com.example.dascamp.screens.ownerScreens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +33,9 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.screens.BigButton
+import com.example.dascamp.screens.EmptyCard
+import com.example.dascamp.screens.EmptyValue
 
 
 /**
@@ -42,30 +45,40 @@ import androidx.navigation.NavController
 @Composable
 fun OwnerDashboard(navController: NavController) {
     OwnerPage(navController, showBack = false, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Welcome Back,", style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+        Text(
+            "Welcome Back,",
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center
+        )
         Text("Owner", style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            BigButton({ navController.openOwnerTab(OwnerRoutes.CAMPSITES) }, Icons.Default.Place, "My campsites", "My\nCampsites")
-            BigButton({ navController.navigate(OwnerRoutes.LOTTERIES) }, Icons.Default.DateRange, "My lotteries", "My\nLotteries")
+            BigButton(
+                { navController.openOwnerTab(OwnerRoutes.CAMPSITES) },
+                Icons.Default.Place,
+                "My campsites",
+                "My\nCampsites"
+            )
+            BigButton(
+                { navController.navigate(OwnerRoutes.LOTTERIES) },
+                Icons.Default.DateRange,
+                "My lotteries",
+                "My\nLotteries"
+            )
         }
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { navController.openOwnerTab(OwnerRoutes.ALERTS) }
-        ) {
-            Text("Notification Logs")
-        }
+        ) { Text("Notification Logs") }
+
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { navController.navigate(OwnerRoutes.MESSAGE_LIST) })
-        {
-            Text("Message Logs")
-        }
+        { Text("Message Logs") }
+
         Button(
             modifier = Modifier.fillMaxWidth(),
-             onClick = { navController.openOwnerTab(OwnerRoutes.RESERVATIONS) })
-        {
-            Text("Reservations")
-        }
+            onClick = { navController.openOwnerTab(OwnerRoutes.RESERVATIONS) })
+        { Text("Reservations") }
     }
 }
 
@@ -164,7 +177,8 @@ private fun CampsiteForm(navController: NavController, title: String, action: St
             onClick = { navController.navigate(OwnerRoutes.MAP) }) { Text("Set map location") }
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = onAction) { Text(action) }
+            onClick = onAction
+        ) { Text(action) }
     }
 }
 
@@ -228,12 +242,14 @@ fun OwnerQrCode(navController: NavController) {
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = {}) {
-            Text("Download QR Code")}
+            Text("Download QR Code")
+        }
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = {}) {
-            Text("Share link")}
+            Text("Share link")
         }
+    }
     }
 
 
@@ -289,7 +305,8 @@ fun OwnerLotteryDetails(navController: NavController) {
         Button(onClick = { navController.navigate(OwnerRoutes.CAMPSITE) }) { Text("Campsite") }
         Text(
             "Winners are drawn automatically when registration ends.",
-            style = MaterialTheme.typography.bodyMedium )
+            style = MaterialTheme.typography.bodyMedium
+        )
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { navController.navigate(OwnerRoutes.EDIT_LOTTERY) }) { Text("Edit lottery") }
@@ -319,7 +336,8 @@ private fun LotteryForm(navController: NavController, title: String, action: Str
         FormField("Waitlist capacity, optional")
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = onAction) { Text(action) }
+            onClick = onAction
+        ) { Text(action) }
     }
 }
 
@@ -350,20 +368,20 @@ fun OwnerReservationDetails(navController: NavController) {
         EmptyValue(0.3f)
         EmptyValue(0.5f)
         EmptyValue(0.6f)
-        Row(verticalAlignment = Alignment.CenterVertically){
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = true, onCheckedChange = null)
             Text("Rules & Policies Confirmed")
         }
         FormField("Reason for rejection")
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = {navController.popBackStack()}) { Text("Reject reservation") }
+            onClick = { navController.popBackStack() }) { Text("Reject reservation") }
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { navController.navigate(OwnerRoutes.MESSAGE) }) { Text("Message") }
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate(OwnerRoutes.BOOKED)}){Text("View Dates")}
+            onClick = { navController.navigate(OwnerRoutes.BOOKED) }) { Text("View Dates") }
     }
 }
 
@@ -384,23 +402,23 @@ fun OwnerSendNotification(navController: NavController) {
         Text("Send notification", style = MaterialTheme.typography.titleLarge)
         Text("Send to", style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("All Waitlist", "Winners", "Not Selected").forEach{label ->
-                if(label == send)
-                    Button(onClick = {send = label}){
+            listOf("All Waitlist", "Winners", "Not Selected").forEach { label ->
+                if (label == send)
+                    Button(onClick = { send = label }) {
                         Text(label)
                     } else OutlinedButton(
-                        onClick = {
-                            send = label
-                        }
-                    ) {
-                        Text(label)
+                    onClick = {
+                        send = label
+                    }
+                ) {
+                    Text(label)
                 }
             }
         }
         FormField("Message")
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = {navController.openOwnerTab(OwnerRoutes.ALERTS)}) { Text("Send") }
+            onClick = { navController.openOwnerTab(OwnerRoutes.ALERTS) }) { Text("Send") }
     }
 }
 
