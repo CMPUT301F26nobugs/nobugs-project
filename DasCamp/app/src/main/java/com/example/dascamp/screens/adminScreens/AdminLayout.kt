@@ -32,7 +32,7 @@ import com.example.dascamp.screens.AppScaffold
 object AdminRoutes {
     const val DASHBOARD = "adminDashboard"
     const val CAMPSITE_LIST = "adminCampsiteList"
-    const val CAMPSITE = "adminCampsiteScreen"
+    const val CAMPSITE = "adminViewCampsite/{campsiteId}"
     const val IMAGE_GALLERY = "adminImageGallery"
     const val MESSAGE_LIST = "adminMessageList"
     const val MESSAGE = "adminMessageScreen"
@@ -45,6 +45,7 @@ object AdminRoutes {
 
     // Build route for a profile, ie. "adminProfile/OWNER"
     fun profile(type: ProfileType) = "adminProfile/${type.name}"
+    fun campsite(id: String = "default_id") = "AdminViewCampsite/$id"
 }
 
 @Composable

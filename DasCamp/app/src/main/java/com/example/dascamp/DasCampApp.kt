@@ -16,6 +16,7 @@ import com.example.dascamp.screens.EntrantReservationList
 import com.example.dascamp.screens.EntrantRoutes
 import com.example.dascamp.screens.SignUpScreen
 
+
 import com.example.dascamp.screens.adminScreens.AdminDashboard
 import com.example.dascamp.screens.adminScreens.AdminProfileList
 import com.example.dascamp.screens.adminScreens.AdminRoutes
@@ -25,6 +26,8 @@ import com.example.dascamp.screens.adminScreens.NotificationLog
 import com.example.dascamp.screens.adminScreens.OtherLog
 import com.example.dascamp.screens.adminScreens.ProfileType
 import com.example.dascamp.screens.adminScreens.RequestLog
+import com.example.dascamp.screens.adminScreens.AdminCampsiteList
+import com.example.dascamp.screens.adminScreens.AdminViewCampsite
 
 @Composable
 fun DasCampApp() {
@@ -66,5 +69,10 @@ fun DasCampApp() {
         composable(AdminRoutes.REQUEST_LOG) { RequestLog(navController) }
         composable(AdminRoutes.APPROVED_LOG) { ApprovedLog(navController) }
         composable(AdminRoutes.OTHER_LOG) { OtherLog(navController) }
+        composable(AdminRoutes.CAMPSITE_LIST) { AdminCampsiteList(navController) }
+        composable(AdminRoutes.CAMPSITE) { entry ->
+            val campsiteId = entry.arguments?.getString("campsiteId") ?: "default_id"
+            AdminViewCampsite(navController)
+        }
     }
 }

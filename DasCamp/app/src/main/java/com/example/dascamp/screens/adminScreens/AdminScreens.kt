@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -37,6 +38,7 @@ import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
 import com.example.dascamp.ui.theme.DasCampTheme
+
 
 // 2 types of profiles that can be browsed
 enum class ProfileType(val label: String) {
@@ -346,5 +348,186 @@ private fun LogScreen(navController: NavController, title: String) {
 fun RequestLogPreview() {
     DasCampTheme {
         RequestLog(rememberNavController())
+    }
+}
+
+@Composable
+fun AdminCampsiteList(navController: NavController) {
+    var query by rememberSaveable { mutableStateOf("") } // campsite search
+    var selectedType by rememberSaveable { mutableStateOf<ProfileType?>(null) } // null = show all
+    AdminPage(
+        navController = navController,
+        showBack = true,
+    ) {
+        // Title
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) { Text(text = "Campsites", style = MaterialTheme.typography.titleLarge) }
+
+        // Search Bar
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Search Campsites") },
+            leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Search") },
+            singleLine = true
+        )
+
+        // Filter -> owners only
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ProfileType.values().forEach { type ->
+                FilterChip(
+                    selected = selectedType == type,
+                    onClick = {
+                        if (selectedType == type) {  // click selected chip again deselect
+                            selectedType = null
+                        } else {
+                            selectedType = type
+                        }
+                    },
+                    label = { Text(type.label) }
+                )
+                EmptyCard {
+                    navController.navigate(AdminRoutes.campsite("123"))
+                }
+            }
+        }
+    }
+}
+@Preview
+@Composable
+fun AdminCampsiteListPreview() {
+    DasCampTheme {
+        RequestLog(rememberNavController())
+    }
+}
+
+@Composable
+fun AdminViewCampsite(navController: NavController) {
+    AdminPage(
+        navController = navController,
+        showBack = true,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // Title
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Campsite Name",
+                style = MaterialTheme.typography.titleLarge
+            )
+        }
+
+        // Campsite Image (PLACEHOLDER)
+        Card(
+            modifier = Modifier.height(200.dp)
+                    .fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        ) { Icon(Icons.Default.Place, "Campsite Image", Modifier.fillMaxSize()) }
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { /*TODO("Delete Campsite Image")*/ }  // ALSO IMPLEMENT A POPUP PROMPT CONFIRMING DECISION
+        ) { Text("Delete Campsite Image") }
+
+        // Campsite info (PLACEHOLDER)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Location", style = MaterialTheme.typography.labelLarge)
+                Text("| Max Occupancy | ", style = MaterialTheme.typography.labelLarge)
+                Text("Rating", style = MaterialTheme.typography.labelLarge)
+            }
+        }
+
+        //campsite details and rules and policy (placeholder)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("Here are more details of the Campsite", style = MaterialTheme.typography.labelLarge)
+            Text("Rules and Policies ", style = MaterialTheme.typography.labelLarge)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("Geolocation", style = MaterialTheme.typography.labelLarge)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier.height(200.dp)
+                .fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        ) { Icon(Icons.Default.Place, "Geolocation", Modifier.fillMaxSize()) }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("Availability", style = MaterialTheme.typography.labelLarge)
+        }
+
+        //will add calendar later...
+        Card(
+            modifier = Modifier.height(200.dp)
+                .fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        ) { Icon(Icons.Default.Place, "Calendar", Modifier.fillMaxSize()) }
+
+
+        // view messages with entrants (same message list as from a campsite)
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+            ) { Text("View Messages with Entrants") }
+
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+            ) { Text("View Owner Profile") }
+
+        // remove campsite
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                colors = destructiveButtonColors(),
+                onClick = { /*TODO("Remove campsite")*/ }  // ALSO IMPLEMENT A POPUP PROMPT CONFIRMING DECISION
+            ) { Text("Remove Campsite") }
+    }
+}
+
+@Preview
+@Composable
+fun AdminViewCampsitePreview() {
+    DasCampTheme {
+        AdminViewProfile(rememberNavController(), ProfileType.ENTRANT)
     }
 }
