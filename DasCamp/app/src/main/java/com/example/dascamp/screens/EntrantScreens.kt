@@ -1,13 +1,9 @@
 package com.example.dascamp.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,14 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
@@ -41,38 +32,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.ui.theme.DasCampTheme
-
-// ENTRANT SCREEN SKELETON
-@Composable
-fun EntrantPage(
-    navController: NavController,
-    showBack: Boolean,
-    horizontalAlignment: Alignment.Horizontal = Alignment.Start,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    AppScaffold(
-        onBackClick = if (showBack) {{ navController.popBackStack() }} else null,
-        navBar = { EntrantNavBar(navController) }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = horizontalAlignment,
-            content = content
-        )
-    }
-}
 
 // DASHBOARD SCREEN
 @Composable
@@ -89,41 +54,32 @@ fun EntrantDashboard(navController: NavController) {
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "Welcome Back,",
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Spacer(modifier = Modifier.padding(4.dp))
-            Text(
-                text = "User",
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center
-            )
+            Text(text = "Welcome Back,", style = MaterialTheme.typography.titleLarge)
+            Text(text = "User", style = MaterialTheme.typography.titleLarge)
         }
 
         // Campsite button & reservations button container
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
         ) {
             // Campsite list button
             BigButton(
-                onClickAction = { navController.navigate("campsiteList") },
+                onClickAction = { navController.navigate(EntrantRoutes.CAMPSITE_LIST) },
                 icon = Icons.Default.LocationOn,
                 iconDesc = "campsites",
-                label = "View \n Campsites"
+                label = "View\nCampsites"
             )
 
             Spacer(modifier = Modifier.padding(8.dp))
 
             // Reservation list button
             BigButton(
-                onClickAction = { navController.navigate("reservationList") },
+                onClickAction = { navController.navigate(EntrantRoutes.RESERVATION_LIST) },
                 icon = Icons.Default.DateRange,
                 iconDesc = "reservations",
-                label = "View Reservations"
+                label = "View\nReservations"
             )
         }
 
@@ -131,35 +87,26 @@ fun EntrantDashboard(navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 16.dp)
+                .padding(vertical = 16.dp),
+            verticalArrangement = Arrangement.SpaceEvenly
         ) {
-            // Notification logs button
+            // Notification list button
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate("notificationList") }
-            ) {
-                Text("Notifications")
-            }
+                onClick = { navController.navigate(EntrantRoutes.NOTIFICATION_LIST) }
+            ) { Text("Notifications") }
 
-            Spacer(modifier = Modifier.padding(4.dp))
-
-            // Message logs button
+            // Message list button
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate("messageList") }
-            ) {
-                Text("Messages")
-            }
-
-            Spacer(modifier = Modifier.padding(4.dp))
+                onClick = { navController.navigate(EntrantRoutes.MESSAGE_LIST) }
+            ) { Text("Messages") }
 
             // Scan QR code button
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate("qrCodeScreen") }
-            ) {
-                Text("Scan QR")
-            }
+                onClick = { navController.navigate(EntrantRoutes.QR) }
+            ) { Text("Scan QR") }
         }
     }
 }
@@ -174,9 +121,9 @@ fun EntrantDashboardPreview() {
 
 // CAMPSITE LIST SCREEN
 @Composable
-fun CampsiteList(navController: NavController) {
+fun EntrantCampsiteList(navController: NavController) {
     var query by rememberSaveable { mutableStateOf("") }                // campsite search
-    var isToggled by rememberSaveable { mutableStateOf(false) }          // bool for showing filters
+    var isToggled by rememberSaveable { mutableStateOf(false) }         // bool for showing filters
     var locationFilter by rememberSaveable { mutableStateOf("") }       // location filter
     var dateFilter by rememberSaveable { mutableStateOf("") }           // date filter
     var occupancyFilter by rememberSaveable { mutableStateOf("") }      // occupancy filter
@@ -185,17 +132,11 @@ fun CampsiteList(navController: NavController) {
         navController = navController,
         showBack = false,
     ) {
-
         // Title
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "Campsites",
-                style = MaterialTheme.typography.titleLarge,
-            )
-        }
+        ) { Text(text = "Campsites", style = MaterialTheme.typography.titleLarge) }
 
         // Search Bar
         OutlinedTextField(
@@ -203,12 +144,7 @@ fun CampsiteList(navController: NavController) {
             onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("Search Campsites") },
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search"
-                )
-            },
+            leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Search") },
             singleLine = true
         )
 
@@ -225,245 +161,126 @@ fun CampsiteList(navController: NavController) {
         )
 
         // Display Campsites
-        EmptyCard { navController.navigate("campsite") }
+        EmptyCard { navController.navigate(EntrantRoutes.CAMPSITE) }
     }
 }
 
 @Preview
 @Composable
-fun CampsiteListPreview() {
+fun EntrantCampsiteListPreview() {
     DasCampTheme {
-        CampsiteList(rememberNavController())
-    }
-}
-
-// FILTER SECTION (toggle row + collapsible card)
-@Composable
-private fun FilterSection(
-    expanded: Boolean,
-    onToggle: () -> Unit,
-    location: String,
-    onLocationChange: (String) -> Unit,
-    date: String,
-    onDateChange: (String) -> Unit,
-    occupancy: String,
-    onOccupancyChange: (String) -> Unit
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-
-        // Clickable filter icon & text
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onToggle)
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.FilterAlt,
-                contentDescription = null // the text beside it already says what this is
-            )
-            Text(
-                text = "Filter By:",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        // Filters card, only shown while expanded
-        AnimatedVisibility(visible = expanded) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "Filters",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    FilterField("Location:", location, onLocationChange)
-                    FilterField("Date:", date, onDateChange)
-                    FilterField("Max Occ:", occupancy, onOccupancyChange)
-                }
-            }
-        }
-    }
-}
-
-// One labelled filter input (label on the left, rounded text field on the right)
-@Composable
-private fun FilterField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.width(88.dp)
-        )
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = { Text("Any") },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.weight(1f)
-        )
+        EntrantCampsiteList(rememberNavController())
     }
 }
 
 // CAMPSITE SCREEN
 @Composable
-fun CampsiteScreen(navController: NavController) {
+fun EntrantCampsiteScreen(navController: NavController) {
     EntrantPage(
         navController = navController,
         showBack = true
     ) {
         // Title
-        Text(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            text = "Campsite",
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center
-        )
+            horizontalArrangement = Arrangement.Center
+        ) { Text(text = "Campsite", style = MaterialTheme.typography.titleLarge) }
 
         // Image (PLACEHOLDER will generate real images later when models and DB)
         Card(
-            modifier = Modifier
-                .size(width = 400.dp, height = 200.dp),
+            modifier = Modifier.size(width = 400.dp, height = 200.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant, // Background
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant   // Text/Icon color
             )
-        ) {
-            Icon(Icons.Default.Image, "na", modifier = Modifier.fillMaxSize())
-        }
+        ) { Icon(Icons.Default.Image, "na", Modifier.fillMaxSize()) }
 
-        // Details
+
+        // Container for description + Rules & Policies
         Column(
+            modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             // Summary
-            Text(
-                text = "Location | Rating | Max Occ.",
-                style = MaterialTheme.typography.labelLarge,
-                textAlign = TextAlign.Center
-            )
+            Text(text = "Location | Rating | Max Occ.", style = MaterialTheme.typography.labelLarge)
 
-            Spacer(modifier = Modifier.padding(vertical = 16.dp))
+            // Description
+            Text(text = "Here are more details.", style = MaterialTheme.typography.bodyLarge)
 
-            // Container for description + Rules & Policies
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Description
-                Text(
-                    text = "Here are more details.",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-
-                // Rules & Policies
-                Text(
-                    text = "Rules & Policies",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            }
-
-            Spacer(modifier = Modifier.padding(vertical = 16.dp))
-
-            // Container for geolocation
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Title
-                Text(
-                    text = "Geolocation",
-                    style = MaterialTheme.typography.labelLarge,
-                    textAlign = TextAlign.Center
-                )
-
-                // PLACEHOLDER FOR GEOLOCATION
-                Box(
-                    modifier = Modifier
-                        .height(150.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
-                ) {
-                    Icon(
-                        Icons.Default.LocationOn,
-                        "na",
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.padding(vertical = 16.dp))
-
-            // Container for calendar
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Title
-                Text(
-                    text = "Availability",
-                    style = MaterialTheme.typography.labelLarge,
-                )
-                CalendarGrid()
-
-                // Legend
-                Row() {
-                    // Available
-                    Text("Available = ")
-                    Box(modifier = Modifier.size(20.dp).background(Color.Red))
-
-                    Spacer(modifier = Modifier.padding(8.dp))
-
-                    // Unavailable
-                    Text("Unavailable = ")
-                    Box(modifier = Modifier.size(20.dp).background(Color.Green))
-                }
-            }
-
-            Spacer(modifier = Modifier.padding(vertical = 16.dp))
-
-            // Container for booking/enter-lottery buttons
-            Row(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Enter lottery button
-                Button(
-                    onClick = {/*TODO("Implement booking logic")*/}
-                ) { Text("Enter Lottery") }
-
-                Spacer(modifier = Modifier.padding(20.dp))
-
-                // Waiting list display
-                Column() {
-                    Text("Current Pool: 5/10")
-                    Text("End Date: May 10, 2026")
-                }
-            }
-
-            // Chat owner button
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate("messageScreen") }
-            ) { Text("Message Owner") }
+            // Rules & Policies
+            Text(text = "Rules & Policies", style = MaterialTheme.typography.bodyLarge)
         }
+
+        Spacer(modifier = Modifier.padding(vertical = 16.dp))
+
+        // Container for geolocation
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Geolocation title
+            Text(text = "Geolocation", style = MaterialTheme.typography.labelLarge,)
+
+            // PLACEHOLDER FOR GEOLOCATION
+            Box(
+                modifier = Modifier
+                    .height(150.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+            ) { Icon(Icons.Default.LocationOn, "na", Modifier.fillMaxSize()) }
+        }
+
+        Spacer(modifier = Modifier.padding(vertical = 16.dp))
+
+        // Container for calendar
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Title
+            Text(text = "Availability", style = MaterialTheme.typography.labelLarge)
+
+            // Entrant Calendar Grid
+            EntrantCalendarGrid()
+
+            // Legend
+            Row() {
+                // Available
+                Text("Available = ")
+                Box(modifier = Modifier.size(20.dp).background(Color.Red))
+
+                Spacer(modifier = Modifier.padding(8.dp))
+
+                // Unavailable
+                Text("Unavailable = ")
+                Box(modifier = Modifier.size(20.dp).background(Color.Green))
+            }
+        }
+
+        Spacer(modifier = Modifier.padding(vertical = 16.dp))
+
+        // Container for booking/entering lottery buttons
+        Row(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Enter lottery button
+            Button(
+                onClick = {/*TODO("Implement booking logic")*/}
+            ) { Text("Enter Lottery") }
+
+            Spacer(modifier = Modifier.padding(20.dp))
+
+            // Waiting list display
+            Column() {
+                Text("Current Pool: 5/10")
+                Text("End Date: May 10, 2026")
+            }
+        }
+
+        // Chat owner button
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { navController.navigate(EntrantRoutes.MESSAGE) }
+        ) { Text("Message Owner") }
     }
 }
 
@@ -471,59 +288,32 @@ fun CampsiteScreen(navController: NavController) {
 @Composable
 fun CampsiteScreenPreview() {
     DasCampTheme() {
-        CampsiteScreen(rememberNavController())
+        EntrantCampsiteScreen(rememberNavController())
     }
 }
 
-@Composable
-private fun CalendarGrid() {
-    Row(Modifier.fillMaxWidth()) {
-        listOf("S", "M", "T", "W", "T", "F", "S").forEach {
-            Text(it, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-        }
-    }
-    repeat(5) {
-        Row(Modifier.fillMaxWidth().height(36.dp), verticalAlignment = Alignment.CenterVertically) {
-            repeat(7) {
-                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Box(
-                        Modifier
-                            .size(28.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                    )
-                }
-            }
-        }
-    }
-}
 
 // NOTIFICATION LIST SCREEN
 @Composable
-fun NotificationList(navController: NavController) {
+fun EntrantNotificationList(navController: NavController) {
     EntrantPage(
         navController = navController,
         showBack = false,
     ) {
-
         // Title
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "Notifications",
-                style = MaterialTheme.typography.titleLarge,
-            )
-        }
+        ) { Text(text = "Notifications", style = MaterialTheme.typography.titleLarge) }
 
         // Display Notifications
-        EmptyCard { navController.navigate("notification") }
+        EmptyCard { navController.navigate(EntrantRoutes.NOTIFICATION) }
     }
 }
 
 // RESERVATION LIST SCREEN
 @Composable
-fun ReservationList(navController: NavController) {
+fun EntrantReservationList(navController: NavController) {
     EntrantPage(
         navController = navController,
         showBack = false,
@@ -533,45 +323,34 @@ fun ReservationList(navController: NavController) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "Reservations",
-                style = MaterialTheme.typography.titleLarge,
-            )
-        }
+        ) { Text(text = "Reservations", style = MaterialTheme.typography.titleLarge) }
 
         // Display Reservations
-        EmptyCard { navController.navigate("reservation") }
+        EmptyCard { navController.navigate(EntrantRoutes.RESERVATION) }
     }
 }
 
 // MESSAGE LIST SCREEN
 @Composable
-fun MessageList(navController: NavController) {
+fun EntrantMessageList(navController: NavController) {
     EntrantPage(
         navController = navController,
         showBack = false,
     ) {
-
         // Title
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "Messages",
-                style = MaterialTheme.typography.titleLarge,
-            )
-        }
+        ) { Text(text = "Messages", style = MaterialTheme.typography.titleLarge) }
 
         // Display Messages
-        EmptyCard { navController.navigate("message") }
+        EmptyCard { navController.navigate(EntrantRoutes.MESSAGE) }
     }
 }
 
 // MESSAGE SCREEN
 @Composable
-fun MessageScreen(navController: NavController) {
+fun EntrantMessageScreen(navController: NavController) {
     EntrantPage(
         navController,
         showBack = true
@@ -580,12 +359,7 @@ fun MessageScreen(navController: NavController) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "Owner Name",
-                style = MaterialTheme.typography.titleLarge,
-            )
-        }
+        ) { Text(text = "Owner Name", style = MaterialTheme.typography.titleLarge) }
 
         // Display Messages (to be implemented)
     }
@@ -594,48 +368,30 @@ fun MessageScreen(navController: NavController) {
 
 // PROFILE SCREEN
 @Composable
-fun ProfileScreen(navController: NavController) {
+fun EntrantProfileScreen(navController: NavController) {
     EntrantPage(
         navController = navController,
         showBack = false,
     ) {
-
         // Title
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "Profile",
-                style = MaterialTheme.typography.titleLarge,
-            )
-        }
-
-        // Display Profile
-        EmptyCard { navController.navigate("profile") }
+        ) { Text(text = "Profile", style = MaterialTheme.typography.titleLarge) }
     }
 }
 
 // QR CODE SCREEN
 @Composable
-fun QrCodeScreen(navController: NavController) {
+fun EntrantQrCodeScreen(navController: NavController) {
     EntrantPage(
         navController = navController,
         showBack = false,
     ) {
-
         // Title
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "QR Code Scanner",
-                style = MaterialTheme.typography.titleLarge,
-            )
-        }
-
-        // Display QR Code
-        EmptyCard { navController.navigate("qrCode") }
+        ) { Text(text = "QR Code Scanner", style = MaterialTheme.typography.titleLarge) }
     }
 }

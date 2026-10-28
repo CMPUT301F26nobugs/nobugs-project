@@ -4,14 +4,16 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.dascamp.screens.CampsiteList
+import com.example.dascamp.screens.EntrantCampsiteList
+import com.example.dascamp.screens.EntrantCampsiteScreen
 import com.example.dascamp.screens.EntrantDashboard
-import com.example.dascamp.screens.MessageList
-import com.example.dascamp.screens.MessageScreen
-import com.example.dascamp.screens.NotificationList
-import com.example.dascamp.screens.ProfileScreen
-import com.example.dascamp.screens.QrCodeScreen
-import com.example.dascamp.screens.ReservationList
+import com.example.dascamp.screens.EntrantMessageList
+import com.example.dascamp.screens.EntrantMessageScreen
+import com.example.dascamp.screens.EntrantNotificationList
+import com.example.dascamp.screens.EntrantProfileScreen
+import com.example.dascamp.screens.EntrantQrCodeScreen
+import com.example.dascamp.screens.EntrantReservationList
+import com.example.dascamp.screens.EntrantRoutes
 import com.example.dascamp.screens.SignUpScreen
 
 @Composable
@@ -25,17 +27,21 @@ fun DasCampApp() {
         composable("signUpScreen") { SignUpScreen(navController) }
 
         // ENTRANT NAVIGATION
-        composable("entrantDashboard") { EntrantDashboard(navController) }
-        composable("campsiteList") { CampsiteList(navController) }
-        composable("notificationList") { NotificationList(navController) }
-        composable("messageList") { MessageList(navController) }
-        composable("messageScreen") { MessageScreen(navController) }
-        composable("profileScreen") { ProfileScreen(navController) }
-        composable("qrCodeScreen") { QrCodeScreen(navController) }
-        composable("reservationList") { ReservationList(navController) }
+        composable(EntrantRoutes.DASHBOARD) { EntrantDashboard(navController) }
+        composable(EntrantRoutes.CAMPSITE_LIST) { EntrantCampsiteList(navController) }
+        composable(EntrantRoutes.CAMPSITE) { EntrantCampsiteScreen(navController) }
+        composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
+        composable(EntrantRoutes.NOTIFICATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite (screen buttons change depending on notification)
+        composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
+        composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
+        composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController) }
+        composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController) }
+        composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController) }
+        composable(EntrantRoutes.RESERVATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite screen
 
         // OWNER NAVIGATION
 
         // ADMIN NAVIGATION
+
     }
 }
