@@ -61,7 +61,6 @@ fun DasCampApp() {
         composable(EntrantRoutes.CAMPSITE_LIST) { EntrantCampsiteList(navController) }
         composable(EntrantRoutes.CAMPSITE) { EntrantCampsiteScreen(navController) }
         composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
-        composable(EntrantRoutes.NOTIFICATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite (screen buttons change depending on notification)
         composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
         composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
         composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController) }
