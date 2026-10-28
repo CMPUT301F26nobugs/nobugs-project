@@ -1,5 +1,6 @@
 package com.example.dascamp.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -53,7 +55,7 @@ import com.example.dascamp.ui.theme.DasCampTheme
 // REUSABLE SCREEN LAYOUT CALL W/ HEADER AND NAVBAR (MAKE YOUR OWN NAVBAR)
 @Composable
 fun AppScaffold(
-    onBackClick: (() -> Unit)? = null, // default is null, so arrow only shows when you pass a function
+    onBackClick: (() -> Unit)? = null,  // default is null, so arrow only shows when you pass a function
     navBar: @Composable () -> Unit = {}, // navbar slot, put your navbar function here
     content: @Composable (PaddingValues) -> Unit // this is the content of the screen, it takes the scaffolds padding values (i.e. how much space the header/navbar takes)
 ) {
@@ -136,90 +138,6 @@ fun HeaderPreview(){
     }
 }
 
-// ENTRANT NAVBAR
-@Composable
-fun EntrantNavBar(navController: NavController) {
-    // Parent for navbar
-    Surface(color = MaterialTheme.colorScheme.primary) {
-
-        // Parent for navbar contents
-        Row(
-            modifier = Modifier
-                .navigationBarsPadding()
-                .fillMaxWidth()
-                .height(64.dp)
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            // Home Button
-            IconButton(
-                onClick = { navController.navigate("entrantDashboard") }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Home, // takes home icon from default icon library
-                    contentDescription = "Home",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-
-            // Campsites Button
-            IconButton(
-                onClick = { navController.navigate("campsiteList") }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Place,
-                    contentDescription = "Campsites",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-
-            // Notifications Button
-            IconButton(
-                onClick = { navController.navigate("notificationList") }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "Notifications",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-
-            // Messages Button
-            IconButton(
-                onClick = { navController.navigate("messageList") }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Email,
-                    contentDescription = "Messages",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-
-            // Profile Button
-            IconButton(
-                onClick = { navController.navigate("profileScreen") }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Profile",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-        }
-    }
-
-}
-
-@Preview
-@Composable
-fun EntrantNavBarPreview() {
-    DasCampTheme {
-        EntrantNavBar(rememberNavController())
-    }
-}
-
 // BIG BUTTON SKELETON (can be used for big buttons on dashboards)
 @Composable
 fun BigButton(
@@ -229,8 +147,8 @@ fun BigButton(
     label: String
 ) {
     Card(
-        modifier = Modifier.size(136.dp),
-        onClick = { onClickAction },
+        modifier = Modifier.size(150.dp),
+        onClick = onClickAction,
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -261,16 +179,38 @@ fun BigButtonPreview() {
     }
 }
 
+@Composable
+fun EmptyValue(widthFraction: Float = 1f) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(widthFraction)
+            .height(18.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(6.dp))
+    )
+}
+
+@Composable
+fun EmptyCard(onClick: () -> Unit) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            EmptyValue(0.7f)
+            EmptyValue(0.4f)
+        }
+    }
+}
+
 
 // SIGN-UP SCREEN
 @Composable
 fun SignUpScreen(navController: NavController) {
+    var firstName by remember { mutableStateOf("") }
+    var lastName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
 
     // Screen Parent Container
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -304,7 +244,6 @@ fun SignUpScreen(navController: NavController) {
                 // Parent container for first name text input + title
                 Column () {
                     // First Name Input
-                    var firstName by remember { mutableStateOf("") }
                     Text("First Name")
                     OutlinedTextField(
                         value = firstName,
@@ -315,7 +254,6 @@ fun SignUpScreen(navController: NavController) {
                 // Parent container for last name text input + title
                 Column () {
                     // First Name Input
-                    var lastName by remember { mutableStateOf("") }
                     Text("Last Name")
                     OutlinedTextField(
                         value = lastName,
@@ -326,7 +264,6 @@ fun SignUpScreen(navController: NavController) {
                 // Parent container for Email input + title
                 Column () {
                     // Email input
-                    var email by remember { mutableStateOf("") }
                     Text("Email")
                     OutlinedTextField(
                         value = email,
@@ -337,7 +274,6 @@ fun SignUpScreen(navController: NavController) {
                 // Parent container for Phone Number text input + title
                 Column () {
                     // Phone number input
-                    var phoneNumber by remember { mutableStateOf("") }
                     Text("Phone Number")
                     OutlinedTextField(
                         value = phoneNumber,
@@ -349,10 +285,8 @@ fun SignUpScreen(navController: NavController) {
 
                 // Sign-Up Button
                 Button (
-                    onClick = { navController.navigate("EntrantDashboard") } // navigate to Entrant Dashboard
-                ) {
-                    Text("Sign-Up")
-                }
+                    onClick = { navController.navigate(EntrantRoutes.DASHBOARD) } // navigate to Entrant Dashboard
+                ) { Text("Sign-Up") }
             }
         }
     }
