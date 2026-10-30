@@ -2,10 +2,11 @@ package com.example.dascamp.model
 
 /**
  * Dates are stored as yyyy-MM-dd
+ * defaults to an empty string as firestore builds on an empty constructor
  */
 data class DateRange(
-    val start: String,
-    val end: String
+    val start: String = "",
+    val end: String = ""
 )
 
 /**
@@ -13,22 +14,22 @@ data class DateRange(
  * Entrant search reads this same type. Admin removal deletes one of these rows
  */
 data class Campsite(
-    val id: String,
-    val ownerId: String,
-    val name: String,
-    val location: String,
-    val description: String,
-    val maxOccupancy: Int,
-    val pricePerNight: Double,
-    val rating: Double,
-    val ratingCount: Int,
-    val imageUri: String?,
-    val rules: String,
-    val cancellationPolicy: String,
-    val tags: List<String>,
-    val latitude: Double,
-    val longitude: Double,
-    val availability: List<DateRange>
+    val id: String = "",
+    val ownerId: String = "",
+    val name: String = "",
+    val location: String = "",
+    val description: String = "",
+    val maxOccupancy: Int = 0,
+    val pricePerNight: Double = 0.0,
+    val rating: Double = 0.0,
+    val ratingCount: Int = 0,
+    val imageUri: String? = null,
+    val rules: String = "",
+    val cancellationPolicy: String = "",
+    val tags: List<String> = emptyList(),
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+    val availability: List<DateRange> = emptyList()
 )
 
 /**
@@ -171,10 +172,10 @@ fun WaitlistStatus.label(): String = when (this) {
 }
 
 data class WaitlistEntrant(
-    val entrantId: String,
-    val name: String,
-    val joinedAt: String,
-    val status: WaitlistStatus
+    val entrantId: String = "",
+    val name: String = "",
+    val joinedAt: String = "",
+    val status: WaitlistStatus = WaitlistStatus.WAITING
 )
 
 /**
@@ -183,17 +184,17 @@ data class WaitlistEntrant(
  * [winnerCount] is how many people are offered a spot
  */
 data class Lottery(
-    val id: String,
-    val name: String,
-    val campsiteIds: List<String>,
-    val registrationStart: String,
-    val registrationEnd: String,
-    val bookingStart: String,
-    val bookingEnd: String,
-    val winnerCount: Int,
-    val waitlistCapacity: Int?,
-    val status: LotteryStatus,
-    val entrants: List<WaitlistEntrant>
+    val id: String = "",
+    val name: String = "",
+    val campsiteIds: List<String> = emptyList(),
+    val registrationStart: String = "",
+    val registrationEnd: String = "",
+    val bookingStart: String = "",
+    val bookingEnd: String = "",
+    val winnerCount: Int = 0,
+    val waitlistCapacity: Int? = null,
+    val status: LotteryStatus = LotteryStatus.OPEN,
+    val entrants: List<WaitlistEntrant> = emptyList()
 )
 
 data class LotteryFormState(
@@ -303,24 +304,24 @@ fun ReservationStatus.label(): String = when (this) {
  * [cancelReason] is what the owner sends with a rejection.
  */
 data class Reservation(
-    val id: String,
-    val campsiteId: String,
-    val campsiteName: String,
-    val entrantId: String,
-    val entrantName: String,
-    val startDate: String,
-    val endDate: String,
-    val status: ReservationStatus,
-    val lotteryId: String?,
-    val cancelReason: String?
+    val id: String = "",
+    val campsiteId: String = "",
+    val campsiteName: String = "",
+    val entrantId: String = "",
+    val entrantName: String = "",
+    val startDate: String = "",
+    val endDate: String = "",
+    val status: ReservationStatus = ReservationStatus.ACTIVE,
+    val lotteryId: String? = null,
+    val cancelReason: String? = null
 )
 
 data class OwnerNotification(
-    val id: String,
-    val lotteryId: String?,
-    val recipientName: String,
-    val message: String,
-    val sentAt: String
+    val id: String = "",
+    val lotteryId: String? = null,
+    val recipientName: String = "",
+    val message: String = "",
+    val sentAt: String = ""
 )
 
 /**
@@ -328,11 +329,11 @@ data class OwnerNotification(
  * Admin can review the same rows
  */
 data class OwnerMessage(
-    val id: String,
-    val reservationId: String,
-    val entrantName: String,
-    val body: String,
-    val sentAt: String
+    val id: String = "",
+    val reservationId: String = "",
+    val entrantName: String = "",
+    val body: String = "",
+    val sentAt: String = ""
 )
 
 /**
@@ -340,11 +341,21 @@ data class OwnerMessage(
  * An admin may also act as an owner with one profile
  */
 data class OwnerProfile(
-    val id: String,
-    val organizationName: String,
-    val contactName: String,
-    val email: String,
-    val phone: String
+    val id: String = "",
+    val organizationName: String = "",
+    val contactName: String = "",
+    val email: String = "",
+    val phone: String = "",
+    val notificationsOn: Boolean = true
+)
+
+data class EntrantProfile(
+    val id: String = "",
+    val firstName: String = "",
+    val lastName: String = "",
+    val email: String = "",
+    val phoneNumber: String = "",
+    val notificationsOn: Boolean = false
 )
 
 fun formatPrice(price: Double): String =

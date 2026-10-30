@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "768837527823",
+    "project_id": "nobugs-223ae",
+    "storage_bucket": "nobugs-223ae.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:768837527823:android:b1a79852da5f534214f67a",
+        "android_client_info": {
+          "package_name": "com.example.dascamp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBBcjQnX3hOlToFUXx82Gjl6tTuJRQHOyo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
