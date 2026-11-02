@@ -98,4 +98,7 @@ class DasCampRepository {
     private fun remove(ref: CollectionReference, id: String) {
         ref.document(id).delete()
     }
+
+    var openCampsiteId: String = ""
+    var openLotteryId: String = ""
 }
