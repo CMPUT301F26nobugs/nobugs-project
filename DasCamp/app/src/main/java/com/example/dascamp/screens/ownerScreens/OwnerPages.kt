@@ -46,6 +46,9 @@ import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.OwnerMessage
 import com.example.dascamp.model.OwnerNotification
 import com.example.dascamp.model.OwnerProfile
+import com.example.dascamp.model.Reservation
+import com.example.dascamp.model.ReservationStatus
+
 
 
 /**
@@ -247,13 +250,26 @@ private fun CampsiteForm(
 
 /** Calendar layout. No days are marked, because no stays are loaded yet. */
 @Composable
-fun OwnerBookedDates(navController: NavController) {
+fun OwnerBookedDates(navController: NavController, repository: DasCampRepository? = null) {
+    val campsite = repository?.campsites?.find { it.id == repository.openCampsiteId }
+    val booked = mutableListOf<Reservation>()
+    for (reservation in repository?.reservations.orEmpty()){
+        if(reservation.campsiteId == campsite?.id && reservation.status == ReservationStatus.ACTIVE){
+            booked.add(reservation)
+        }
+    }
     OwnerPage(navController, showBack = true) {
         Text("Booked dates", style = MaterialTheme.typography.titleLarge)
-        EmptyValue(0.6f)
+        Text(campsite?.name?: "Campsite")
         CalendarGrid()
         Text("Stays", style = MaterialTheme.typography.titleMedium)
-        EmptyCard { navController.navigate(OwnerRoutes.RESERVATION) }
+        if(booked.isEmpty()){
+            Text("No booked dates")
+        }else{
+            for (reservation in booked){
+                Text(reservation.startDate + " to " + reservation.endDate + " · " + reservation.entrantName)
+            }
+        }
     }
 }
 
