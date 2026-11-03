@@ -221,6 +221,24 @@ private fun CampsiteForm(
         FormField("Rules", form.rules, onValueChange = { typed -> form = form.copy(rules = typed) })
         FormField("Cancellation policy", form.cancellationPolicy, onValueChange = { typed -> form = form.copy(cancellationPolicy = typed) })
         FormField("Tags", form.tags, onValueChange = { typed -> form = form.copy(tags = typed) })
+        FormField(
+            "Available from (yyyy-MM-dd)",
+            form.availability[0].start,
+            onValueChange = {typed ->
+                val oldRange = form.availability[0]
+                val newRange = DateRange(typed, oldRange.end)
+                form = form.copy(availability = listOf(newRange))
+            }
+        )
+        FormField(
+            "Available to (yyyy-MM-dd)",
+            form.availability[0].end,
+            onValueChange = {typed ->
+                val oldRange = form.availability[0]
+                val newRange = DateRange(oldRange.start, typed)
+                form = form.copy(availability = listOf(newRange))
+            }
+        )
         error?.let { Text(it) }
         Button(onClick = {}) { Text("Upload photo") }
         Button(
