@@ -25,11 +25,12 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.screens.entrantScreens.EntrantRoutes
 import com.example.dascamp.ui.theme.DasCampTheme
+import com.example.dascamp.model.DasCampRepository
+import com.example.dascamp.model.EntrantProfile
 
 // SIGN-UP SCREEN
 @Composable
-fun SignUpScreen(navController: NavController) {
-    var firstName by remember { mutableStateOf("") }
+fun SignUpScreen(navController: NavController, repository: DasCampRepository? = null) {    var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
@@ -110,8 +111,21 @@ fun SignUpScreen(navController: NavController) {
                 Spacer(modifier = Modifier.padding(8.dp))
 
                 // Sign-Up Button
-                Button (
-                    onClick = { navController.navigate(EntrantRoutes.DASHBOARD) } // navigate to Entrant Dashboard
+                Button(
+                    onClick = {
+                        if (repository != null && firstName.isNotBlank() && email.isNotBlank()) {
+                            repository.addEntrant(
+                                EntrantProfile(
+                                    id = java.util.UUID.randomUUID().toString(),
+                                    firstName = firstName.trim(),
+                                    lastName = lastName.trim(),
+                                    email = email.trim(),
+                                    phoneNumber = phoneNumber.trim()
+                                )
+                            )
+                        }
+                        navController.navigate(EntrantRoutes.DASHBOARD)
+                    }
                 ) { Text("Sign-Up") }
             }
         }
