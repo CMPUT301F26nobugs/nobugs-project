@@ -1,11 +1,14 @@
 package com.example.dascamp
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.model.DasCampRepository
+import com.example.dascamp.model.Session
 import com.example.dascamp.screens.entrantScreens.EntrantCampsiteList
 import com.example.dascamp.screens.entrantScreens.EntrantCampsiteScreen
 import com.example.dascamp.screens.entrantScreens.EntrantDashboard
@@ -54,20 +57,24 @@ fun DasCampApp() {
     val navController = rememberNavController()
     val startDestination = "signUpScreen"// CHANGE HERE TO SWITCH LANDING PAGE (owner: OwnerRoutes.DASHBOARD, admin: AdminRoutes.DASHBOARD)
     val repository = remember { DasCampRepository() }
+    val context = LocalContext.current
+    val session = remember { Session(repository, context.applicationContext) }
+
+    LaunchedEffect(session.uid, session.roles) { session.chooseRole() }
 
     NavHost(navController = navController, startDestination = startDestination) {
 
         // First-time download landing page (i.e. devices not in FireBase)
-        composable("signUpScreen") { SignUpScreen(navController, repository)}
+        composable("signUpScreen") { SignUpScreen(navController, repository, session) }
 
         // ENTRANT NAVIGATION
         composable(EntrantRoutes.DASHBOARD) { EntrantDashboard(navController) }
-        composable(EntrantRoutes.CAMPSITE_LIST) { EntrantCampsiteList(navController, repository) }
+        composable(EntrantRoutes.CAMPSITE_LIST) { EntrantCampsiteList(navController) }
         composable(EntrantRoutes.CAMPSITE) { EntrantCampsiteScreen(navController) }
         composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
         composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
         composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
-        composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController, repository) }
+        composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController) }
         composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController) }
         composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController) }
         composable(EntrantRoutes.RESERVATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite screen

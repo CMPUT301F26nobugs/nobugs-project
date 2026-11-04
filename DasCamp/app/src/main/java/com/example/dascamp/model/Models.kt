@@ -336,27 +336,6 @@ data class OwnerMessage(
     val sentAt: String = ""
 )
 
-/**
- * The owner account shown on the dashboard and edited on the profile screen
- * An admin may also act as an owner with one profile
- */
-data class OwnerProfile(
-    val id: String = "",
-    val organizationName: String = "",
-    val contactName: String = "",
-    val email: String = "",
-    val phone: String = "",
-    val notificationsOn: Boolean = true
-)
-
-data class EntrantProfile(
-    val id: String = "",
-    val firstName: String = "",
-    val lastName: String = "",
-    val email: String = "",
-    val phoneNumber: String = "",
-    val notificationsOn: Boolean = false
-)
 
 fun formatPrice(price: Double): String =
     if (price % 1.0 == 0.0) price.toInt().toString() else "%.2f".format(price)

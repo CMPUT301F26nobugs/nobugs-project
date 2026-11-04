@@ -21,6 +21,7 @@ class DasCampRepository {
     private val messagesRef = db.collection("messages")
     private val ownersRef = db.collection("owners")
     private val entrantsRef = db.collection("entrants")
+    private val adminsRef = db.collection("admins")
     private val _campsites = mutableStateListOf<Campsite>()
     val campsites: List<Campsite> get() = _campsites
     private val _lotteries = mutableStateListOf<Lottery>()
@@ -35,6 +36,9 @@ class DasCampRepository {
     val owners: List<OwnerProfile> get() = _owners
     private val _entrants = mutableStateListOf<EntrantProfile>()
     val entrants: List<EntrantProfile> get() = _entrants
+    private val _admins = mutableStateListOf<AdminProfile>()
+    val admins: List<AdminProfile> get() = _admins
+    private val loadedPaths = mutableStateListOf<String>()
     init {
         listen(campsitesRef, _campsites, Campsite::class.java)
         listen(lotteriesRef, _lotteries, Lottery::class.java)
@@ -43,6 +47,7 @@ class DasCampRepository {
         listen(messagesRef, _messages, OwnerMessage::class.java)
         listen(ownersRef, _owners, OwnerProfile::class.java)
         listen(entrantsRef, _entrants, EntrantProfile::class.java)
+        listen(adminsRef, _admins, AdminProfile::class.java)
     }
     fun addCampsite(campsite: Campsite) = save(campsitesRef, campsite.id, campsite)
     fun updateCampsite(campsite: Campsite) = save(campsitesRef, campsite.id, campsite)
@@ -63,6 +68,21 @@ class DasCampRepository {
     fun addEntrant(entrant: EntrantProfile) = save(entrantsRef, entrant.id, entrant)
     fun updateEntrant(entrant: EntrantProfile) = save(entrantsRef, entrant.id, entrant)
     fun deleteEntrant(entrant: EntrantProfile) = remove(entrantsRef, entrant.id)
+    fun addAdmin(admin: AdminProfile) = save(adminsRef, admin.id, admin)
+    fun updateAdmin(admin: AdminProfile) = save(adminsRef, admin.id, admin)
+    fun deleteAdmin(admin: AdminProfile) = remove(adminsRef, admin.id)
+
+    fun entrantById(id: String) = _entrants.firstOrNull { it.id == id }
+    fun ownerById(id: String) = _owners.firstOrNull { it.id == id }
+    fun adminById(id: String) = _admins.firstOrNull { it.id == id }
+
+    fun rolesOf(uid: String): Set<Role> = buildSet {
+        if (entrantById(uid) != null) add(Role.ENTRANT)
+        if (ownerById(uid) != null) add(Role.OWNER)
+        if (adminById(uid) != null) add(Role.ADMIN)
+    }
+    val rolesLoaded: Boolean
+        get() = listOf("entrants", "owners", "admins").all { it in loadedPaths }
 
     /**
      * Watches one collection
@@ -85,6 +105,12 @@ class DasCampRepository {
                 val item = document.toObject(type)
                 if (item != null) list.add(item)
             }
+            list.clear()
+            for (document in snapshot.documents) {
+                val item = document.toObject(type)
+                if (item != null) list.add(item)
+            }
+            if (ref.path !in loadedPaths) loadedPaths.add(ref.path)
         }
     }
 
