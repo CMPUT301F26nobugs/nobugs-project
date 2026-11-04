@@ -35,7 +35,7 @@ object AdminRoutes {
     const val CAMPSITE = "adminViewCampsite/{campsiteId}"
     const val IMAGE_GALLERY = "adminImageGallery"
     const val MESSAGE_LIST = "adminMessageList"
-    const val MESSAGE = "adminMessageScreen"
+    const val MESSAGE = "adminViewMessage/{messageId}"
     const val PROFILE_LIST = "adminProfileList"
     const val PROFILE = "adminProfile/{profileType}" // route pattern, registed in NavHost
     const val NOTIFICATION_LOG = "adminNotificationLog"
@@ -46,6 +46,7 @@ object AdminRoutes {
     // Build route for a profile, ie. "adminProfile/OWNER"
     fun profile(type: ProfileType) = "adminProfile/${type.name}"
     fun campsite(id: String = "default_id") = "AdminViewCampsite/$id"
+    fun message(id: String ="default_id") = "adminViewMessage/$id"
 }
 
 @Composable

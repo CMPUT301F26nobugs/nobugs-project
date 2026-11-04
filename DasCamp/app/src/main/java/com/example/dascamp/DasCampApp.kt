@@ -27,7 +27,10 @@ import com.example.dascamp.screens.adminScreens.OtherLog
 import com.example.dascamp.screens.adminScreens.ProfileType
 import com.example.dascamp.screens.adminScreens.RequestLog
 import com.example.dascamp.screens.adminScreens.AdminCampsiteList
+import com.example.dascamp.screens.adminScreens.AdminMessageList
 import com.example.dascamp.screens.adminScreens.AdminViewCampsite
+import com.example.dascamp.screens.adminScreens.AdminViewMessage
+import com.example.dascamp.screens.adminScreens.ImageGallery
 
 @Composable
 fun DasCampApp() {
@@ -73,6 +76,12 @@ fun DasCampApp() {
         composable(AdminRoutes.CAMPSITE) { entry ->
             val campsiteId = entry.arguments?.getString("campsiteId") ?: "default_id"
             AdminViewCampsite(navController)
+        }
+        composable(AdminRoutes.IMAGE_GALLERY) { ImageGallery(navController) }
+        composable(AdminRoutes.MESSAGE_LIST) { AdminMessageList(navController) }
+        composable(AdminRoutes.MESSAGE) { entry ->
+            val messageId = entry.arguments?.getString("messageId") ?: "default_id"
+            AdminViewMessage(navController)
         }
     }
 }
