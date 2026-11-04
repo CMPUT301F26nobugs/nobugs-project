@@ -101,4 +101,5 @@ class DasCampRepository {
 
     var openCampsiteId: String = ""
     var openLotteryId: String = ""
+    var campDraft: CampsiteFormState? = null  //the unsaved campsite data -> save data while picking a location
 }
