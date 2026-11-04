@@ -62,12 +62,12 @@ fun DasCampApp() {
 
         // ENTRANT NAVIGATION
         composable(EntrantRoutes.DASHBOARD) { EntrantDashboard(navController) }
-        composable(EntrantRoutes.CAMPSITE_LIST) { EntrantCampsiteList(navController, repository) }
+        composable(EntrantRoutes.CAMPSITE_LIST) { EntrantCampsiteList(navController) }
         composable(EntrantRoutes.CAMPSITE) { EntrantCampsiteScreen(navController) }
         composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
         composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
         composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
-        composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController, repository) }
+        composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController) }
         composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController) }
         composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController) }
         composable(EntrantRoutes.RESERVATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite screen
@@ -78,7 +78,7 @@ fun DasCampApp() {
         composable(OwnerRoutes.ADD) { OwnerAddCampsite(navController, repository) }
         composable(OwnerRoutes.CAMPSITE) { OwnerCampsite(navController, repository) }
         composable(OwnerRoutes.EDIT) { OwnerEditCampsite(navController, repository) }
-        composable(OwnerRoutes.BOOKED) { OwnerBookedDates(navController) }
+        composable(OwnerRoutes.BOOKED) { OwnerBookedDates(navController, repository) }
         composable(OwnerRoutes.MAP) { OwnerMapLocation(navController) }
         composable(OwnerRoutes.QR) { OwnerQrCode(navController) }
         composable(OwnerRoutes.LOTTERIES) { OwnerLotteryList(navController, repository) }
