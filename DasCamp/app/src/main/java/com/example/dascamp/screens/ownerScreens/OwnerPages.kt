@@ -46,6 +46,7 @@ import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.OwnerMessage
 import com.example.dascamp.model.OwnerNotification
 import com.example.dascamp.model.OwnerProfile
+import java.util.UUID
 
 
 /**
@@ -227,7 +228,7 @@ private fun CampsiteForm(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
                 val built = form.toCampsite(
-                    id = existing?.id ?: java.util.UUID.randomUUID().toString(),
+                    id = existing?.id ?: UUID.randomUUID().toString(),
                     ownerId = existing?.ownerId ?: "owner-1",
                     rating = existing?.rating ?: 0.0,
                     ratingCount = existing?.ratingCount ?: 0
@@ -437,7 +438,7 @@ private fun LotteryForm(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
                 val built = form.toLottery(
-                    id = existing?.id ?: java.util.UUID.randomUUID().toString(),
+                    id = existing?.id ?: UUID.randomUUID().toString(),
                     status = existing?.status ?: LotteryStatus.OPEN,
                     entrants = existing?.entrants ?: emptyList(),
                     validCampsiteIds = repository?.campsites?.map { it.id }?.toSet() ?: emptySet()
@@ -539,7 +540,7 @@ fun OwnerSendNotification(navController: NavController, repository: DasCampRepos
                 if (message.isNotBlank()) {
                     repository?.addNotification(
                         OwnerNotification(
-                            id = java.util.UUID.randomUUID().toString(),
+                            id = UUID.randomUUID().toString(),
                             recipientName = send,
                             message = message.trim(),
                             sentAt = System.currentTimeMillis().toString()
@@ -581,7 +582,7 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
             if (body.isNotBlank()) {
                 repository?.addMessage(
                     OwnerMessage(
-                        id = java.util.UUID.randomUUID().toString(),
+                        id = UUID.randomUUID().toString(),
                         reservationId = "",
                         entrantName = "Entrant",
                         body = body.trim(),
@@ -628,7 +629,7 @@ fun OwnerProfile(navController: NavController, repository: DasCampRepository? = 
         FormField("Organization", organization, { organization = it }, editing)
         Button(onClick = {
             if (editing && repository != null) {
-                val id = profileId.ifBlank { java.util.UUID.randomUUID().toString() }
+                val id = profileId.ifBlank { UUID.randomUUID().toString() }
                 profileId = id
                 val profile = OwnerProfile(
                     id,
