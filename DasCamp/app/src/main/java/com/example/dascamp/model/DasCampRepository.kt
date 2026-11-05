@@ -13,7 +13,50 @@ import com.google.firebase.firestore.firestore
  * the listener reacts to the change in firestore and rebuilds the on-screen list for UI to Update
  */
 class DasCampRepository: ObservableModel {
-    // Observable Model Implementation
+    // FIRESTORE COLLECTIONS
+    private val db = Firebase.firestore
+    private val campsitesRef = db.collection("campsites")
+    private val lotteriesRef = db.collection("lotteries")
+    private val reservationsRef = db.collection("reservations")
+    private val notificationsRef = db.collection("notifications")
+    private val messagesRef = db.collection("messages")
+    private val ownersRef = db.collection("owners")
+    private val entrantsRef = db.collection("entrants")
+    private val adminsRef = db.collection("admins")
+
+    // LIVE LISTS (filled from Firestore, read-only from the outside)
+    private val _campsites = mutableStateListOf<Campsite>()
+    val campsites: List<Campsite> get() = _campsites
+
+    private val _lotteries = mutableStateListOf<Lottery>()
+    val lotteries: List<Lottery> get() = _lotteries
+
+    private val _reservations = mutableStateListOf<Reservation>()
+    val reservations: List<Reservation> get() = _reservations
+
+    private val _notifications = mutableStateListOf<OwnerNotification>()
+    val notifications: List<OwnerNotification> get() = _notifications
+
+    private val _messages = mutableStateListOf<OwnerMessage>()
+    val messages: List<OwnerMessage> get() = _messages
+
+    private val _owners = mutableStateListOf<OwnerProfile>()
+    val owners: List<OwnerProfile> get() = _owners
+
+    private val _entrants = mutableStateListOf<EntrantProfile>()
+    val entrants: List<EntrantProfile> get() = _entrants
+
+    private val _admins = mutableStateListOf<AdminProfile>()
+    val admins: List<AdminProfile> get() = _admins
+
+    // OPEN ITEMS (which campsites/lottery the user tapped)
+    // TODO: this is screen state, not data. Move it into the route arguments later.
+
+    var openCampsiteId: String = ""
+    var openLotteryId: String = ""
+
+    // OBSERVER PATTERN
+
     private val views = mutableListOf<ModelView>()
 
     override fun addView(view: ModelView) {
@@ -30,32 +73,7 @@ class DasCampRepository: ObservableModel {
         }
     }
 
-
-    private val db = Firebase.firestore
-    private val campsitesRef = db.collection("campsites")
-    private val lotteriesRef = db.collection("lotteries")
-    private val reservationsRef = db.collection("reservations")
-    private val notificationsRef = db.collection("notifications")
-    private val messagesRef = db.collection("messages")
-    private val ownersRef = db.collection("owners")
-    private val entrantsRef = db.collection("entrants")
-    private val adminsRef = db.collection("admins")
-    private val _campsites = mutableStateListOf<Campsite>()
-    val campsites: List<Campsite> get() = _campsites
-    private val _lotteries = mutableStateListOf<Lottery>()
-    val lotteries: List<Lottery> get() = _lotteries
-    private val _reservations = mutableStateListOf<Reservation>()
-    val reservations: List<Reservation> get() = _reservations
-    private val _notifications = mutableStateListOf<OwnerNotification>()
-    val notifications: List<OwnerNotification> get() = _notifications
-    private val _messages = mutableStateListOf<OwnerMessage>()
-    val messages: List<OwnerMessage> get() = _messages
-    private val _owners = mutableStateListOf<OwnerProfile>()
-    val owners: List<OwnerProfile> get() = _owners
-    private val _entrants = mutableStateListOf<EntrantProfile>()
-    val entrants: List<EntrantProfile> get() = _entrants
-    private val _admins = mutableStateListOf<AdminProfile>()
-    val admins: List<AdminProfile> get() = _admins
+    // LISTENING
     private val loadedPaths = mutableStateListOf<String>()
     init {
         listen(campsitesRef, _campsites, Campsite::class.java)
@@ -67,29 +85,50 @@ class DasCampRepository: ObservableModel {
         listen(entrantsRef, _entrants, EntrantProfile::class.java)
         listen(adminsRef, _admins, AdminProfile::class.java)
     }
+
+    // CAMPSITES
     fun addCampsite(campsite: Campsite) = save(campsitesRef, campsite.id, campsite)
     fun updateCampsite(campsite: Campsite) = save(campsitesRef, campsite.id, campsite)
     fun deleteCampsite(campsite: Campsite) = remove(campsitesRef, campsite.id)
+
+    // LOTTERIES
     fun addLottery(lottery: Lottery) = save(lotteriesRef, lottery.id, lottery)
     fun updateLottery(lottery: Lottery) = save(lotteriesRef, lottery.id, lottery)
     fun deleteLottery(lottery: Lottery) = remove(lotteriesRef, lottery.id)
+
+    // RESERVATIONS
     fun addReservation(reservation: Reservation) = save(reservationsRef, reservation.id, reservation)
     fun updateReservation(reservation: Reservation) = save(reservationsRef, reservation.id, reservation)
     fun deleteReservation(reservation: Reservation) = remove(reservationsRef, reservation.id)
+
+    // NOTIFICATIONS
     fun addNotification(notification: OwnerNotification) = save(notificationsRef, notification.id, notification)
     fun deleteNotification(notification: OwnerNotification) = remove(notificationsRef, notification.id)
+
+    // MESSAGES
     fun addMessage(message: OwnerMessage) = save(messagesRef, message.id, message)
     fun deleteMessage(message: OwnerMessage) = remove(messagesRef, message.id)
+
+    // -----------
+    // PROFILES
+    // -----------
+
+    // OWNER
     fun addOwner(owner: OwnerProfile) = save(ownersRef, owner.id, owner)
     fun updateOwner(owner: OwnerProfile) = save(ownersRef, owner.id, owner)
     fun deleteOwner(owner: OwnerProfile) = remove(ownersRef, owner.id)
+
+    // ENTRANT
     fun addEntrant(entrant: EntrantProfile) = save(entrantsRef, entrant.id, entrant)
     fun updateEntrant(entrant: EntrantProfile) = save(entrantsRef, entrant.id, entrant)
     fun deleteEntrant(entrant: EntrantProfile) = remove(entrantsRef, entrant.id)
+
+    // ADMIN
     fun addAdmin(admin: AdminProfile) = save(adminsRef, admin.id, admin)
     fun updateAdmin(admin: AdminProfile) = save(adminsRef, admin.id, admin)
     fun deleteAdmin(admin: AdminProfile) = remove(adminsRef, admin.id)
 
+    // MULTI-USER INTERACTION (ROLES)
     fun entrantById(id: String) = _entrants.firstOrNull { it.id == id }
     fun ownerById(id: String) = _owners.firstOrNull { it.id == id }
     fun adminById(id: String) = _admins.firstOrNull { it.id == id }
@@ -102,6 +141,7 @@ class DasCampRepository: ObservableModel {
     val rolesLoaded: Boolean
         get() = listOf("entrants", "owners", "admins").all { it in loadedPaths }
 
+    // HELPERS
     /**
      * Watches one collection
      * On every change, clear the local list and fill it from the documents
@@ -142,7 +182,4 @@ class DasCampRepository: ObservableModel {
     private fun remove(ref: CollectionReference, id: String) {
         ref.document(id).delete()
     }
-
-    var openCampsiteId: String = ""
-    var openLotteryId: String = ""
 }
