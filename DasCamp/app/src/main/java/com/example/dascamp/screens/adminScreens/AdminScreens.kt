@@ -1,6 +1,8 @@
 package com.example.dascamp.screens.adminScreens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,7 +44,13 @@ import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
+import com.example.dascamp.screens.EntrantCalendarGrid
 import com.example.dascamp.ui.theme.DasCampTheme
+import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.unit.dp
 
 
 // 2 types of profiles that can be browsed
@@ -221,7 +230,11 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType) {
         // Both profile types: delete profile picture
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { /*TODO("Delete profile picture")*/ }  // ALSO IMPLEMENT A POPUP PROMPT CONFIRMING DECISION
+            onClick = rememberConfirmClick(
+                message = "Remove this profile picture? This can't be undone.",
+                onConfirm =  {navController.navigate(AdminRoutes.PROFILE_LIST
+                ) }
+            )  /*todo: implement delete*/
         ) { Text("Delete Profile Picture") }
 
         if (profileType == ProfileType.ENTRANT) {
@@ -229,7 +242,10 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType) {
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 colors = destructiveButtonColors(),
-                onClick = { /*TODO("Delete entrant profile")*/ }  // ALSO IMPLEMENT A POPUP PROMPT CONFIRMING DECISION
+                onClick = rememberConfirmClick(
+                    message = "Remove this profile? This can't be undone.",
+                    onConfirm =  {navController.navigate(AdminRoutes.PROFILE_LIST) }
+                ) /*todo: implement delete*/
             ) { Text("Delete Profile") }
         } else {
             // Owner only -> view messages with entrants (same message list as from a campsite)
@@ -242,7 +258,10 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType) {
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 colors = destructiveButtonColors(),
-                onClick = { /*TODO("Remove campsite owner")*/ }  // ALSO IMPLEMENT A POPUP PROMPT CONFIRMING DECISION
+                onClick = rememberConfirmClick(
+                    message = "Remove this campsite owner? This can't be undone.",
+                    onConfirm =  {navController.navigate(AdminRoutes.CAMPSITE_LIST) }
+                ) /*todo: implement delete*/
             ) { Text("Remove Campsite Owner") }
         }
     }
@@ -379,24 +398,8 @@ fun AdminCampsiteList(navController: NavController) {
             singleLine = true
         )
 
-        // Filter -> owners only
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ProfileType.values().forEach { type ->
-                FilterChip(
-                    selected = selectedType == type,
-                    onClick = {
-                        if (selectedType == type) {  // click selected chip again deselect
-                            selectedType = null
-                        } else {
-                            selectedType = type
-                        }
-                    },
-                    label = { Text(type.label) }
-                )
-                EmptyCard {
-                    navController.navigate(AdminRoutes.campsite("123"))
-                }
-            }
+        EmptyCard {
+            navController.navigate(AdminRoutes.campsite("123"))
         }
     }
 }
@@ -410,6 +413,7 @@ fun AdminCampsiteListPreview() {
 
 @Composable
 fun AdminViewCampsite(navController: NavController) {
+    var showConfirmation by remember { mutableStateOf(false) }
     AdminPage(
         navController = navController,
         showBack = true,
@@ -437,10 +441,14 @@ fun AdminViewCampsite(navController: NavController) {
         ) { Icon(Icons.Default.Place, "Campsite Image", Modifier.fillMaxSize()) }
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { /*TODO("Delete Campsite Image")*/ }  // ALSO IMPLEMENT A POPUP PROMPT CONFIRMING DECISION
+            colors = destructiveButtonColors(),
+            onClick = rememberConfirmClick(
+                message = "Remove this image? This can't be undone.",
+                onConfirm =  {navController.navigate(AdminRoutes.campsite("123")) }
+            )/*todo: implement delete*/
         ) { Text("Delete Campsite Image") }
 
-        // Campsite info (PLACEHOLDER)
+        // Campsite Main info (PLACEHOLDER)
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -451,23 +459,24 @@ fun AdminViewCampsite(navController: NavController) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Location", style = MaterialTheme.typography.labelLarge)
-                Text("| Max Occupancy | ", style = MaterialTheme.typography.labelLarge)
+                Text(" | Max Occupancy | ", style = MaterialTheme.typography.labelLarge)
                 Text("Rating", style = MaterialTheme.typography.labelLarge)
             }
         }
 
-        //campsite details and rules and policy (placeholder)
+        // Campsite details and rules and policy (placeholder)
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Here are more details of the Campsite", style = MaterialTheme.typography.labelLarge)
+            Text("Here are more details of the Campsite", style = MaterialTheme.typography.bodyLarge)
             Text("Rules and Policies ", style = MaterialTheme.typography.labelLarge)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Campsite Geolocation placeholder
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -475,8 +484,6 @@ fun AdminViewCampsite(navController: NavController) {
         ) {
             Text("Geolocation", style = MaterialTheme.typography.labelLarge)
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         Card(
             modifier = Modifier.height(200.dp)
@@ -489,24 +496,35 @@ fun AdminViewCampsite(navController: NavController) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Container for calendar
         Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Availability", style = MaterialTheme.typography.labelLarge)
+            // Title
+            Text(text = "Availability", style = MaterialTheme.typography.labelLarge)
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Entrant Calendar Grid
+            EntrantCalendarGrid()
+            Spacer(modifier = Modifier.padding(8.dp))
+
+            // Legend
+            Row() {
+                // Available
+                Text("Available = ")
+                Box(modifier = Modifier.size(20.dp).background(Color.Red))
+
+                Spacer(modifier = Modifier.padding(8.dp))
+
+                // Unavailable
+                Text("Unavailable = ")
+                Box(modifier = Modifier.size(20.dp).background(Color.Green))
+            }
         }
 
-        //will add calendar later...
-        Card(
-            modifier = Modifier.height(200.dp)
-                .fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        ) { Icon(Icons.Default.Place, "Calendar", Modifier.fillMaxSize()) }
-
+        Spacer(modifier = Modifier.height(10.dp))
 
         // view messages with entrants (same message list as from a campsite)
             Button(
@@ -516,15 +534,21 @@ fun AdminViewCampsite(navController: NavController) {
 
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+                onClick = {
+                    navController.navigate(AdminRoutes.profile( ProfileType.OWNER))
+                }
             ) { Text("View Owner Profile") }
 
         // remove campsite
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 colors = destructiveButtonColors(),
-                onClick = { /*TODO("Remove campsite")*/ }  // ALSO IMPLEMENT A POPUP PROMPT CONFIRMING DECISION
+                onClick = rememberConfirmClick(
+                    message = "Remove this campsite? This can't be undone.",
+                    onConfirm =  {navController.navigate(AdminRoutes.CAMPSITE_LIST) }
+                )
             ) { Text("Remove Campsite") }
+
     }
 }
 
@@ -563,7 +587,7 @@ fun ImageGalleryPreview() {
 
 @Composable
 fun AdminMessageList(navController: NavController) {
-    var query by rememberSaveable { mutableStateOf("") }                        // profile search
+    var query by rememberSaveable { mutableStateOf("") }  // profile search
     AdminPage(
         navController = navController,
         showBack = true,
@@ -614,6 +638,7 @@ fun AdminViewMessage(navController: NavController) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
         ) { Text(text = "Message", style = MaterialTheme.typography.titleLarge) }
+
         // Entrant message
         Text("Entrant", style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.End))
         Surface(
@@ -647,4 +672,36 @@ fun AdminViewMessagePreview() {
     }
 }
 
+@Composable
+fun rememberConfirmClick(
+    message: String,
+    confirmText: String = "Remove",
+    dismissText: String = "Cancel",
+    onConfirm: () -> Unit
+): () -> Unit {
+    var show by remember { mutableStateOf(false) }
 
+    if (show) {
+        Dialog(onDismissRequest = { show = false }) {
+            Column(
+                modifier = Modifier
+                    .background(Color.DarkGray, RoundedCornerShape(8.dp))
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(message, color = Color.White)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = { show = false }) { Text(dismissText) }
+                    TextButton(onClick = { show = false; onConfirm() }) {
+                        Text(confirmText, color = Color.Red)
+                    }
+                }
+            }
+        }
+    }
+
+    return { show = true }
+}
