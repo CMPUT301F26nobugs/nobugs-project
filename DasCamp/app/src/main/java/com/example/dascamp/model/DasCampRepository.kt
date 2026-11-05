@@ -12,7 +12,25 @@ import com.google.firebase.firestore.firestore
  * every list in the app (like campsites, lotteries) is stored as its own collection
  * the listener reacts to the change in firestore and rebuilds the on-screen list for UI to Update
  */
-class DasCampRepository {
+class DasCampRepository: ObservableModel {
+    // Observable Model Implementation
+    private val views = mutableListOf<ModelView>()
+
+    override fun addView(view: ModelView) {
+        views.add(view)
+    }
+
+    override fun removeView(view: ModelView) {
+        views.remove(view)
+    }
+
+    override fun notifyViews() {
+        for (view in views) {
+            view.update()
+        }
+    }
+
+
     private val db = Firebase.firestore
     private val campsitesRef = db.collection("campsites")
     private val lotteriesRef = db.collection("lotteries")
