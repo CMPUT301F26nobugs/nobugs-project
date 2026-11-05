@@ -1,22 +1,44 @@
 package com.example.dascamp
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.dascamp.screens.EntrantCampsiteList
-import com.example.dascamp.screens.EntrantCampsiteScreen
-import com.example.dascamp.screens.EntrantDashboard
-import com.example.dascamp.screens.EntrantMessageList
-import com.example.dascamp.screens.EntrantMessageScreen
-import com.example.dascamp.screens.EntrantNotificationList
-import com.example.dascamp.screens.EntrantProfileScreen
-import com.example.dascamp.screens.EntrantQrCodeScreen
-import com.example.dascamp.screens.EntrantReservationList
-import com.example.dascamp.screens.EntrantRoutes
+import com.example.dascamp.model.DasCampRepository
+import com.example.dascamp.screens.entrantScreens.EntrantCampsiteList
+import com.example.dascamp.screens.entrantScreens.EntrantCampsiteScreen
+import com.example.dascamp.screens.entrantScreens.EntrantDashboard
+import com.example.dascamp.screens.entrantScreens.EntrantMessageList
+import com.example.dascamp.screens.entrantScreens.EntrantMessageScreen
+import com.example.dascamp.screens.entrantScreens.EntrantNotificationList
+import com.example.dascamp.screens.entrantScreens.EntrantProfileScreen
+import com.example.dascamp.screens.entrantScreens.EntrantQrCodeScreen
+import com.example.dascamp.screens.entrantScreens.EntrantReservationList
+import com.example.dascamp.screens.entrantScreens.EntrantRoutes
 import com.example.dascamp.screens.SignUpScreen
 
 
+import com.example.dascamp.screens.ownerScreens.OwnerAddCampsite
+import com.example.dascamp.screens.ownerScreens.OwnerBookedDates
+import com.example.dascamp.screens.ownerScreens.OwnerCampsite
+import com.example.dascamp.screens.ownerScreens.OwnerCampsitesList
+import com.example.dascamp.screens.ownerScreens.OwnerCreateLottery
+import com.example.dascamp.screens.ownerScreens.OwnerDashboard
+import com.example.dascamp.screens.ownerScreens.OwnerEditCampsite
+import com.example.dascamp.screens.ownerScreens.OwnerEditLottery
+import com.example.dascamp.screens.ownerScreens.OwnerLotteryDetails
+import com.example.dascamp.screens.ownerScreens.OwnerLotteryList
+import com.example.dascamp.screens.ownerScreens.OwnerMapLocation
+import com.example.dascamp.screens.ownerScreens.OwnerMessageList
+import com.example.dascamp.screens.ownerScreens.OwnerMessages
+import com.example.dascamp.screens.ownerScreens.OwnerNotifications
+import com.example.dascamp.screens.ownerScreens.OwnerProfile
+import com.example.dascamp.screens.ownerScreens.OwnerQrCode
+import com.example.dascamp.screens.ownerScreens.OwnerReservationDetails
+import com.example.dascamp.screens.ownerScreens.OwnerReservations
+import com.example.dascamp.screens.ownerScreens.OwnerRoutes
+import com.example.dascamp.screens.ownerScreens.OwnerSendNotification
 import com.example.dascamp.screens.adminScreens.AdminDashboard
 import com.example.dascamp.screens.adminScreens.AdminProfileList
 import com.example.dascamp.screens.adminScreens.AdminRoutes
@@ -37,17 +59,19 @@ fun DasCampApp() {
 
     // Page Navigation
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = "signUpScreen") {
+    val startDestination = "signUpScreen"// CHANGE HERE TO SWITCH LANDING PAGE (owner: OwnerRoutes.DASHBOARD, admin: AdminRoutes.DASHBOARD)
+    val repository = remember { DasCampRepository() }
+
+    NavHost(navController = navController, startDestination = startDestination) {
 
         // First-time download landing page (i.e. devices not in FireBase)
-        composable("signUpScreen") { SignUpScreen(navController) }
+        composable("signUpScreen") { SignUpScreen(navController, repository)}
 
         // ENTRANT NAVIGATION
         composable(EntrantRoutes.DASHBOARD) { EntrantDashboard(navController) }
         composable(EntrantRoutes.CAMPSITE_LIST) { EntrantCampsiteList(navController) }
         composable(EntrantRoutes.CAMPSITE) { EntrantCampsiteScreen(navController) }
         composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
-        composable(EntrantRoutes.NOTIFICATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite (screen buttons change depending on notification)
         composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
         composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
         composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController) }
@@ -56,6 +80,25 @@ fun DasCampApp() {
         composable(EntrantRoutes.RESERVATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite screen
 
         // OWNER NAVIGATION
+        composable(OwnerRoutes.DASHBOARD) { OwnerDashboard(navController) }
+        composable(OwnerRoutes.CAMPSITES) { OwnerCampsitesList(navController, repository) }
+        composable(OwnerRoutes.ADD) { OwnerAddCampsite(navController, repository) }
+        composable(OwnerRoutes.CAMPSITE) { OwnerCampsite(navController, repository) }
+        composable(OwnerRoutes.EDIT) { OwnerEditCampsite(navController, repository) }
+        composable(OwnerRoutes.BOOKED) { OwnerBookedDates(navController, repository) }
+        composable(OwnerRoutes.MAP) { OwnerMapLocation(navController) }
+        composable(OwnerRoutes.QR) { OwnerQrCode(navController) }
+        composable(OwnerRoutes.LOTTERIES) { OwnerLotteryList(navController, repository) }
+        composable(OwnerRoutes.CREATE) { OwnerCreateLottery(navController, repository) }
+        composable(OwnerRoutes.LOTTERY) { OwnerLotteryDetails(navController) }
+        composable(OwnerRoutes.EDIT_LOTTERY) { OwnerEditLottery(navController, repository) }
+        composable(OwnerRoutes.ALERTS) { OwnerNotifications(navController, repository) }
+        composable(OwnerRoutes.SEND) { OwnerSendNotification(navController, repository) }
+        composable(OwnerRoutes.RESERVATIONS) { OwnerReservations(navController) }
+        composable(OwnerRoutes.RESERVATION) { OwnerReservationDetails(navController) }
+        composable(OwnerRoutes.PROFILE) { OwnerProfile(navController, repository) }
+        composable(OwnerRoutes.MESSAGE_LIST) { OwnerMessageList(navController, repository) }
+        composable(OwnerRoutes.MESSAGE) { OwnerMessages(navController, repository) }
 
         // ADMIN NAVIGATION
         composable(AdminRoutes.DASHBOARD) { AdminDashboard(navController) }
