@@ -12,6 +12,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.Random
+import com.google.android.gms.tasks.Tasks
 
 /**
  * Checks lotteries in persistent background work and draws those whose
@@ -22,14 +23,15 @@ class LotteryDrawWorker(context: Context, parameters: WorkerParameters) : Worker
 
     override fun doWork(): Result = try {
         val firestore = Firebase.firestore
-        val openLotteries = firestore.collection("lotteries")
-            .whereEqualTo("status", LotteryStatus.OPEN.name)
-            .get()
-            .get()
+        val openLotteries = Tasks.await(
+            firestore.collection("lotteries")
+                .whereEqualTo("status", LotteryStatus.OPEN.name)
+                .get()
+        )
 
         openLotteries.documents.forEach { document ->
             val lotteryRef = document.reference
-            firestore.runTransaction { transaction ->
+            Tasks.await(firestore.runTransaction { transaction ->
                 val current = transaction.get(lotteryRef).toObject(Lottery::class.java)
                     ?: return@runTransaction false
                 if (current.status != LotteryStatus.OPEN || today() <= current.registrationEnd) {
@@ -73,7 +75,7 @@ class LotteryDrawWorker(context: Context, parameters: WorkerParameters) : Worker
                     )
                 }
                 true
-            }.get()
+            })
         }
         Result.success()
     } catch (_: Exception) {
