@@ -46,7 +46,6 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.ui.theme.DasCampTheme
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ChevronRight
@@ -54,12 +53,25 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.example.dascamp.controllers.CampsiteController
+import com.example.dascamp.controllers.ReservationController
+import com.example.dascamp.controllers.ScheduleController
+import com.example.dascamp.model.Campsite
+import com.example.dascamp.model.DasCampRepository
+import com.example.dascamp.model.Reservation
+import com.example.dascamp.model.formatPrice
 import com.example.dascamp.screens.BigButton
+import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.screens.EmptyCard
+import com.example.dascamp.model.Lottery
 
 // DASHBOARD SCREEN
 @Composable
@@ -143,15 +155,30 @@ fun EntrantDashboardPreview() {
 
 // CAMPSITE LIST SCREEN
 @Composable
-fun EntrantCampsiteList(navController: NavController) {
-    // Dummy data
-    val nums = (1..6).toList()
-
+fun EntrantCampsiteList(
+    navController: NavController,
+    repository: DasCampRepository? = null,
+    campsiteController: CampsiteController? = null
+) {
     var query by rememberSaveable { mutableStateOf("") }                // campsite search
     var isToggled by rememberSaveable { mutableStateOf(false) }         // bool for showing filters
     var locationFilter by rememberSaveable { mutableStateOf("") }       // location filter
     var dateFilter by rememberSaveable { mutableStateOf("") }           // date filter
     var occupancyFilter by rememberSaveable { mutableStateOf("") }      // occupancy filter
+
+    // Only apply the date filter once it is a full yyyy-MM-dd date
+    val date = dateFilter.trim()
+        .takeIf { Regex("\\d{4}-\\d{2}-\\d{2}").matches(it) }
+        .orEmpty()
+
+    // Searching results
+    val results = campsiteController?.searchCampsites(
+        query = query,
+        location = locationFilter,
+        guests = occupancyFilter.toIntOrNull(),
+        startDate = date,
+        endDate = date,
+    ).orEmpty() // or return empty if campsiteController is null
 
     EntrantPage(
         navController = navController,
@@ -186,44 +213,13 @@ fun EntrantCampsiteList(navController: NavController) {
         )
 
         // Display Campsites
-        /*TODO("Implement campsites class logic")*/
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(nums) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { navController.navigate(EntrantRoutes.CAMPSITE) },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            modifier = Modifier
-                                .padding(start = 16.dp)
-                                .weight(1f),
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Start,
-                            text = "Campsite $it"
-                        )
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = "Go to details",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
+        if (results.isEmpty()) { Text("No campsites match") }
+        results.forEach { campsite ->
+            TextButton(onClick = {
+                repository?.openCampsiteId = campsite.id
+                navController.navigate(EntrantRoutes.CAMPSITE)
+            }) {
+                Text("${campsite.name} · ${campsite.location} · up to ${campsite.maxOccupancy} · ★ ${"%.1f".format(campsite.rating)}")
             }
         }
     }
@@ -239,7 +235,54 @@ fun EntrantCampsiteListPreview() {
 
 // CAMPSITE SCREEN
 @Composable
-fun EntrantCampsiteScreen(navController: NavController) {
+fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepository? = null, scheduleController: ScheduleController? = null) {
+
+    // campsite entrant tapped
+    var campsite: Campsite? = null
+    if(repository != null){
+        for (site in repository.campsites){
+            if(site.id == repository.openCampsiteId){
+                campsite = site
+            }
+        }
+    }
+
+    // if no cant be found show message
+    if (campsite == null){
+        EntrantPage(navController = navController, showBack = true) {
+            Text("Campsite not found")
+        }
+        return
+    }
+
+    //lottery for campsite
+    var lottery: Lottery? = null
+    if(repository != null){
+        for(item in repository.lotteries){
+            if(item.campsiteIds.contains(campsite.id)){
+                lottery = item
+            }
+        }
+    }
+
+    // who is reserving and has todo not for halfway tho
+    var entrantId = "test-entrant"
+    var entrantName = "Test User"
+    if(repository != null) {
+        val user = repository.currentUser
+        if(user != null){
+            entrantId = user.id
+            entrantName = user.firstName + " " + user.lastName
+        }
+    }
+
+    //what entrant picks
+    var startDate by remember {mutableStateOf("")}
+    var endDate by remember {mutableStateOf("")}
+    var guests by remember {mutableStateOf("1")}
+    var rulesAccepted by remember {mutableStateOf(false)}
+    var bookingMessage by remember {mutableStateOf("")}
+
     EntrantPage(
         navController = navController,
         showBack = true,
@@ -248,7 +291,7 @@ fun EntrantCampsiteScreen(navController: NavController) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
-        ) { Text(text = "Campsite", style = MaterialTheme.typography.titleLarge) }
+        ) { Text(text = campsite.name, style = MaterialTheme.typography.titleLarge) }
 
         // Image (PLACEHOLDER will generate real images later when models and DB)
         Card(
@@ -266,13 +309,37 @@ fun EntrantCampsiteScreen(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Summary
-            Text(text = "Location | Rating | Max Occ.", style = MaterialTheme.typography.labelLarge)
+            val ratingText = campsite.rating.toString() + " (" + campsite.ratingCount.toString() + " ratings)"
+            val guestsText = "Up to " + campsite.maxOccupancy.toString() + " guests"
+            Text(
+                text = campsite.location + " | " + ratingText + " | " + guestsText,
+                style = MaterialTheme.typography.labelLarge)
+
+            // Price
+            Text(
+                text = "$" + formatPrice(campsite.pricePerNight) + " per night",
+                style = MaterialTheme.typography.bodyLarge)
+
+
+            //Tags
+            Text(text = campsite.tags.joinToString(", "),
+                style = MaterialTheme.typography.bodyMedium)
+
+            Spacer(modifier = Modifier.padding(8.dp))
 
             // Description
-            Text(text = "Here are more details.", style = MaterialTheme.typography.bodyLarge)
+            Text(text = "Description", style = MaterialTheme.typography.titleMedium)
+            Text(text = campsite.description, style = MaterialTheme.typography.bodyLarge)
+            Spacer(modifier = Modifier.padding(8.dp))
 
             // Rules & Policies
-            Text(text = "Rules & Policies", style = MaterialTheme.typography.bodyLarge)
+            Text(text = "Rules & Policies", style = MaterialTheme.typography.titleMedium)
+            Text(text = campsite.rules, style = MaterialTheme.typography.bodyLarge )
+            Spacer(modifier = Modifier.padding(8.dp))
+
+            // Cancellation Policy
+            Text(text = "Cancellation Policy", style = MaterialTheme.typography.titleMedium)
+            Text(text = campsite.cancellationPolicy, style = MaterialTheme.typography.bodyLarge )
         }
 
         Spacer(modifier = Modifier.padding(vertical = 16.dp))
@@ -285,12 +352,15 @@ fun EntrantCampsiteScreen(navController: NavController) {
             // Geolocation title
             Text(text = "Geolocation", style = MaterialTheme.typography.labelLarge,)
 
-            // PLACEHOLDER FOR GEOLOCATION
-            Box(
-                modifier = Modifier
-                    .height(150.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
-            ) { Icon(Icons.Default.LocationOn, "na", Modifier.fillMaxSize()) }
+            //geolocation box
+            Box(modifier = Modifier.fillMaxWidth().height(300.dp).clipToBounds()){
+                CampsiteMap(
+                    latitude = campsite.latitude,
+                    longitude = campsite.longitude,
+                    modifier = Modifier.fillMaxWidth().height(300.dp)  //onLocationPicked = null -> view only, pin cannot be moved
+                )
+            }
+            Text("Location: " + campsite.latitude + ", " + campsite.longitude)
         }
 
         Spacer(modifier = Modifier.padding(vertical = 16.dp))
@@ -303,6 +373,24 @@ fun EntrantCampsiteScreen(navController: NavController) {
             // Title
             Text(text = "Availability", style = MaterialTheme.typography.labelLarge)
 
+            // Dates owner is free
+            for (range in campsite.availability){
+                Text("Open: " + range.start + " to " + range.end)
+            }
+
+            //date is booked
+            var booked = listOf<Reservation>()
+            if (scheduleController != null && repository != null){
+                booked = scheduleController.bookedReservations(campsite.id, repository.reservations)
+            }
+            if(booked.isEmpty()){
+                Text("No dates booked")
+            }else{
+                for (reservation in booked){
+                    Text("Booked: " + reservation.startDate + " to " + reservation.endDate)
+                }
+            }
+
             // Entrant Calendar Grid
             EntrantCalendarGrid()
 
@@ -310,14 +398,40 @@ fun EntrantCampsiteScreen(navController: NavController) {
             Row() {
                 // Available
                 Text("Available = ")
-                Box(modifier = Modifier.size(20.dp).background(Color.Red))
+                Box(modifier = Modifier.size(20.dp).background(Color.Green))
 
                 Spacer(modifier = Modifier.padding(8.dp))
 
                 // Unavailable
                 Text("Unavailable = ")
-                Box(modifier = Modifier.size(20.dp).background(Color.Green))
+                Box(modifier = Modifier.size(20.dp).background(Color.Red))
             }
+            Spacer(modifier = Modifier.padding(8.dp))
+
+            //Dates Selected
+            Text(text = "Select your dates", style = MaterialTheme.typography.labelLarge )
+            if(lottery != null){
+                Text("Book between " + lottery.bookingStart + " and " + lottery.bookingEnd)
+            }
+            OutlinedTextField(
+                value = startDate,
+                onValueChange = {typed -> startDate = typed},
+                label = {Text("Start date (yyyy-mm-dd)")},
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = endDate,
+                onValueChange = {typed -> endDate = typed},
+                label = {Text("End date (yyyy-mm-dd)")},
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = guests,
+                onValueChange = {typed -> guests = typed},
+                label = {Text("Number of guests")},
+                modifier = Modifier.fillMaxWidth()
+            )
+
         }
 
         Spacer(modifier = Modifier.padding(vertical = 16.dp))
@@ -339,6 +453,43 @@ fun EntrantCampsiteScreen(navController: NavController) {
                 Text("End Date: May 10, 2026")
             }
         }
+
+        //Confirm rules
+        Row(verticalAlignment = Alignment.CenterVertically){
+            Checkbox(
+                checked = rulesAccepted,
+                onCheckedChange = { checked -> rulesAccepted = checked}
+            )
+            Text("I have read the rules and policies")
+        }
+        //Book reservation
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                var guestCount = guests.toIntOrNull()
+                if(guestCount == null){
+                    guestCount = 0
+                }
+                if(scheduleController != null){
+                    val error = scheduleController.reserveDates(
+                        campsite = campsite,
+                        lottery = lottery,
+                        entrantId = entrantId,
+                        entrantName = entrantName,
+                        startDate = startDate,
+                        endDate = endDate,
+                        guestCount = guestCount,
+                        rulesAccepted = rulesAccepted
+                    )
+                    if(error == null){
+                        bookingMessage = "Reserved " + startDate + " to " + endDate
+                    }else{
+                        bookingMessage = error
+                    }
+                }
+            }
+        ){Text("Book Reservation")}
+        Text(bookingMessage)
 
         // Chat owner button
         Button(
@@ -458,11 +609,15 @@ fun EntrantNotificationRow(
 
 // RESERVATION LIST SCREEN
 @Composable
-fun EntrantReservationList(navController: NavController) {
-    EntrantPage(
-        navController = navController,
-        showBack = false
-    ) {
+fun EntrantReservationList(
+    navController: NavController,
+    reservationController: ReservationController? = null
+) {
+    var showPast by rememberSaveable { mutableStateOf(false) }
+    val shown = if (showPast) reservationController?.past().orEmpty()
+                else reservationController?.active().orEmpty()
+
+    EntrantPage(navController = navController, showBack = false) {
 
         // Title
         Row(
@@ -470,11 +625,47 @@ fun EntrantReservationList(navController: NavController) {
             horizontalArrangement = Arrangement.Center
         ) { Text(text = "Reservations", style = MaterialTheme.typography.titleLarge) }
 
+        // Active / Past tabs
         // Display Reservations
-        EmptyCard {
-            navController.navigate(
-                EntrantRoutes.RESERVATION
-            )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (!showPast) {
+                Button(onClick = {}) { Text("Active") }
+            } else {
+                OutlinedButton(onClick = { showPast = false }) { Text("Active") }
+            }
+
+            if (showPast) {
+                Button(onClick = {}) { Text("Past") }
+            } else {
+                OutlinedButton(onClick = { showPast = true }) { Text("Past") }
+            }
+        }
+
+        if (shown.isEmpty()) Text(if (showPast) "No past reservations" else "No active reservations")
+        shown.forEach { reservation ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                    Text(reservation.campsiteName, style = MaterialTheme.typography.titleMedium)
+                    Text("${reservation.startDate} to ${reservation.endDate}")
+                    if (!showPast) {
+                        Button(onClick = { reservationController?.cancel(reservation) }) {
+                            Text("Cancel reservation")
+                        }
+                    }
+                }
+            }
         }
     }
 }

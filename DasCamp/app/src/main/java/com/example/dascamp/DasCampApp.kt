@@ -52,7 +52,7 @@ fun DasCampApp() {
 
     // Page Navigation
     val navController = rememberNavController()
-    val startDestination = OwnerRoutes.DASHBOARD// CHANGE HERE TO SWITCH LANDING PAGE (owner: OwnerRoutes.DASHBOARD, admin: AdminRoutes.DASHBOARD)
+    val startDestination = "signUpScreen"// CHANGE HERE TO SWITCH LANDING PAGE (owner: OwnerRoutes.DASHBOARD, admin: AdminRoutes.DASHBOARD)
     val repository = remember { DasCampRepository() }
 
     NavHost(navController = navController, startDestination = startDestination) {

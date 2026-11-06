@@ -26,16 +26,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.model.Role
 import com.example.dascamp.screens.AppScaffold
+import com.example.dascamp.screens.RoleMenu
 
 // ADMIN ROUTES
 object AdminRoutes {
     const val DASHBOARD = "adminDashboard"
     const val CAMPSITE_LIST = "adminCampsiteList"
-    const val CAMPSITE = "adminCampsiteScreen"
+    const val CAMPSITE = "adminViewCampsite/{campsiteId}"
     const val IMAGE_GALLERY = "adminImageGallery"
     const val MESSAGE_LIST = "adminMessageList"
-    const val MESSAGE = "adminMessageScreen"
+    const val MESSAGE = "adminViewMessage/{messageId}"
     const val PROFILE_LIST = "adminProfileList"
     const val PROFILE = "adminProfile/{profileType}" // route pattern, registed in NavHost
     const val NOTIFICATION_LOG = "adminNotificationLog"
@@ -45,6 +47,8 @@ object AdminRoutes {
 
     // Build route for a profile, ie. "adminProfile/OWNER"
     fun profile(type: ProfileType) = "adminProfile/${type.name}"
+    fun campsite(id: String = "default_id") = "AdminViewCampsite/$id"
+    fun message(id: String ="default_id") = "adminViewMessage/$id"
 }
 
 @Composable
@@ -56,7 +60,8 @@ fun AdminPage(
 ) {
     AppScaffold(
         onBackClick = if (showBack) {{ navController.popBackStack() }} else null,
-        navBar = { AdminNavBar(navController) }
+        navBar = { AdminNavBar(navController) },
+        roleMenu = { RoleMenu(navController, Role.ADMIN) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
