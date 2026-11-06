@@ -50,6 +50,7 @@ import java.util.UUID
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.formatPrice
+import com.example.dascamp.screens.CampsiteMap
 
 
 /**
@@ -261,6 +262,30 @@ private fun CampsiteForm(
         Text(title, style = MaterialTheme.typography.titleLarge)
         FormField("Name", form.name, onValueChange = { typed -> form = form.copy(name = typed) })
         FormField("Location", form.location, onValueChange = { typed -> form = form.copy(location = typed) })
+        Text("Map Location", style = MaterialTheme.typography.titleMedium)
+        var startLatitude = form.latitude.toDoubleOrNull()
+        if (startLatitude == null){
+            startLatitude = 53.55
+        }
+        var startLongitude = form.longitude.toDoubleOrNull()
+        if (startLongitude == null){
+            startLongitude = -113.49
+        }
+
+        CampsiteMap(
+            latitude = startLatitude,
+            longitude = startLongitude,
+            modifier = Modifier.fillMaxWidth().height(250.dp),
+            onLocationPicked = {
+                pickedLatitude, pickedLongitude ->
+                form = form.copy(
+                    latitude = pickedLatitude.toString(),
+                    longitude = pickedLongitude.toString()
+                )
+            }
+        )
+        Text("Picked: " + form.latitude + ", " + form.longitude)
+
         FormField("Amenities", form.description, onValueChange = { typed -> form = form.copy(description = typed) })
         FormField("Maximum occupancy", form.maxOccupancy, onValueChange = { typed -> form = form.copy(maxOccupancy = typed) })
         FormField("Price per night", form.pricePerNight, onValueChange = { typed -> form = form.copy(pricePerNight = typed) })
@@ -287,9 +312,6 @@ private fun CampsiteForm(
         )
         error?.let { Text(it) }
         Button(onClick = {}) { Text("Upload photo") }
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate(OwnerRoutes.MAP) }) { Text("Set map location") }
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
