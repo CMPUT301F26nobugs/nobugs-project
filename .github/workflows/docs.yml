@@ -9,11 +9,8 @@ permissions:
   id-token: write
 
 jobs:
-  docs:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     defaults:
       run:
         working-directory: DasCamp
@@ -25,7 +22,6 @@ jobs:
           java-version: 17
       - name: Fix gradlew
         run: |
-          ls -la
           sed -i 's/\r$//' gradlew
           chmod +x gradlew
       - name: Build docs
@@ -33,5 +29,13 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: DasCamp/app/build/dokka/html
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
