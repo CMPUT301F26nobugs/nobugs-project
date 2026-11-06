@@ -1,5 +1,6 @@
 package com.example.dascamp.screens.ownerScreens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -10,7 +11,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -23,34 +23,34 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.background
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.dascamp.screens.BigButton
-import com.example.dascamp.screens.EmptyCard
-import com.example.dascamp.screens.EmptyValue
 import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.CampsiteFormState
 import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.DateRange
 import com.example.dascamp.model.LotteryFormState
 import com.example.dascamp.model.LotteryStatus
-import com.example.dascamp.model.OwnerMessage
 import com.example.dascamp.model.Notification
+import com.example.dascamp.model.OwnerMessage
 import com.example.dascamp.model.OwnerProfile
-import java.util.UUID
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.formatPrice
+import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.CampsiteMap
+import com.example.dascamp.screens.EmptyCard
+import com.example.dascamp.screens.EmptyValue
+import java.util.UUID
 
 
 /**
@@ -359,36 +359,35 @@ fun OwnerBookedDates(navController: NavController, repository: DasCampRepository
     }
 }
 
-/** Map layout. The box is where the pin will be drawn from the campsite coordinates. */
+/** Campsite location on a map, to edit the location, the edit button goes to the edit campsite page */
 @Composable
-fun OwnerMapLocation(navController: NavController) {
-    var query by remember { mutableStateOf("") }
+fun OwnerMapLocation(navController: NavController, repository: DasCampRepository? = null) {
+    val campsite = repository?.campsites?.find{it.id == repository.openCampsiteId}
+
     OwnerPage(navController, showBack = true) {
         Text("Map location", style = MaterialTheme.typography.titleLarge)
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search Location") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-            singleLine = true
-        )
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            BlockBox(220)
-            Icon(
-                Icons.Default.LocationOn,
-                contentDescription = "Map pin",
-                modifier = Modifier.size(48.dp)
-            )
-        }
 
+        if(campsite == null){
+            Text("Unable to find campsite")
+        }else {
+            Text("Campsite Name: " + campsite.name)
+            Text("Location Name: " + campsite.location)
 
-        EmptyValue(0.5f)
-        EmptyValue(0.5f)
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.popBackStack() }) {
-            Text("Confirm Location")
+            Box(modifier = Modifier.fillMaxWidth().height(300.dp).clipToBounds()){
+                CampsiteMap(
+                    latitude = campsite.latitude,
+                    longitude = campsite.longitude,
+                    modifier = Modifier.fillMaxWidth().height(300.dp)
+                )
+            }
+
+            Text("Location Coordinates: " + campsite.latitude + ", " + campsite.longitude)
+
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(OwnerRoutes.EDIT) }) {
+                Text("Edit Location")
+            }
         }
     }
 }
