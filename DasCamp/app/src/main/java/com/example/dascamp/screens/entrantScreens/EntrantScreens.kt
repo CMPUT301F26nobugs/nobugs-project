@@ -70,6 +70,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.core.content.ContextCompat
 import com.example.dascamp.controllers.ProfileController
+import com.example.dascamp.controllers.NotificationsController
+import com.example.dascamp.controllers.LotteryController
 import com.example.dascamp.model.DasCampRepository
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.draw.clipToBounds
@@ -83,7 +85,10 @@ import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.views.ProfileView
 import com.example.dascamp.model.Lottery
+import com.example.dascamp.model.LotteryStatus
+import com.example.dascamp.model.WaitlistStatus
 import com.example.dascamp.views.ReservationView
+import com.example.dascamp.views.NotificationView
 
 // DASHBOARD SCREEN
 @Composable
@@ -190,7 +195,7 @@ fun EntrantCampsiteList(
         guests = occupancyFilter.toIntOrNull(),
         startDate = date,
         endDate = date,
-    ).orEmpty() // or return empty if campsiteController is null
+    ) ?: repository?.campsites.orEmpty()
 
     EntrantPage(
         navController = navController,
@@ -225,7 +230,11 @@ fun EntrantCampsiteList(
         )
 
         // Display Campsites
-        if (results.isEmpty()) { Text("No campsites match") }
+        if (repository != null && !repository.campsitesLoaded) {
+            Text("Loading campsites…")
+        } else if (results.isEmpty()) {
+            Text("No campsites match")
+        }
         results.forEach { campsite ->
             TextButton(onClick = {
                 repository?.openCampsiteId = campsite.id
@@ -248,6 +257,8 @@ fun EntrantCampsiteListPreview() {
 // CAMPSITE SCREEN
 @Composable
 fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepository? = null, scheduleController: ScheduleController? = null, reservationView: ReservationView? = null) {
+    val lotteryController = remember(repository) { repository?.let { LotteryController(it) } }
+    val reservationController = remember(repository) { repository?.let { ReservationController(it) } }
 
     // campsite entrant tapped
     var campsite: Campsite? = null
@@ -267,11 +278,19 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
         return
     }
 
+    val winningLottery = reservationController?.wonLottery(campsite.id)
+    val waitingLottery = repository?.let { repo ->
+        repo.lotteries.firstOrNull { lottery ->
+            campsite.id in lottery.campsiteIds && lottery.status == LotteryStatus.OPEN &&
+                    lottery.entrants.any { it.entrantId == repo.uid && it.status == WaitlistStatus.WAITING }
+        }
+    }
+
     //lottery for campsite
     var lottery: Lottery? = null
     if(repository != null){
         for(item in repository.lotteries){
-            if(item.campsiteIds.contains(campsite.id)){
+            if(item.campsiteIds.contains(campsite.id) && lotteryController?.registrationOpen(item) == true){
                 lottery = item
             }
         }
@@ -420,88 +439,93 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
             }
             Spacer(modifier = Modifier.padding(8.dp))
 
-            //Dates Selected
-            Text(text = "Select your dates", style = MaterialTheme.typography.labelLarge )
-            if(lottery != null){
-                Text("Book between " + lottery.bookingStart + " and " + lottery.bookingEnd)
+            if (winningLottery != null) {
+                Text("You were selected. Choose dates to book", style = MaterialTheme.typography.labelLarge)
+                Text("Booking window: ${winningLottery.bookingStart} to ${winningLottery.bookingEnd}")
+                OutlinedTextField(
+                    value = startDate,
+                    onValueChange = { typed -> startDate = typed },
+                    label = { Text("Start date (yyyy-mm-dd)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = endDate,
+                    onValueChange = { typed -> endDate = typed },
+                    label = { Text("End date (yyyy-mm-dd)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = guests,
+                    onValueChange = { typed -> guests = typed },
+                    label = { Text("Number of guests") },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
-            OutlinedTextField(
-                value = startDate,
-                onValueChange = {typed -> startDate = typed},
-                label = {Text("Start date (yyyy-mm-dd)")},
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = endDate,
-                onValueChange = {typed -> endDate = typed},
-                label = {Text("End date (yyyy-mm-dd)")},
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = guests,
-                onValueChange = {typed -> guests = typed},
-                label = {Text("Number of guests")},
-                modifier = Modifier.fillMaxWidth()
-            )
 
         }
 
         Spacer(modifier = Modifier.padding(vertical = 16.dp))
 
-        // Container for booking/entering lottery buttons
-        Row(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // Enter lottery button
+        // Waitlist interest and winner booking are separate steps.
+        var lotteryMessage by remember(lottery?.id, winningLottery?.id) { mutableStateOf("") }
+        if (winningLottery != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = rulesAccepted, onCheckedChange = { rulesAccepted = it })
+                Text("I have read the rules and policies")
+            }
             Button(
-                onClick = {/*TODO("Implement booking logic")*/}
-            ) { Text("Enter Lottery") }
-
-            Spacer(modifier = Modifier.padding(20.dp))
-
-            // Waiting list display
-            Column() {
-                Text("Current Pool: 5/10")
-                Text("End Date: May 10, 2026")
-            }
-        }
-
-        //Confirm rules
-        Row(verticalAlignment = Alignment.CenterVertically){
-            Checkbox(
-                checked = rulesAccepted,
-                onCheckedChange = { checked -> rulesAccepted = checked}
-            )
-            Text("I have read the rules and policies")
-        }
-        //Book reservation
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {
-                var guestCount = guests.toIntOrNull()
-                if(guestCount == null){
-                    guestCount = 0
-                }
-                if(scheduleController != null){
-                    val error = scheduleController.reserveDates(
-                        campsite = campsite,
-                        lottery = lottery,
-                        entrantId = entrantId,
-                        entrantName = entrantName,
-                        startDate = startDate,
-                        endDate = endDate,
-                        guestCount = guestCount,
-                        rulesAccepted = rulesAccepted
-                    )
-                    if(error == null){
-                        bookingMessage = "Reserved " + startDate + " to " + endDate
-                    }else{
-                        bookingMessage = error
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    val guestCount = guests.toIntOrNull() ?: 0
+                    val error = if (scheduleController == null) {
+                        "Reservation service is unavailable"
+                    } else {
+                        scheduleController.reserveDates(
+                            campsite = campsite,
+                            lottery = winningLottery,
+                            entrantId = entrantId,
+                            entrantName = entrantName,
+                            startDate = startDate,
+                            endDate = endDate,
+                            guestCount = guestCount,
+                            rulesAccepted = rulesAccepted
+                        )
                     }
+                    bookingMessage = if (error == null) {
+                        "Reserved $startDate to $endDate"
+                    } else error
                 }
+            ) { Text("Book reservation") }
+            OutlinedButton(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    reservationController?.decline(winningLottery)
+                    bookingMessage = "Lottery spot declined"
+                }
+            ) { Text("Decline lottery spot") }
+        } else if (lottery != null) {
+            val activeLottery = lottery
+            val currentEntry = activeLottery.entrants.firstOrNull { it.entrantId == repository?.uid }
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Button(onClick = {
+                    lotteryMessage = if (currentEntry == null) {
+                        lotteryController?.joinWaitlist(activeLottery, entrantName) ?: "Joined ${activeLottery.name}"
+                    } else {
+                        lotteryController?.leaveWaitlist(activeLottery) ?: "Left ${activeLottery.name}"
+                    }
+                }) {
+                    Text(if (currentEntry == null) "Join waiting list" else "Leave waiting list")
+                }
+                Spacer(modifier = Modifier.padding(8.dp))
+                Text("${activeLottery.entrants.size}/${activeLottery.waitlistCapacity ?: "∞"} · ends ${activeLottery.registrationEnd}")
             }
-        ){Text("Book Reservation")}
-        Text(bookingMessage)
+            Text("Joining adds you to the waiting list. You can book only if selected after the draw.")
+        } else if (waitingLottery != null) {
+            Text("Registration has closed. You are on the waitlist and winners will be drawn after the period ends.")
+        } else {
+            Text("There is no lottery currently accepting entrants for this campsite.")
+        }
+        Text(lotteryMessage.ifBlank { bookingMessage })
 
         // Chat owner button
         Button(
@@ -522,16 +546,13 @@ fun CampsiteScreenPreview() {
 
 // NOTIFICATION LIST SCREEN
 @Composable
-fun EntrantNotificationList(navController: NavController) {
-    // Dummy data
-    val notifications = remember {
-        mutableStateListOf(
-            "You won the lottery for Campsite 1!",
-            "You have lost the lottery for Campsite 2 :(",
-            "Reservation Confirmation",
-            "Reservation Cancellation Confirmation"
-            )
-    }
+fun EntrantNotificationList(
+    navController: NavController,
+    notificationView: NotificationView? = null,
+    notificationsController: NotificationsController? = null,
+    onLotterySelected: (String) -> Unit = {}
+) {
+    val notifications = notificationsController?.inbox(notificationView?.notifications.orEmpty()).orEmpty()
 
     EntrantPage(
         navController = navController,
@@ -547,25 +568,19 @@ fun EntrantNotificationList(navController: NavController) {
         }
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Display Notifications
-        /*TODO("Implement notification class logic")*/
+        // Display the signed-in entrant's win/loss messages and other alerts.
+        if (notifications.isEmpty()) {
+            Text("No notifications yet")
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize().weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            itemsIndexed(notifications) { index, alert ->
+            itemsIndexed(notifications) { _, notification ->
                 EntrantNotificationRow(
-                    alert = alert,
-                    onDismiss = { notifications.remove( alert) },
-                    onClick = {
-                        // Route to a specific existing screen based on the message content
-                        when (alert) {
-                            "You won the lottery for Campsite 1!" -> navController.navigate(EntrantRoutes.CAMPSITE)
-                            "You have lost the lottery for Campsite 2 :(" -> navController.navigate(EntrantRoutes.CAMPSITE)
-                            "Reservation Confirmation" -> navController.navigate(EntrantRoutes.CAMPSITE)
-                            "Reservation Cancellation Confirmation" -> navController.navigate(EntrantRoutes.CAMPSITE)
-                        }
-                    }
+                    alert = notification.message,
+                    onDismiss = { notificationsController?.dismiss(notification) },
+                    onClick = { notification.lotteryId?.let(onLotterySelected) }
                 )
             }
         }
