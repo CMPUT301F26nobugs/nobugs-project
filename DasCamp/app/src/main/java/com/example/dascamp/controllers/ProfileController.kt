@@ -1,7 +1,6 @@
 package com.example.dascamp.controllers
 
 import com.example.dascamp.model.DasCampRepository
-import com.example.dascamp.model.EntrantProfile
 
 /**
  * PROFILE CONTROLLER
@@ -40,15 +39,15 @@ class ProfileController(private val repository: DasCampRepository) {
         repository.deleteUser(user)
     }
 
-    fun saveEntrantProfile(
-        current: EntrantProfile,
+    fun saveProfile(
         first: String,
         last: String,
         email: String,
         phone: String
     ) {
-        repository.updateEntrant(
-            current.copy(
+        val user = repository.currentUser ?: return
+        repository.updateUser(
+            user.copy(
                 firstName = first.trim(),
                 lastName = last.trim(),
                 email = email.trim(),
