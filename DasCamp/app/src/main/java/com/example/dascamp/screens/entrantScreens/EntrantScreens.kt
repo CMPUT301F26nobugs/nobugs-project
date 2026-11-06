@@ -56,6 +56,7 @@ import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.example.dascamp.controllers.CampsiteController
@@ -65,6 +66,7 @@ import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.formatPrice
 import com.example.dascamp.screens.BigButton
+import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.screens.EmptyCard
 
 // DASHBOARD SCREEN
@@ -317,12 +319,15 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
             // Geolocation title
             Text(text = "Geolocation", style = MaterialTheme.typography.labelLarge,)
 
-            // PLACEHOLDER FOR GEOLOCATION
-            Box(
-                modifier = Modifier
-                    .height(150.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
-            ) { Icon(Icons.Default.LocationOn, "na", Modifier.fillMaxSize()) }
+            //geolocation box
+            Box(modifier = Modifier.fillMaxWidth().height(300.dp).clipToBounds()){
+                CampsiteMap(
+                    latitude = campsite.latitude,
+                    longitude = campsite.longitude,
+                    modifier = Modifier.fillMaxWidth().height(300.dp)  //onLocationPicked = null -> view only, pin cannot be moved
+                )
+            }
+            Text("Location: " + campsite.latitude + ", " + campsite.longitude)
         }
 
         Spacer(modifier = Modifier.padding(vertical = 16.dp))
