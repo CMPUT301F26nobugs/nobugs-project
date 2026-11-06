@@ -8,10 +8,17 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.controllers.CampsiteController
+import com.example.dascamp.controllers.LotteryDrawWorker
+import com.example.dascamp.controllers.NotificationsController
 import com.example.dascamp.controllers.ProfileController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
@@ -63,6 +70,8 @@ import com.example.dascamp.screens.ownerScreens.OwnerReservations
 import com.example.dascamp.screens.ownerScreens.OwnerRoutes
 import com.example.dascamp.screens.ownerScreens.OwnerSendNotification
 import com.example.dascamp.views.ReservationView
+import com.example.dascamp.views.NotificationView
+import java.util.concurrent.TimeUnit
 
 /**
  * Root composable of the app: creates the repository and controllers, decides where a
@@ -113,6 +122,24 @@ fun DasCampApp() {
     val profileController = remember { ProfileController(repository) }
     val reservationController = remember { ReservationController(repository) }   // next to the other controllers
     val reservationView = remember{ ReservationView(repository) }
+    val notificationView = remember { NotificationView(repository) }
+    val notificationsController = remember { NotificationsController(repository) }
+    // Persist the draw check across app closes and device restarts. The one-time
+    // request handles lotteries that are already due; periodic work catches
+    // registration periods that end later.
+    LaunchedEffect(Unit) {
+        val workManager = WorkManager.getInstance(context.applicationContext)
+        workManager.enqueueUniqueWork(
+            LotteryDrawWorker.IMMEDIATE_WORK_NAME,
+            ExistingWorkPolicy.KEEP,
+            OneTimeWorkRequestBuilder<LotteryDrawWorker>().build()
+        )
+        workManager.enqueueUniquePeriodicWork(
+            LotteryDrawWorker.PERIODIC_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            PeriodicWorkRequestBuilder<LotteryDrawWorker>(15, TimeUnit.MINUTES).build()
+        )
+    }
 
     // The only navigation rule for sign-in state
     LaunchedEffect(repository.usersLoaded, repository.currentUser) {
@@ -152,7 +179,14 @@ fun DasCampApp() {
                     campsiteController
                 )
             }
-            composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
+            composable(EntrantRoutes.NOTIFICATION_LIST) {
+                EntrantNotificationList(
+                    navController = navController,
+                    notificationView = notificationView,
+                    notificationsController = notificationsController,
+                    onLotterySelected = { repository.openLotteryId = it }
+                )
+            }
             composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
             composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
             composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController, reservationController) }
@@ -188,11 +222,11 @@ fun DasCampApp() {
             composable(OwnerRoutes.QR) { OwnerQrCode(navController) }
             composable(OwnerRoutes.LOTTERIES) { OwnerLotteryList(navController, repository) }
             composable(OwnerRoutes.CREATE) { OwnerCreateLottery(navController, repository) }
-            composable(OwnerRoutes.LOTTERY) { OwnerLotteryDetails(navController) }
+            composable(OwnerRoutes.LOTTERY) { OwnerLotteryDetails(navController, repository) }
             composable(OwnerRoutes.EDIT_LOTTERY) { OwnerEditLottery(navController, repository) }
             composable(OwnerRoutes.ALERTS) { OwnerNotifications(navController, repository) }
             composable(OwnerRoutes.SEND) { OwnerSendNotification(navController, repository) }
-            composable(OwnerRoutes.RESERVATIONS) { OwnerReservations(navController) }
+            composable(OwnerRoutes.RESERVATIONS) { OwnerReservations(navController, repository) }
             composable(OwnerRoutes.RESERVATION) { OwnerReservationDetails(navController) }
             composable(OwnerRoutes.PROFILE) { OwnerProfile(navController, repository) }
             composable(OwnerRoutes.MESSAGE_LIST) { OwnerMessageList(navController, repository) }

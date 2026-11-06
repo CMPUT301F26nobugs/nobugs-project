@@ -44,6 +44,7 @@ import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.DateRange
 import com.example.dascamp.model.LotteryFormState
 import com.example.dascamp.model.LotteryStatus
+import com.example.dascamp.model.label
 import com.example.dascamp.model.Notification
 import com.example.dascamp.model.OwnerMessage
 import java.util.UUID
@@ -123,13 +124,19 @@ fun OwnerCampsitesList(
             Icon(Icons.Default.Add, contentDescription = null)
             Text("Add Campsite")
         }
-        shown.forEach { campsite ->
-            TextButton(
-                onClick = {
-                    repository?.openCampsiteId = campsite.id
-                    navController.navigate(OwnerRoutes.CAMPSITE)
-                }
-            ) { Text(campsite.name.ifBlank { "Untitled campsite" }) }
+        if (repository != null && !repository.campsitesLoaded) {
+            Text("Loading campsites…")
+        } else if (shown.isEmpty()) {
+            Text("No campsites found")
+        } else {
+            shown.forEach { campsite ->
+                TextButton(
+                    onClick = {
+                        repository?.openCampsiteId = campsite.id
+                        navController.navigate(OwnerRoutes.CAMPSITE)
+                    }
+                ) { Text(campsite.name.ifBlank { "Untitled campsite" }) }
+            }
         }
     }
 }
@@ -424,9 +431,11 @@ fun OwnerQrCode(navController: NavController) {
 @Composable
 fun OwnerLotteryList(navController: NavController, repository: DasCampRepository? = null) {
     var query by remember { mutableStateOf("") }
-    val shown = repository?.lotteries
-        ?.filter { it.name.contains(query, ignoreCase = true) }
-        .orEmpty()
+    val shown = repository?.let { repo ->
+        repo.lotteries
+            .filter { lottery -> repo.campsites.any { it.id in lottery.campsiteIds && it.ownerId == repo.uid } }
+            .filter { it.name.contains(query, ignoreCase = true) }
+    }.orEmpty()
     OwnerPage(navController, showBack = true) {
         Text("My Lotteries", style = MaterialTheme.typography.titleLarge)
         OutlinedTextField(
@@ -467,26 +476,32 @@ fun OwnerEditLottery(navController: NavController, repository: DasCampRepository
  * and the buttons for edit, draw, and notify.
  */
 @Composable
-fun OwnerLotteryDetails(navController: NavController) {
+fun OwnerLotteryDetails(navController: NavController, repository: DasCampRepository? = null) {
+    val lottery = repository?.let { repo -> repo.lotteries.find { it.id == repo.openLotteryId } }
     OwnerPage(navController, showBack = true) {
-        EmptyValue(0.8f)
-        EmptyValue(0.3f)
-        EmptyValue()
-        EmptyValue()
+        if (lottery == null) {
+            Text("Lottery not found")
+            return@OwnerPage
+        }
+        Text(lottery.name, style = MaterialTheme.typography.titleLarge)
+        Text("Registration: ${lottery.registrationStart} to ${lottery.registrationEnd}")
+        Text("Booking: ${lottery.bookingStart} to ${lottery.bookingEnd}")
+        Text("Winner count: ${lottery.winnerCount} · ${lottery.status.label()}")
         Text("Campsites", style = MaterialTheme.typography.titleMedium)
-        Button(onClick = { navController.navigate(OwnerRoutes.CAMPSITE) }) { Text("Campsite") }
-        Text(
-            "Winners are drawn automatically when registration ends.",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        lottery.campsiteIds.forEach { siteId ->
+            Text(repository?.campsites?.find { it.id == siteId }?.name ?: siteId)
+        }
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { navController.navigate(OwnerRoutes.EDIT_LOTTERY) }) { Text("Edit lottery") }
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { navController.navigate(OwnerRoutes.SEND) }) { Text("Notify the waiting list") }
-        Text("Waiting list", style = MaterialTheme.typography.titleMedium)
-        EmptyCard {}
+        Text("Waitlist (${lottery.entrants.size})", style = MaterialTheme.typography.titleMedium)
+        if (lottery.entrants.isEmpty()) Text("No entrants yet")
+        lottery.entrants.forEach { entrant ->
+            Text("${entrant.name} · ${entrant.status.label()}")
+        }
     }
 }
 
@@ -516,7 +531,7 @@ private fun LotteryForm(
         Text(title, style = MaterialTheme.typography.titleLarge)
         FormField("Lottery name", form.name, onValueChange = { typed -> form = form.copy(name = typed) })
         Text("Campsites", style = MaterialTheme.typography.titleMedium)
-        repository?.campsites?.forEach { campsite ->
+        repository?.let { repo -> repo.campsites.filter { it.ownerId == repo.uid } }?.forEach { campsite ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
                     checked = campsite.id in form.campsiteIds,
@@ -544,7 +559,7 @@ private fun LotteryForm(
                     id = existing?.id ?: UUID.randomUUID().toString(),
                     status = existing?.status ?: LotteryStatus.OPEN,
                     entrants = existing?.entrants ?: emptyList(),
-                    validCampsiteIds = repository?.campsites?.map { it.id }?.toSet() ?: emptySet()
+                    validCampsiteIds = repository?.let { repo -> repo.campsites.filter { it.ownerId == repo.uid }.map { it.id }.toSet() } ?: emptySet()
                 )
                 val lottery = built.lottery
                 if (lottery == null) {
@@ -564,8 +579,16 @@ private fun LotteryForm(
  * The blank card opens the reservation details layout.
  */
 @Composable
-fun OwnerReservations(navController: NavController) {
+fun OwnerReservations(navController: NavController, repository: DasCampRepository? = null) {
     var selected by remember { mutableStateOf("Active") }
+    val controller = remember(repository) {
+        repository?.let { com.example.dascamp.controllers.ReservationController(it) }
+    }
+    val reservations = when (selected) {
+        "Past" -> controller?.ownerPast().orEmpty()
+        "Cancelled" -> controller?.ownerCancelled().orEmpty()
+        else -> controller?.ownerActive().orEmpty()
+    }
     OwnerPage(navController, showBack = false) {
         Text("Reservations", style = MaterialTheme.typography.titleLarge)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -574,7 +597,12 @@ fun OwnerReservations(navController: NavController) {
                 else OutlinedButton(onClick = { selected = label }) { Text(label) }
             }
         }
-        EmptyCard { navController.navigate(OwnerRoutes.RESERVATION) }
+        if (reservations.isEmpty()) Text("No ${selected.lowercase()} reservations")
+        reservations.forEach { reservation ->
+            OutlinedButton(onClick = { navController.navigate(OwnerRoutes.RESERVATION) }, modifier = Modifier.fillMaxWidth()) {
+                Text("${reservation.campsiteName} · ${reservation.entrantName} · ${reservation.startDate} to ${reservation.endDate}")
+            }
+        }
     }
 }
 

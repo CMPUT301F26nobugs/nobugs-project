@@ -5,6 +5,8 @@ import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.Lottery
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
+import com.example.dascamp.model.LotteryStatus
+import com.example.dascamp.model.WaitlistStatus
 import java.util.UUID
 
 /**
@@ -96,6 +98,19 @@ class ScheduleController (private val store: CampStore){
         rulesAccepted: Boolean
     ): String?{
 
+        if (entrantId != store.uid) {
+            return "Only the signed-in entrant can book this lottery spot"
+        }
+        // A campsite reservation is only available to a selected lottery entrant.
+        if (lottery == null || lottery.status != LotteryStatus.DRAWN) {
+            return "You can book only after being selected in a completed lottery"
+        }
+        val entry = lottery.entrants.firstOrNull { it.entrantId == entrantId }
+            ?: return "You are not on this lottery waitlist"
+        if (entry.status != WaitlistStatus.SELECTED) {
+            return "Only selected entrants can book this campsite"
+        }
+
         //Entrant must accept rules
         if(!rulesAccepted){
             return "Confirm You have read the rules and policies"
@@ -111,11 +126,9 @@ class ScheduleController (private val store: CampStore){
             return "The end date has to be on or after start date"
         }
 
-        //inside lotterys boooking period
-        if(lottery != null){
-            if(startDate < lottery.bookingStart || endDate> lottery.bookingEnd) {
-                return "Dates between " + lottery.bookingStart + " and " + lottery.bookingEnd
-            }
+        // Requested dates must fit inside the winner's booking window.
+        if(startDate < lottery.bookingStart || endDate > lottery.bookingEnd) {
+            return "Dates between " + lottery.bookingStart + " and " + lottery.bookingEnd
         }
 
         //guest in occupancy allowed
@@ -137,13 +150,15 @@ class ScheduleController (private val store: CampStore){
             startDate = startDate,
             endDate = endDate,
             status = ReservationStatus.ACTIVE,
-            lotteryId = lottery?.id,
+            lotteryId = lottery.id,
             guestCount = guestCount,
             rulesAccepted = rulesAccepted
         )
         store.addReservation(reservation)
 
-        // mark this entrants as booked in lottery
+        store.updateLottery(lottery.copy(entrants = lottery.entrants.map {
+            if (it.entrantId == entrantId) it.copy(status = WaitlistStatus.BOOKED) else it
+        }))
         return null
     }
 }
