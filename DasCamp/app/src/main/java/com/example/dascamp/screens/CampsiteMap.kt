@@ -9,12 +9,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
-import org.osmdroid.api.IGeoPoint
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.views.MapView
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.CopyrightOverlay
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 
@@ -31,13 +31,20 @@ fun CampsiteMap(latitude: Double,
     val map = remember{
         Configuration.getInstance().apply{
             load(context, context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
-            userAgentValue = context.packageName  //required by OpenStreetMap
+            userAgentValue = "DasCamp-nobugs (301 student project) https://github.com/CMPUT301F26nobugs/nobugs-project"  //required by OpenStreetMap -> app identifier
         }
         MapView(context).apply{
-            setTileSource(TileSourceFactory.MAPNIK)  //standard map
+            setTileSource(  //map tiles
+                XYTileSource(
+                    "OSM", 0, 19, 256, ".png",
+                    arrayOf("https://tile.openstreetmap.org/"),
+                    "© OpenStreetMap contributors"  //text shown by CopyrightOverlay
+                )
+            )
             setMultiTouchControls(true)  //multitouch so that you can pinch zoom
             controller.setZoom(10.0)  //how zoomed in it is
             controller.setCenter(GeoPoint(latitude, longitude))  //set map start location to location picked
+            overlays.add(CopyrightOverlay(context))  //show the OpenStreetMap credit
         }  //bc this is the last line, remeber returns the map view
     }
 
