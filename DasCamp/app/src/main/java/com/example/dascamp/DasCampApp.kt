@@ -63,7 +63,7 @@ fun DasCampApp() {
 
     // Page Navigation
     val navController = rememberNavController()
-    val startDestination = OwnerRoutes.DASHBOARD// CHANGE HERE TO SWITCH LANDING PAGE (owner: OwnerRoutes.DASHBOARD, admin: AdminRoutes.DASHBOARD)
+    val startDestination = EntrantRoutes.CAMPSITE// CHANGE HERE TO SWITCH LANDING PAGE (owner: OwnerRoutes.DASHBOARD, admin: AdminRoutes.DASHBOARD)
     val repository = remember { DasCampRepository() }
     val scheduleController = remember{ ScheduleController(repository) }
     val context = LocalContext.current
@@ -79,7 +79,7 @@ fun DasCampApp() {
         // ENTRANT NAVIGATION
         composable(EntrantRoutes.DASHBOARD) { EntrantDashboard(navController) }
         composable(EntrantRoutes.CAMPSITE_LIST) { EntrantCampsiteList(navController) }
-        composable(EntrantRoutes.CAMPSITE) { EntrantCampsiteScreen(navController) }
+        composable(EntrantRoutes.CAMPSITE) { EntrantCampsiteScreen(navController, repository, scheduleController) }
         composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
         composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
         composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
