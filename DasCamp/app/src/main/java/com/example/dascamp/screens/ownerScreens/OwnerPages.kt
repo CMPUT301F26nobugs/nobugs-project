@@ -34,6 +34,10 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.controllers.ScheduleController
+import com.example.dascamp.screens.BigButton
+import com.example.dascamp.screens.EmptyCard
+import com.example.dascamp.screens.EmptyValue
 import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.CampsiteFormState
 import com.example.dascamp.model.DasCampRepository
@@ -44,13 +48,13 @@ import com.example.dascamp.model.Notification
 import com.example.dascamp.model.OwnerMessage
 import com.example.dascamp.model.OwnerProfile
 import com.example.dascamp.model.Reservation
-import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.formatPrice
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
 import java.util.UUID
+
 
 
 /**
@@ -334,17 +338,17 @@ private fun CampsiteForm(
     }
 }
 
-/** Calendar layout. No days are marked, because no stays are loaded yet. */
+// Booked dates for one campsite. controller picks the active reservation
 @Composable
-fun OwnerBookedDates(navController: NavController, repository: DasCampRepository? = null) {
+fun OwnerBookedDates(navController: NavController, repository: DasCampRepository? = null, scheduleController: ScheduleController? = null) {
     val campsite = repository?.campsites?.find { it.id == repository.openCampsiteId }
-    val booked = mutableListOf<Reservation>()
-    for (reservation in repository?.reservations.orEmpty()){
-        if(reservation.campsiteId == campsite?.id && reservation.status == ReservationStatus.ACTIVE){
-            booked.add(reservation)
-        }
+
+    // ask controller for booked reservation
+    var booked = listOf<Reservation>()
+    if (campsite != null && scheduleController != null){
+        booked = scheduleController.bookedReservations(campsite.id, repository.reservations)
     }
-    OwnerPage(navController, showBack = true) {
+    OwnerPage(navController, showBack = true){
         Text("Booked dates", style = MaterialTheme.typography.titleLarge)
         Text(campsite?.name?: "Campsite")
         CalendarGrid()

@@ -507,8 +507,6 @@ fun AdminViewCampsite(navController: NavController) {
             Spacer(modifier = Modifier.height(10.dp))
 
             // Entrant Calendar Grid
-            EntrantCalendarGrid()
-            Spacer(modifier = Modifier.padding(8.dp))
 
             // Legend
             Row() {
