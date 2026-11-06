@@ -62,6 +62,7 @@ import com.example.dascamp.screens.ownerScreens.OwnerReservationDetails
 import com.example.dascamp.screens.ownerScreens.OwnerReservations
 import com.example.dascamp.screens.ownerScreens.OwnerRoutes
 import com.example.dascamp.screens.ownerScreens.OwnerSendNotification
+import com.example.dascamp.views.ReservationView
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -85,6 +86,7 @@ fun DasCampApp() {
     val campsiteController = remember { CampsiteController(repository) }
     val profileController = remember { ProfileController(repository) }
     val reservationController = remember { ReservationController(repository) }   // next to the other controllers
+    val reservationView = remember{ ReservationView(repository) }
 
     // The only navigation rule for sign-in state
     LaunchedEffect(repository.usersLoaded, repository.currentUser) {
@@ -124,7 +126,6 @@ fun DasCampApp() {
                     campsiteController
                 )
             }
-            composable(EntrantRoutes.CAMPSITE) { EntrantCampsiteScreen(navController, repository) }
             composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
             composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
             composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
@@ -137,12 +138,15 @@ fun DasCampApp() {
                 EntrantCampsiteScreen(
                     navController,
                     repository,
-                    scheduleController
+                    scheduleController,
+                    reservationView
                 )
             }
             //composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController) }
 
             // OWNER NAVIGATION
+            composable(OwnerRoutes.DASHBOARD) { OwnerDashboard(navController) }
+            composable(OwnerRoutes.CAMPSITES) { OwnerCampsitesList(navController, repository) }
             composable(OwnerRoutes.ADD) { OwnerAddCampsite(navController, repository) }
             composable(OwnerRoutes.CAMPSITE) { OwnerCampsite(navController, repository) }
             composable(OwnerRoutes.EDIT) { OwnerEditCampsite(navController, repository) }
@@ -150,10 +154,11 @@ fun DasCampApp() {
                 OwnerBookedDates(
                     navController,
                     repository,
-                    scheduleController
+                    scheduleController,
+                    reservationView
                 )
             }
-            composable(OwnerRoutes.MAP) { OwnerMapLocation(navController) }
+            composable(OwnerRoutes.MAP) { OwnerMapLocation(navController, repository) }
             composable(OwnerRoutes.QR) { OwnerQrCode(navController) }
             composable(OwnerRoutes.LOTTERIES) { OwnerLotteryList(navController, repository) }
             composable(OwnerRoutes.CREATE) { OwnerCreateLottery(navController, repository) }
