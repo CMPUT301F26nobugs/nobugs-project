@@ -10,18 +10,23 @@ import com.example.dascamp.model.ModelView
 /**
  * CAMPSITE VIEW
  *
- * Responsibilites:
+ * Responsibilities:
  * - Watch the model and keep up-to-date copy of the data
  *
  * Collaborators: DasCampRepository(ObservableModel), the data class
  *
- * Used by screens: add what screens use this
- * Stories: add your user story here
+ * Used by screens:
+ * Stories:
+ *
+ * @property repository the model to observe
  */
-
 class CampsiteView(private val repository: DasCampRepository) : ModelView {
 
-    // What the screens read. Changing this makes the screens reload.
+    /**
+     * The latest snapshot of the campsites. This is Compose state, so composables that
+     * read it recompose automatically when it changes. Read-only for screens in practice:
+     * only [update] should assign to it.
+     */
     var campsites by mutableStateOf(listOf<Campsite>())
 
     // Start watching as soon as this view is made
@@ -30,12 +35,17 @@ class CampsiteView(private val repository: DasCampRepository) : ModelView {
         update()
     }
 
-    // Called by the model every time its data changes
+    /**
+     * Called by the repository whenever its data changes. Replaces [campsites] with a
+     * copy of the repository's current list.
+     */
     override fun update() {
         campsites = repository.campsites.toList()
     }
 
-    // Stop watching
+    /**
+     * Stops watching the repository. After this, [campsites] is no longer refreshed.
+     */
     fun remove() {
         repository.removeView(this)
     }

@@ -46,7 +46,12 @@ import com.example.dascamp.model.Role
 import com.example.dascamp.screens.AppScaffold
 import com.example.dascamp.screens.RoleMenu
 
-// ENTRANT ROUTES
+/**
+ * Navigation routes for the entrant screens.
+ *
+ * Unlike the admin routes, none of these take arguments yet, so each constant
+ * can be passed straight to `navigate`.
+ */
 object EntrantRoutes {
     const val DASHBOARD = "entrantDashboard"
     const val CAMPSITE_LIST = "entrantCampsiteList"
@@ -61,7 +66,16 @@ object EntrantRoutes {
     const val RESERVATION = "entrantReservation"
 }
 
-// Entrant skeleton layout for the content
+/**
+ * Common layout for entrant screens: the app scaffold with the entrant navigation
+ * bar and role menu, wrapped around a scrollable, padded column.
+ *
+ * @param navController used for the back button and the navigation bar
+ * @param showBack whether to show a back button that pops the back stack
+ * @param horizontalAlignment how the children of the column are aligned horizontally;
+ * defaults to [Alignment.Start]
+ * @param content the screen's content, laid out inside the column
+ */
 @Composable
 fun EntrantPage(
     navController: NavController,
@@ -89,7 +103,12 @@ fun EntrantPage(
     }
 }
 
-// ENTRANT NAVBAR
+/**
+ * Bottom navigation bar for entrant screens, with buttons for the dashboard,
+ * campsites, notifications, messages, and profile.
+ *
+ * @param navController used to navigate to the selected destination
+ */
 @Composable
 fun EntrantNavBar(navController: NavController) {
     // Parent for navbar
@@ -134,7 +153,22 @@ fun EntrantNavBar(navController: NavController) {
     }
 }
 
-// FILTER SECTION (toggle row + collapsible card)
+/**
+ * A "Filter By:" toggle row with a collapsible card of campsite filters
+ * (location, date, and max occupancy) beneath it.
+ *
+ * This composable is stateless: the caller owns the expanded flag and the field
+ * values, and is told about every change through the callbacks.
+ *
+ * @param expanded whether the filter card is currently shown
+ * @param onToggle called when the toggle row is clicked
+ * @param location current location filter text
+ * @param onLocationChange called with the new location text
+ * @param date current date filter text
+ * @param onDateChange called with the new date text
+ * @param occupancy current max occupancy filter text
+ * @param onOccupancyChange called with the new occupancy text
+ */
 @Composable
 fun FilterSection(
     expanded: Boolean,
@@ -197,7 +231,18 @@ fun FilterSection(
     }
 }
 
-// FILTER FIELD
+/**
+ * A single labeled text field inside the filter card. The field is empty by
+ * default and shows "Any" as its placeholder.
+ *
+ * Must be called from a [Row]-compatible context only in the sense that it
+ * emits its own [Row]; it fills the available width, with the text field taking
+ * whatever space the fixed-width label leaves.
+ *
+ * @param label the text shown to the left of the field, e.g. `"Location:"`
+ * @param value the current text of the field
+ * @param onValueChange called with the new text whenever the user edits the field
+ */
 @Composable
 fun FilterField(
     label: String,
@@ -222,7 +267,13 @@ fun FilterField(
     }
 }
 
-// ENTRANT CALENDAR GRID
+/**
+ * Placeholder month calendar: a weekday header (S M T W T F S) above five rows
+ * of seven empty circles.
+ *
+ * It isn't tied to a real month or any availability data yet. It emits its rows
+ * directly into the caller's layout, so call it from inside a [Column].
+ */
 @Composable
 fun EntrantCalendarGrid() {
     Row(Modifier.fillMaxWidth()) {

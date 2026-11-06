@@ -3,16 +3,9 @@ package com.example.dascamp.screens.entrantScreens
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ExperimentalGetImage
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -66,29 +59,20 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.dascamp.controllers.ProfileController
 import com.example.dascamp.model.DasCampRepository
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Surface
-import androidx.compose.material3.TextButton
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.unit.sp
 import com.example.dascamp.controllers.CampsiteController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
@@ -97,21 +81,18 @@ import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.formatPrice
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.CampsiteMap
-import com.example.dascamp.screens.EmptyCard
-import com.example.dascamp.screens.adminScreens.AdminRoutes.campsite
 import com.example.dascamp.views.ProfileView
-import com.google.mlkit.vision.barcode.BarcodeScannerOptions
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.common.InputImage
-import java.util.concurrent.Executors
-import kotlin.concurrent.atomics.AtomicBoolean
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
-import androidx.camera.core.Preview as CameraPreview
 import com.example.dascamp.model.Lottery
 import com.example.dascamp.views.ReservationView
 
-// DASHBOARD SCREEN
+/**
+ * Entrant home screen, with shortcuts to the campsite list, reservations,
+ * notifications, messages, and the QR scanner.
+ *
+ * The greeting is hardcoded to "User" for now.
+ *
+ * @param navController used to navigate to the selected section
+ */
 @Composable
 fun EntrantDashboard(navController: NavController) {
     EntrantPage(
@@ -191,7 +172,20 @@ fun EntrantDashboardPreview() {
     }
 }
 
-// CAMPSITE LIST SCREEN
+/**
+ * Screen listing campsites, with a search field and a collapsible filter section
+ * (location, date, and max occupancy).
+ *
+ * Results come from [CampsiteController.searchCampsites]. The date filter is only
+ * applied once it is a full `yyyy-MM-dd` date, and is used as both the start and
+ * end date of the search. Tapping a result stores its id in
+ * [DasCampRepository.openCampsiteId] and navigates to [EntrantRoutes.CAMPSITE].
+ *
+ * @param navController used to navigate to a campsite
+ * @param repository where the opened campsite id is stored; if null, tapping a result
+ * still navigates but no campsite is selected
+ * @param campsiteController performs the search; if null, the list is always empty
+ */
 @Composable
 fun EntrantCampsiteList(
     navController: NavController,
@@ -271,7 +265,25 @@ fun EntrantCampsiteListPreview() {
     }
 }
 
-// CAMPSITE SCREEN
+/**
+ * Detail screen for the campsite whose id is stored in
+ * [DasCampRepository.openCampsiteId].
+ *
+ * Shows the campsite's summary, price, tags, description, rules, cancellation
+ * policy, map, and availability (open ranges and booked reservations), then a
+ * booking form (start date, end date, guests, rules checkbox). "Book Reservation"
+ * calls [ScheduleController.reserveDates] and shows the returned error or a success
+ * message. If the campsite can't be found, a "Campsite not found" message is
+ * shown instead.
+ *
+ * The current user is read from the repository, falling back to a hardcoded test
+ * user when there isn't one. The "Enter Lottery" button, pool size, and end date
+ * are still placeholders.
+ *
+ * @param navController used for back navigation and to message the owner
+ * @param repository source of the campsite, its lottery, reservations, and current user
+ * @param scheduleController checks booked dates and creates reservations
+ */
 @Composable
 fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepository? = null, scheduleController: ScheduleController? = null, reservationView: ReservationView? = null) {
 
@@ -545,8 +557,14 @@ fun CampsiteScreenPreview() {
     }
 }
 
-
-// NOTIFICATION LIST SCREEN
+/**
+ * Screen listing the entrant's notifications. Each can be dismissed with its close
+ * button, or tapped to navigate to the campsite screen.
+ *
+ * The notifications are hardcoded dummy strings for now.
+ *
+ * @param navController used to navigate when a notification is tapped
+ */
 @Composable
 fun EntrantNotificationList(navController: NavController) {
     // Dummy data
@@ -598,6 +616,14 @@ fun EntrantNotificationList(navController: NavController) {
     }
 }
 
+/**
+ * A single notification card with a dismiss button, the notification text, and a
+ * chevron indicating it can be opened.
+ *
+ * @param alert the notification text to show
+ * @param onDismiss called when the close button is tapped
+ * @param onClick called when the card is tapped
+ */
 @Composable
 fun EntrantNotificationRow(
     alert: String,
@@ -645,7 +671,16 @@ fun EntrantNotificationRow(
     }
 }
 
-// RESERVATION LIST SCREEN
+/**
+ * Screen listing the entrant's reservations, split into "Active" and "Past" tabs.
+ *
+ * Active reservations show a "Cancel reservation" button, which calls
+ * [ReservationController.cancel]. If no controller is passed, both lists are empty.
+ *
+ * @param navController used for the scaffold's navigation
+ * @param reservationController supplies the active and past reservations and
+ * handles cancellation
+ */
 @Composable
 fun EntrantReservationList(
     navController: NavController,
@@ -708,7 +743,15 @@ fun EntrantReservationList(
     }
 }
 
-// MESSAGE LIST SCREEN
+/**
+ * Screen listing the entrant's message conversations with owners, with a search
+ * field. Tapping a conversation opens [EntrantMessageScreen].
+ *
+ * The conversations are hardcoded dummy entries ("Owner 1" to "Owner 6"), and the
+ * search text doesn't filter anything yet.
+ *
+ * @param navController used to navigate to a conversation
+ */
 @Composable
 fun EntrantMessageList(navController: NavController) {
     var query by rememberSaveable { mutableStateOf("") }
@@ -781,7 +824,14 @@ fun EntrantMessageList(navController: NavController) {
     }
 }
 
-// MESSAGE SCREEN
+/**
+ * Chat screen for a conversation with a campsite owner: message bubbles (the
+ * entrant's on the right, the owner's on the left) above a message field.
+ *
+ * The messages are hardcoded dummy data, and the send icon doesn't send anything yet.
+ *
+ * @param navController used for back navigation
+ */
 @Composable
 fun EntrantMessageScreen(navController: NavController) {
     // Dummy data
@@ -875,7 +925,17 @@ fun EntrantMessageScreen(navController: NavController) {
 }
 
 
-// PROFILE SCREEN
+/**
+ * The entrant's profile screen: name, email, phone, a "Change Profile Picture"
+ * card, an edit button, a notifications toggle, the app policy, an "Apply to be a
+ * Campsite Owner" card, and a "Delete Profile" card.
+ *
+ * All of the profile data is hardcoded, and the edit, picture, policy, apply, and
+ * delete cards don't do anything yet. Only the notifications toggle changes its
+ * own label.
+ *
+ * @param navController used for the scaffold's navigation
+ */
 @Composable
 fun EntrantProfileScreen(navController: NavController, repository: DasCampRepository) {
     val entrantId = repository.uid
@@ -1185,6 +1245,12 @@ fun EntrantProfileScreen(navController: NavController, repository: DasCampReposi
     }
 }
 
+/**
+ * QR code scanner screen. Currently a placeholder: it shows a QR icon and a
+ * "SCAN" button that navigates to the campsite screen.
+ *
+ * @param navController used to navigate after "scanning"
+ */
 //edit profile
 @Composable
 fun EditProfile(

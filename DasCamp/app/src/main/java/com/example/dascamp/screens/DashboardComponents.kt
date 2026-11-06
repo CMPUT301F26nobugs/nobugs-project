@@ -32,7 +32,18 @@ import com.example.dascamp.screens.entrantScreens.EntrantRoutes
 import com.example.dascamp.screens.ownerScreens.OwnerRoutes
 import com.example.dascamp.ui.theme.DasCampTheme
 
-/** Buttons to jump to the other dashboards this user is allowed to use */
+/**
+ * A column of buttons for jumping to the other dashboards this user is allowed to use.
+ *
+ * One full-width "Switch to <role> view" button is shown for each role the user holds
+ * other than [current]. Tapping one navigates to that role's dashboard and pops any
+ * earlier copy of that dashboard off the back stack. Nothing is shown if [user] is null
+ * or holds no other roles.
+ *
+ * @param navController used to navigate to the chosen dashboard
+ * @param user the signed-in user, or null if there isn't one
+ * @param current the role of the screen this is shown on, which is left out of the buttons
+ */
 @Composable
 fun RoleSwitcher(navController: NavController, user: User?, current: Role) {
     if (user == null) return
@@ -51,7 +62,15 @@ fun RoleSwitcher(navController: NavController, user: User?, current: Role) {
     }
 }
 
-// BIG BUTTON SKELETON (can be used for big buttons on dashboards)
+/**
+ * A large square card button with an icon above a centered label, intended for the
+ * main actions on dashboards.
+ *
+ * @param onClickAction called when the card is tapped
+ * @param icon the icon shown above the label
+ * @param iconDesc accessibility description of the icon
+ * @param label the text under the icon; use `\n` for a manual line break
+ */
 @Composable
 fun BigButton(
     onClickAction: () -> Unit,
@@ -92,7 +111,12 @@ fun BigButtonPreview() {
     }
 }
 
-// PLACEHOLDER BAR FOR EMPTY/LOADING STATES
+/**
+ * A rounded gray bar used as a placeholder for text that is empty or still loading.
+ *
+ * @param widthFraction fraction of the available width the bar fills, from 0 to 1;
+ * defaults to the full width
+ */
 @Composable
 fun EmptyValue(widthFraction: Float = 1f) {
     Box(
@@ -103,7 +127,12 @@ fun EmptyValue(widthFraction: Float = 1f) {
     )
 }
 
-// PLACEHOLDER CARD BUILT FROM EmptyValue BARS
+/**
+ * A clickable placeholder card made of two [EmptyValue] bars, used where a list item
+ * will eventually go.
+ *
+ * @param onClick called when the card is tapped
+ */
 @Composable
 fun EmptyCard(onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {

@@ -64,6 +64,32 @@ import com.example.dascamp.screens.ownerScreens.OwnerRoutes
 import com.example.dascamp.screens.ownerScreens.OwnerSendNotification
 import com.example.dascamp.views.ReservationView
 
+/**
+ * Root composable of the app: creates the repository and controllers, decides where a
+ * user belongs based on their sign-in state, and hosts the navigation graph for all
+ * three roles (entrant, owner, admin).
+ *
+ * **Identity.** The user id is the device's `ANDROID_ID`, read once and passed to
+ * [DasCampRepository]. There is no password or login screen: a device whose id has no
+ * matching user document is treated as new and sent to sign-up.
+ *
+ * **Sign-in routing.** A single `LaunchedEffect` is the only navigation rule for sign-in
+ * state. Once the repository has loaded its first users snapshot:
+ * - no user: go to `signUpScreen`, clearing the back stack;
+ * - a user while on `signUpScreen`: go to their home dashboard and remove the sign-up
+ *   screen from the back stack. The home is the admin dashboard if the user is an admin,
+ *   otherwise entrant, then owner, falling back to entrant if no role is set.
+ *
+ * This is the "effect at the top" that [SignUpScreen] refers to: that screen never
+ * navigates itself.
+ *
+ * **Current user.** The repository's current user is exposed to the whole graph through
+ * [LocalCurrentUser], which is what the header's role switcher reads.
+ *
+ * **Graph.** Entrant, owner, and admin routes are registered below, grouped by role.
+ * The start destination is `signUpScreen`, so returning users briefly pass through it
+ * (a spinner while users load) before being redirected.
+ */
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DasCampApp() {

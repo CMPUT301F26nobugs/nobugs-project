@@ -30,7 +30,13 @@ import com.example.dascamp.model.Role
 import com.example.dascamp.screens.AppScaffold
 import com.example.dascamp.screens.RoleMenu
 
-// ADMIN ROUTES
+/**
+ * Navigation routes for the admin screens.
+ *
+ * Constants containing `{placeholders}` are route patterns, registered in the NavHost.
+ * To navigate to one of them, build the concrete route with [profile], [campsite],
+ * or [message] instead of using the constant directly.
+ */
 object AdminRoutes {
     const val DASHBOARD = "adminDashboard"
     const val CAMPSITE_LIST = "adminCampsiteList"
@@ -45,12 +51,38 @@ object AdminRoutes {
     const val APPROVED_LOG = "adminApprovedLog"
     const val OTHER_LOG = "adminOtherLog"
 
-    // Build route for a profile, ie. "adminProfile/OWNER"
+    /**
+     * Builds the route for a profile screen, e.g. `"adminProfile/OWNER"`.
+     *
+     * @param type the kind of profile to show
+     */
     fun profile(type: ProfileType) = "adminProfile/${type.name}"
+
+    /**
+     * Builds the route for viewing a single campsite.
+     *
+     * @param id the campsite id; defaults to `"default_id"`
+     */
     fun campsite(id: String = "default_id") = "AdminViewCampsite/$id"
+
+    /**
+     * Builds the route for viewing a single message.
+     *
+     * @param id the message id; defaults to `"default_id"`
+     */
     fun message(id: String ="default_id") = "adminViewMessage/$id"
 }
 
+/**
+ * Common layout for admin screens: the app scaffold with the admin navigation bar
+ * and role menu, wrapped around a scrollable, padded column.
+ *
+ * @param navController used for the back button and the navigation bar
+ * @param showBack whether to show a back button that pops the back stack
+ * @param horizontalAlignment how the children of the column are aligned horizontally;
+ * defaults to [Alignment.Start]
+ * @param content the screen's content, laid out inside the column
+ */
 @Composable
 fun AdminPage(
     navController: NavController,
@@ -76,7 +108,12 @@ fun AdminPage(
     }
 }
 
-// ADMIN NAVBAR
+/**
+ * Bottom navigation bar for admin screens, with buttons for the dashboard,
+ * campsites, profiles, notification logs, and the image gallery.
+ *
+ * @param navController used to navigate to the selected destination
+ */
 @Composable
 fun AdminNavBar(navController: NavController) {
     // Parent for navbar

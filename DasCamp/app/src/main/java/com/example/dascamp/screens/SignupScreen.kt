@@ -33,7 +33,27 @@ import com.example.dascamp.model.User
 import com.example.dascamp.screens.adminScreens.AdminRoutes
 import com.example.dascamp.screens.ownerScreens.OwnerRoutes
 
-// SIGN-UP SCREEN
+/**
+ * Sign-up form for a new user: first name, last name, email, and phone number.
+ *
+ * While the repository is still waiting for its first users snapshot
+ * ([DasCampRepository.usersLoaded] is false), a loading spinner is shown instead of the
+ * form, so it doesn't flash for users who already have an account.
+ *
+ * The "Sign-Up" button is enabled only when a repository is present and its
+ * [DasCampRepository.uid] is not empty. When tapped, it does nothing unless first name,
+ * last name, and email are all non-blank; otherwise it trims the inputs and calls
+ * [DasCampRepository.addUser] with a new [User] whose id is the repository's uid.
+ * The phone number is optional.
+ *
+ * This screen does not navigate after signing up. It relies on logic elsewhere
+ * observing the repository, so that once the new user appears, they are routed to their
+ * dashboard.
+ *
+ * @param navController currently unused by this screen
+ * @param repository used to check loading state and to save the new user; if null, the
+ * form is shown but the button is disabled
+ */
 @Composable
 fun SignUpScreen(
     navController: NavController,
