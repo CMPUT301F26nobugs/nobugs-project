@@ -26,20 +26,20 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
 
     // LIVE LISTS (filled from Firestore, read-only from the outside)
     private val _campsites = mutableStateListOf<Campsite>()
-    val campsites: List<Campsite> get() = _campsites
+    override val campsites: List<Campsite> get() = _campsites
 
     private val _lotteries = mutableStateListOf<Lottery>()
-    val lotteries: List<Lottery> get() = _lotteries
+    override val lotteries: List<Lottery> get() = _lotteries
 
     private val _reservations = mutableStateListOf<Reservation>()
-    val reservations: List<Reservation> get() = _reservations
+    override val reservations: List<Reservation> get() = _reservations
 
     private val _notifications = mutableStateListOf<Notification>()
-    val notifications: List<Notification> get() = _notifications
+    override val notifications: List<Notification> get() = _notifications
 
     private val _users = mutableStateListOf<User>()
-    val users: List<User> get() = _users
-    val currentUser: User? get() = _users.firstOrNull { it.id == uid } // This device's user, or null if it hasn't signed up (or was deleted)
+    override val users: List<User> get() = _users
+    override val currentUser: User? get() = _users.firstOrNull { it.id == uid } // This device's user, or null if it hasn't signed up (or was deleted)
 
     // False until the first users snapshot arrives
     // Tells "still loading" apart from "loaded, and this device has no user yet"
@@ -77,29 +77,29 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
     }
 
     // CAMPSITES
-    fun addCampsite(campsite: Campsite) = save(campsitesRef, campsite.id, campsite)
-    fun updateCampsite(campsite: Campsite) = save(campsitesRef, campsite.id, campsite)
-    fun deleteCampsite(campsite: Campsite) = remove(campsitesRef, campsite.id)
+    override fun addCampsite(campsite: Campsite) = save(campsitesRef, campsite.id, campsite)
+    override fun updateCampsite(campsite: Campsite) = save(campsitesRef, campsite.id, campsite)
+    override fun deleteCampsite(campsite: Campsite) = remove(campsitesRef, campsite.id)
 
     // LOTTERIES
-    fun addLottery(lottery: Lottery) = save(lotteriesRef, lottery.id, lottery)
-    fun updateLottery(lottery: Lottery) = save(lotteriesRef, lottery.id, lottery)
-    fun deleteLottery(lottery: Lottery) = remove(lotteriesRef, lottery.id)
+    override fun addLottery(lottery: Lottery) = save(lotteriesRef, lottery.id, lottery)
+    override fun updateLottery(lottery: Lottery) = save(lotteriesRef, lottery.id, lottery)
+    override fun deleteLottery(lottery: Lottery) = remove(lotteriesRef, lottery.id)
 
     // RESERVATIONS
-    fun addReservation(reservation: Reservation) = save(reservationsRef, reservation.id, reservation)
-    fun updateReservation(reservation: Reservation) = save(reservationsRef, reservation.id, reservation)
-    fun deleteReservation(reservation: Reservation) = remove(reservationsRef, reservation.id)
+    override fun addReservation(reservation: Reservation) = save(reservationsRef, reservation.id, reservation)
+    override fun updateReservation(reservation: Reservation) = save(reservationsRef, reservation.id, reservation)
+    override fun deleteReservation(reservation: Reservation) = remove(reservationsRef, reservation.id)
 
     // NOTIFICATIONS
-    fun addNotification(notification: Notification) = save(notificationsRef, notification.id, notification)
-    fun deleteNotification(notification: Notification) = remove(notificationsRef, notification.id)
+    override fun addNotification(notification: Notification) = save(notificationsRef, notification.id, notification)
+    override fun deleteNotification(notification: Notification) = remove(notificationsRef, notification.id)
 
     // USERS
-    fun userById(id: String): User? = _users.firstOrNull { it.id == id }
-    fun addUser(user: User) = save(usersRef, user.id, user)
-    fun updateUser(user: User) = save(usersRef, user.id, user)
-    fun deleteUser(user: User) = remove(usersRef, user.id)
+    override fun userById(id: String): User? = _users.firstOrNull { it.id == id }
+    override fun addUser(user: User) = save(usersRef, user.id, user)
+    override fun updateUser(user: User) = save(usersRef, user.id, user)
+    override fun deleteUser(user: User) = remove(usersRef, user.id)
 
     // HELPERS
     /**

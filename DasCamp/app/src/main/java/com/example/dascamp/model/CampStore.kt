@@ -2,10 +2,6 @@ package com.example.dascamp.model
 
 /**
  * Data access used by controllers.
- *
- * [DasCampRepository] implements this with Firestore.
- * Unit tests use an in-memory fake so JUnit can run on the JVM
- * without Firebase.
  */
 interface CampStore {
     val uid: String

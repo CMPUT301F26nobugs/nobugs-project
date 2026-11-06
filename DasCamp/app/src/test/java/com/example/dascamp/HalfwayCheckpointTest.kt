@@ -28,9 +28,6 @@ import java.util.Random
 
 /**
  * JUnit tests for open Half-way Checkpoint user stories.
- *
- * Follows Lab 6 style: [Before] builds a fresh fake store and controllers,
- * each [Test] checks one behaviour with assertEquals / assertTrue.
  */
 class HalfwayCheckpointTest {
 
@@ -85,7 +82,7 @@ class HalfwayCheckpointTest {
         reservationController = ReservationController(store)
     }
 
-    // -------- Owner: US 02.01.* --------
+    //Owner
 
     @Test
     fun toCampsite_validForm_registerSuccessful() {
@@ -149,8 +146,6 @@ class HalfwayCheckpointTest {
         assertEquals("Banff", campsite!!.location)
         assertEquals(4, campsite.maxOccupancy)
     }
-
-    // -------- Owner: US 02.04.* --------
 
     @Test
     fun toLottery_validForm_listSuccessful() {
@@ -226,8 +221,6 @@ class HalfwayCheckpointTest {
 
         assertEquals(3, store.lotteries.first().winnerCount)
     }
-
-    // -------- Owner: US 02.05 / 02.06 / 02.07 / 02.09 / 02.11 --------
 
     @Test
     fun drawWinners_afterRegistration_successful() {
@@ -367,7 +360,7 @@ class HalfwayCheckpointTest {
         assertEquals(1, store.reservations.size)
     }
 
-    // -------- Entrant: US 01.* --------
+    //Entrant
 
     @Test
     fun searchCampsites_byLocation_successful() {
