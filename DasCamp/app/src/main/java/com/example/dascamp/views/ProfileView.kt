@@ -4,8 +4,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.dascamp.model.DasCampRepository
-import com.example.dascamp.model.EntrantProfile
 import com.example.dascamp.model.ModelView
+import com.example.dascamp.model.User
 import com.google.firebase.firestore.ListenerRegistration
 
 /**
@@ -23,7 +23,7 @@ import com.google.firebase.firestore.ListenerRegistration
 class ProfileView(private val repository: DasCampRepository,
                   private val entrantId: String
 ) : ModelView {
-    var profile by mutableStateOf<EntrantProfile?>(null)
+    var profile by mutableStateOf<User?>(null)
 
     // Start watching as soon as this view is made
     init {
@@ -33,7 +33,7 @@ class ProfileView(private val repository: DasCampRepository,
 
     // Called by the model every time its data changes
     override fun update() {
-        profile = repository.entrants.find { it.id == entrantId }
+        profile = repository.currentUser
     }
 
     // Stop watching

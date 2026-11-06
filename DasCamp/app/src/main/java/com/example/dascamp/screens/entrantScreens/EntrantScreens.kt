@@ -87,15 +87,12 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.example.dascamp.controllers.CampsiteController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.Campsite
-import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.formatPrice
 import com.example.dascamp.screens.BigButton
@@ -879,8 +876,9 @@ fun EntrantMessageScreen(navController: NavController) {
 
 // PROFILE SCREEN
 @Composable
-fun EntrantProfileScreen(navController: NavController, repository: DasCampRepository,
-                         entrantId: String) {
+fun EntrantProfileScreen(navController: NavController, repository: DasCampRepository) {
+    val entrantId = repository.uid
+
     // Dummy data
     var notifications by remember { mutableStateOf(false) }
     var showRules by rememberSaveable { mutableStateOf(false) } //app rules
@@ -1026,7 +1024,7 @@ fun EntrantProfileScreen(navController: NavController, repository: DasCampReposi
                         initialPhone = p.phoneNumber,
                         onDismiss = { showEdit = false },
                         onSave = { f, l, e, ph ->
-                            controller.saveEntrantProfile(p, f, l, e, ph)
+                            controller.saveProfile(f, l, e, ph)
                             showEdit = false
                         }
                     )
