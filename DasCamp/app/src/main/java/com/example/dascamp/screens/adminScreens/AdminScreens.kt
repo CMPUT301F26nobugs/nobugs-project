@@ -52,13 +52,22 @@ import androidx.compose.ui.unit.dp
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
 
 
-// 2 types of profiles that can be browsed
+/**
+ * The kinds of profile an admin can browse.
+ *
+ * @property label the plural name shown on filter chips
+ */
 enum class ProfileType(val label: String) {
     ENTRANT("Entrants"),
     OWNER("Owners")
 }
 
-// ADMIN DASHBOARD SCREEN
+/**
+ * Admin home screen, with shortcuts to the campsite list, the profile list,
+ * and the notification logs.
+ *
+ * @param navController used to navigate to the selected section
+ */
 @Composable
 fun AdminDashboard(navController: NavController) {
     AdminPage(
@@ -127,7 +136,15 @@ fun AdminDashboardPreview() {
     }
 }
 
-// PROFILE LIST SCREEN
+/**
+ * Screen listing user profiles, with a search field and entrant/owner filter chips.
+ *
+ * The search text and selected filter survive configuration changes. Selecting
+ * the chosen chip again clears the filter (shows all). The list itself is still
+ * a placeholder card that navigates to a profile.
+ *
+ * @param navController used to navigate to a profile
+ */
 @Composable
 fun AdminProfileList(navController: NavController) {
     var query by rememberSaveable { mutableStateOf("") }                        // profile search
@@ -185,7 +202,17 @@ fun AdminProfileListPreview() {
     }
 }
 
-// VIEW PROFILE SCREEN -> entrant or owner
+/**
+ * Detail screen for a single entrant or owner profile.
+ *
+ * Both types can have their profile picture deleted. Entrants can additionally be
+ * deleted, while owners offer a link to their messages with entrants and a
+ * "Remove Campsite Owner" action. Destructive actions ask for confirmation first.
+ * The profile data and the delete actions are still placeholders.
+ *
+ * @param navController used for back navigation and for following actions
+ * @param profileType whether this is an entrant or an owner profile
+ */
 @Composable
 fun AdminViewProfile(navController: NavController, profileType: ProfileType) {
     AdminPage(
@@ -266,6 +293,7 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType) {
     }
 }
 
+/** Button colors for destructive actions (error container with matching content color). */
 @Composable
 private fun destructiveButtonColors() = ButtonDefaults.buttonColors(
     containerColor = MaterialTheme.colorScheme.error,
@@ -288,7 +316,12 @@ fun AdminViewOwnerProfilePreview() {
     }
 }
 
-// NOTIFICATION LOG SCREEN -> lead to 3 different screens/log types
+/**
+ * Notification log hub, with buttons leading to the campsite request log,
+ * the approved request log, and the "other" log.
+ *
+ * @param navController used to navigate to the selected log
+ */
 @Composable
 fun NotificationLog(navController: NavController) {
     AdminPage(
@@ -329,25 +362,43 @@ fun NotificationLogPreview() {
     }
 }
 
-// REQUEST LOG SCREEN
+/**
+ * Log of campsite requests made by users.
+ *
+ * @param navController used for navigation
+ */
 @Composable
 fun RequestLog(navController: NavController) {
     LogScreen(navController, "Campsite Requests")
 }
 
-// APPROVED LOG SCREEN
+/**
+ * Log of approved requests.
+ *
+ * @param navController used for navigation
+ */
 @Composable
 fun ApprovedLog(navController: NavController) {
     LogScreen(navController, "Approved Requests")
 }
 
-// OTHER LOG SCREEN
+/**
+ * Log of notifications that don't fit the request or approved logs.
+ *
+ * @param navController used for navigation
+ */
 @Composable
 fun OtherLog(navController: NavController) {
     LogScreen(navController, "Other")
 }
 
-// Shared skeleton code for the three log screens
+/**
+ * Shared skeleton for the three log screens: a centered title above a list of
+ * log entries (still a placeholder).
+ *
+ * @param navController used for navigation
+ * @param title the heading shown at the top of the screen
+ */
 @Composable
 private fun LogScreen(navController: NavController, title: String) {
     AdminPage(
@@ -373,6 +424,12 @@ fun RequestLogPreview() {
     }
 }
 
+/**
+ * Screen listing campsites, with a search field. The list itself is still a
+ * placeholder card that opens a campsite.
+ *
+ * @param navController used to navigate to a campsite
+ */
 @Composable
 fun AdminCampsiteList(navController: NavController) {
     var query by rememberSaveable { mutableStateOf("") } // campsite search
@@ -410,6 +467,16 @@ fun AdminCampsiteListPreview() {
     }
 }
 
+/**
+ * Detail screen for a single campsite, as seen by an admin.
+ *
+ * Shows the image, main info, rules, geolocation, and availability legend
+ * (all placeholders for now), plus actions to delete the image, view messages
+ * with entrants, view the owner's profile, and remove the campsite. Destructive
+ * actions ask for confirmation first.
+ *
+ * @param navController used for back navigation and for following actions
+ */
 @Composable
 fun AdminViewCampsite(navController: NavController) {
     var showConfirmation by remember { mutableStateOf(false) }
@@ -557,6 +624,11 @@ fun AdminViewCampsitePreview() {
     }
 }
 
+/**
+ * Admin gallery of uploaded images. The list is still a placeholder card.
+ *
+ * @param navController used for navigation
+ */
 @Composable
 fun ImageGallery(navController: NavController) {
     AdminPage(
@@ -582,6 +654,12 @@ fun ImageGalleryPreview() {
     }
 }
 
+/**
+ * Screen listing message conversations between owners and entrants, with a
+ * search field. The list itself is still a placeholder card that opens a message.
+ *
+ * @param navController used to navigate to a message
+ */
 @Composable
 fun AdminMessageList(navController: NavController) {
     var query by rememberSaveable { mutableStateOf("") }  // profile search
@@ -619,6 +697,13 @@ fun AdminMessageListPreview() {
     }
 }
 
+/**
+ * Screen showing a single conversation between an entrant and a campsite owner,
+ * with the entrant's message on top and the owner's reply below. The message
+ * content is hardcoded placeholder text for now.
+ *
+ * @param navController used for back navigation
+ */
 @Composable
 fun AdminViewMessage(navController: NavController) {
     AdminPage(
@@ -669,6 +754,18 @@ fun AdminViewMessagePreview() {
     }
 }
 
+/**
+ * Creates a click handler that shows a confirmation dialog before running an action.
+ *
+ * Call this where you'd normally pass an `onClick`. The returned lambda opens a
+ * dialog with [message]; [onConfirm] runs only if the user taps the confirm button.
+ *
+ * @param message the question shown in the dialog
+ * @param confirmText label of the confirm button; defaults to "Remove"
+ * @param dismissText label of the cancel button; defaults to "Cancel"
+ * @param onConfirm the action to run once the user confirms
+ * @return a click handler that opens the dialog
+ */
 @Composable
 fun rememberConfirmClick(
     message: String,

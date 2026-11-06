@@ -32,6 +32,10 @@ data class DateRange(
     val end: String = ""
 )
 
+/**
+ * Result of attempting to build a [Campsite].
+ * Exactly one field is non-null: [campsite] on success, [error] on failure.
+ */
 data class CampsiteBuild(val campsite: Campsite?, val error: String?)
 
 /**

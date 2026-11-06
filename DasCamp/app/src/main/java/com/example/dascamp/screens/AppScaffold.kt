@@ -41,7 +41,21 @@ import com.example.dascamp.screens.entrantScreens.EntrantRoutes
 import com.example.dascamp.screens.ownerScreens.OwnerRoutes
 import com.example.dascamp.ui.theme.DasCampTheme
 
-// REUSABLE SCREEN LAYOUT CALL W/ HEADER AND NAVBAR (MAKE YOUR OWN NAVBAR)
+/**
+ * Reusable screen layout with the app header on top and a navigation bar on the bottom.
+ * Each role's page (e.g. `EntrantPage`, `AdminPage`) builds on this, supplying its own
+ * navigation bar.
+ *
+ * The header shows the app name (from `R.string.app_name`), an optional back arrow,
+ * and an optional role switcher.
+ *
+ * @param onBackClick called when the back arrow is tapped; the arrow is only shown
+ * when this is non-null
+ * @param navBar the bottom navigation bar; empty by default
+ * @param roleMenu the top-right slot, normally a [RoleMenu]; empty by default
+ * @param content the screen's content, given the scaffold's [PaddingValues] (the space
+ * taken by the header and navigation bar) so it can avoid drawing underneath them
+ */
 @Composable
 fun AppScaffold(
     onBackClick: (() -> Unit)? = null,  // default is null, so arrow only shows when you pass a function
@@ -80,7 +94,14 @@ fun AppScaffoldPreview() {
     }
 }
 
-// REUSABLE HEADER
+/**
+ * Reusable top bar: an optional back arrow on the left, the app title in the
+ * center, and a slot for the role switcher on the right. It sits below the status bar.
+ *
+ * @param appTitle the title shown in the center
+ * @param onBackClick called when the back arrow is tapped; the arrow is hidden if null
+ * @param roleMenu content for the right-hand slot, normally a [RoleMenu]; empty by default
+ */
 @Composable
 fun Header(
     appTitle: String,
@@ -126,11 +147,27 @@ fun Header(
     }
 }
 
+/**
+ * The signed-in [User], made available to any composable below the point where it is provided.
+ *
+ * Defaults to `null` (no user). [RoleMenu] reads this to decide which roles to offer, so it
+ * must be supplied higher up with `CompositionLocalProvider(LocalCurrentUser provides user)`;
+ * otherwise the role menu silently stays hidden.
+ */
 val LocalCurrentUser = compositionLocalOf<User?> { null }
 
 /**
  * Header toggle for switching between the roles this user holds
  * Hidden when the user has only one role
+ *
+ * Reads the user from [LocalCurrentUser]. Tapping the icon opens a dropdown of the user's
+ * roles, with the [current] one in bold. Choosing a different role navigates to that role's
+ * dashboard and clears the back stack (`popUpTo(0)`), so back doesn't return to the old role.
+ *
+ * Nothing is shown if there is no user or the user holds fewer than two roles.
+ *
+ * @param navController used to navigate to the chosen role's dashboard
+ * @param current the role of the screen this menu is shown on
  */
 @Composable
 fun RoleMenu(navController: NavController, current: Role) {
