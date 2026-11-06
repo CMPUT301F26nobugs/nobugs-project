@@ -1,7 +1,7 @@
 package com.example.dascamp.controllers
 
+import com.example.dascamp.model.CampStore
 import com.example.dascamp.model.Campsite
-import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.Lottery
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
@@ -16,11 +16,11 @@ import java.util.UUID
  * - Check if date is inside owner's availability
  *
  * Collaborators:
- * - DasCampRepository, Campsite, Reservation, DateRange
+ * - DasCampstore, Campsite, Reservation, DateRange
  *
  * Stories: US 02.06.01, US 01.04.01
  */
-class ScheduleController (private val repository: DasCampRepository){
+class ScheduleController (private val store: CampStore){
     //active reservations for campsite
     fun bookedReservations(campsiteId: String, reservations: List<Reservation>): List<Reservation>{
         val booked = mutableListOf<Reservation>()
@@ -44,7 +44,7 @@ class ScheduleController (private val repository: DasCampRepository){
 
     // checks if an active reservation has this date
     fun isDateBooked(campsiteId: String, date: String): Boolean{
-        val booked = bookedReservations(campsiteId, repository.reservations)
+        val booked = bookedReservations(campsiteId, store.reservations)
         for (reservation in booked){
             if(date >= reservation.startDate && date <= reservation.endDate){
                 return true
@@ -76,7 +76,7 @@ class ScheduleController (private val repository: DasCampRepository){
             return false
         }
         //check if overlaps
-        val booked = bookedReservations(campsite.id, repository.reservations)
+        val booked = bookedReservations(campsite.id, store.reservations)
         for (reservation in booked){
             if(startDate <= reservation.endDate && endDate >= reservation.startDate){
                 return false
@@ -141,7 +141,7 @@ class ScheduleController (private val repository: DasCampRepository){
             guestCount = guestCount,
             rulesAccepted = rulesAccepted
         )
-        repository.addReservation(reservation)
+        store.addReservation(reservation)
 
         // mark this entrants as booked in lottery
         return null

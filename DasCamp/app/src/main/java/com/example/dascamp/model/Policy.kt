@@ -11,5 +11,6 @@ object Policy {
      *
      * Currently, a placeholder; the real policies still need to be written.
      */
-    const val TEXT = "This is the policies for the app" // TODO: write some policies plssssss
+    const val TEXT = "DasCamp guidelines: treat hosts and guests respectfully, " +
+                "follow each campsite's rules, cancel with notice, and do not misuse lotteries."
 }

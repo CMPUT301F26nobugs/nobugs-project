@@ -1,6 +1,8 @@
 package com.example.dascamp
 
+import android.os.Build
 import android.provider.Settings
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +62,7 @@ import com.example.dascamp.screens.ownerScreens.OwnerReservationDetails
 import com.example.dascamp.screens.ownerScreens.OwnerReservations
 import com.example.dascamp.screens.ownerScreens.OwnerRoutes
 import com.example.dascamp.screens.ownerScreens.OwnerSendNotification
+import com.example.dascamp.views.ReservationView
 
 /**
  * Root composable of the app: creates the repository and controllers, decides where a
@@ -87,6 +90,7 @@ import com.example.dascamp.screens.ownerScreens.OwnerSendNotification
  * The start destination is `signUpScreen`, so returning users briefly pass through it
  * (a spinner while users load) before being redirected.
  */
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DasCampApp() {
 
@@ -108,6 +112,7 @@ fun DasCampApp() {
     val campsiteController = remember { CampsiteController(repository) }
     val profileController = remember { ProfileController(repository) }
     val reservationController = remember { ReservationController(repository) }   // next to the other controllers
+    val reservationView = remember{ ReservationView(repository) }
 
     // The only navigation rule for sign-in state
     LaunchedEffect(repository.usersLoaded, repository.currentUser) {
@@ -131,6 +136,7 @@ fun DasCampApp() {
         }
     }
 
+
     // Provide the local user to the navhost
     CompositionLocalProvider(LocalCurrentUser provides repository.currentUser) {
         NavHost(navController = navController, startDestination = startDestination) {
@@ -146,20 +152,23 @@ fun DasCampApp() {
                     campsiteController
                 )
             }
+            composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
+            composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
+            composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
+            composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController, reservationController) }
+            composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController, repository) }
+
+            composable(EntrantRoutes.RESERVATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite screen
+
             composable(EntrantRoutes.CAMPSITE) {
                 EntrantCampsiteScreen(
                     navController,
                     repository,
-                    scheduleController
+                    scheduleController,
+                    reservationView
                 )
             }
-            composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
-            composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
-            composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
-            composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController) }
-            composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController) }
-            composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController, reservationController) }
-            composable(EntrantRoutes.RESERVATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite screen
+            //composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController) }
 
             // OWNER NAVIGATION
             composable(OwnerRoutes.DASHBOARD) { OwnerDashboard(navController) }
@@ -171,10 +180,11 @@ fun DasCampApp() {
                 OwnerBookedDates(
                     navController,
                     repository,
-                    scheduleController
+                    scheduleController,
+                    reservationView
                 )
             }
-            composable(OwnerRoutes.MAP) { OwnerMapLocation(navController) }
+            composable(OwnerRoutes.MAP) { OwnerMapLocation(navController, repository) }
             composable(OwnerRoutes.QR) { OwnerQrCode(navController) }
             composable(OwnerRoutes.LOTTERIES) { OwnerLotteryList(navController, repository) }
             composable(OwnerRoutes.CREATE) { OwnerCreateLottery(navController, repository) }

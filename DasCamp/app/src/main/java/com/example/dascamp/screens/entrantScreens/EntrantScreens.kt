@@ -1,5 +1,11 @@
 package com.example.dascamp.screens.entrantScreens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,26 +59,31 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import com.example.dascamp.controllers.ProfileController
+import com.example.dascamp.model.DasCampRepository
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.draw.clipToBounds
 import com.example.dascamp.controllers.CampsiteController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.Campsite
-import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.formatPrice
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.CampsiteMap
-import com.example.dascamp.screens.EmptyCard
+import com.example.dascamp.views.ProfileView
 import com.example.dascamp.model.Lottery
+import com.example.dascamp.views.ReservationView
 
 /**
  * Entrant home screen, with shortcuts to the campsite list, reservations,
@@ -273,7 +285,7 @@ fun EntrantCampsiteListPreview() {
  * @param scheduleController checks booked dates and creates reservations
  */
 @Composable
-fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepository? = null, scheduleController: ScheduleController? = null) {
+fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepository? = null, scheduleController: ScheduleController? = null, reservationView: ReservationView? = null) {
 
     // campsite entrant tapped
     var campsite: Campsite? = null
@@ -418,8 +430,8 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
 
             //date is booked
             var booked = listOf<Reservation>()
-            if (scheduleController != null && repository != null){
-                booked = scheduleController.bookedReservations(campsite.id, repository.reservations)
+            if (scheduleController != null && reservationView != null){
+                booked = scheduleController.bookedReservations(campsite.id,  reservationView.reservations)
             }
             if(booked.isEmpty()){
                 Text("No dates booked")
@@ -925,9 +937,18 @@ fun EntrantMessageScreen(navController: NavController) {
  * @param navController used for the scaffold's navigation
  */
 @Composable
-fun EntrantProfileScreen(navController: NavController) {
+fun EntrantProfileScreen(navController: NavController, repository: DasCampRepository) {
+    val entrantId = repository.uid
+
     // Dummy data
     var notifications by remember { mutableStateOf(false) }
+    var showRules by rememberSaveable { mutableStateOf(false) } //app rules
+    val view = remember(entrantId) { ProfileView(repository, entrantId) }
+    val controller = remember { ProfileController(repository) }
+    DisposableEffect(view) { onDispose { view.remove() } }
+
+    val profile = view.profile
+    var showEdit by rememberSaveable { mutableStateOf(false) }
 
     EntrantPage(
         navController = navController,
@@ -1001,7 +1022,7 @@ fun EntrantProfileScreen(navController: NavController) {
                     }
                     Card(
                         modifier = Modifier
-                            .clickable {},
+                            .clickable {showEdit = true},
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -1055,6 +1076,22 @@ fun EntrantProfileScreen(navController: NavController) {
                 }
             }
 
+            if (showEdit) { //profile edit
+                profile?.let { p ->
+                    EditProfile(
+                        initialFirst = p.firstName,
+                        initialLast = p.lastName,
+                        initialEmail = p.email,
+                        initialPhone = p.phoneNumber,
+                        onDismiss = { showEdit = false },
+                        onSave = { f, l, e, ph ->
+                            controller.saveProfile(f, l, e, ph)
+                            showEdit = false
+                        }
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             Card(
@@ -1095,7 +1132,7 @@ fun EntrantProfileScreen(navController: NavController) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {},
+                    .clickable {showRules = true},
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -1135,6 +1172,9 @@ fun EntrantProfileScreen(navController: NavController) {
 
                     )
                 }
+            }
+            if (showRules) { //show app rules
+                AppRules(onDismiss = { showRules = false })
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -1211,8 +1251,186 @@ fun EntrantProfileScreen(navController: NavController) {
  *
  * @param navController used to navigate after "scanning"
  */
+//edit profile
+@Composable
+fun EditProfile(
+    initialFirst: String,
+    initialLast: String,
+    initialEmail: String,
+    initialPhone: String,
+    onDismiss: () -> Unit,
+    onSave: (String, String, String, String) -> Unit
+) {
+    var first by rememberSaveable { mutableStateOf(initialFirst) }
+    var last by rememberSaveable { mutableStateOf(initialLast) }
+    var email by rememberSaveable { mutableStateOf(initialEmail) }
+    var phone by rememberSaveable { mutableStateOf(initialPhone) }
+
+    val emailValid = android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()
+    val canSave = first.isNotBlank() && last.isNotBlank() && emailValid
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Profile") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = first,
+                    onValueChange = { first = it },
+                    label = { Text("First name") },
+                    singleLine = true,
+                    isError = first.isBlank()
+                )
+                OutlinedTextField(
+                    value = last,
+                    onValueChange = { last = it },
+                    label = { Text("Last name") },
+                    singleLine = true,
+                    isError = last.isBlank()
+                )
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    singleLine = true,
+                    isError = !emailValid,
+                )
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it },
+                    label = { Text("Phone number (optional)") },
+                    singleLine = true,
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = canSave,
+                onClick = { onSave(first.trim(), last.trim(), email.trim(), phone.trim()) }
+            ) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+//app rules
+@Composable
+fun AppRules(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("App Guide & Policy") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 400.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column {
+                    Text(
+                        text = "How to use the app",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(text = "Scan a campsite QR code from the QR Code Scanner screen to check in.", style = MaterialTheme.typography.bodyMedium)
+                }
+                Column {
+                    Text(
+                        text = "Guidelines",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(text = "Be respectful of other users and follow campsite rules.", style = MaterialTheme.typography.bodyMedium)
+                }
+                Column {
+                    Text(
+                        text = "Privacy policy",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(text = "The camera is only used to scan QR codes. No images are stored.", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Confirm") }
+        }
+    )
+}
+
+
+//campsite rules
+@Composable
+fun CampsiteRules(rulesText: String,
+                         onDismiss: () -> Unit,
+                         onConfirm: () -> Unit
+    ) {
+    var hasRead by rememberSaveable { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("App Guide & Policy") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 400.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 300.dp)
+                ) {
+                    Text(rulesText, style = MaterialTheme.typography.bodyMedium)
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { hasRead = !hasRead },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = hasRead, onCheckedChange = { hasRead = it })
+                    Text("I have read and agree to the campsite rules and policies")
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onConfirm, enabled = hasRead) {
+                Text("Confirm reservation")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+
+// QR CODE SCREEN
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun EntrantQrCodeScreen(navController: NavController) {
+    val context = LocalContext.current
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                    PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> hasCameraPermission = granted }
+
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission) permissionLauncher.launch(Manifest.permission.CAMERA)
+    }
+
     EntrantPage(
         navController = navController,
         showBack = false,
@@ -1233,50 +1451,58 @@ fun EntrantQrCodeScreen(navController: NavController) {
             Card(
                 modifier = Modifier.size(300.dp),
             ) {
+                if (hasCameraPermission) {
+                    QrCameraPreview(
+                        modifier = Modifier.fillMaxSize()
+                    ) { scannedValue ->
+                        navController.navigate(EntrantRoutes.CAMPSITE)
+                    }
+                } else {
                 Column(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        modifier = Modifier.size(215.dp),
-                        imageVector = Icons.Default.QrCode,
-                        contentDescription = "QR Code",
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
-
                     Text(
-                        text = "QR CODE",
-                        style = MaterialTheme.typography.titleMedium,
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 36.sp
+                        "Camera permission is needed to scan QR codes.",
+                        textAlign = TextAlign.Center
                     )
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = {
+                        permissionLauncher.launch(Manifest.permission.CAMERA)
+                    }) { Text("Grant permission") }
                 }
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { navController.navigate(EntrantRoutes.CAMPSITE) },
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            ) {
-                Text(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    text = "SCAN"
-                )
             }
         }
     }
 }
+
+//camera for qr code scanning
+@Composable
+fun QrCameraPreview(
+    modifier: Modifier = Modifier,
+    onQrScanned: (String) -> Unit
+) {
+}
+
+//Rules and policies
+private const val SAMPLE_RULES = """
+1. Check-in is after 2:00 PM and check-out is before 11:00 AM.
+
+2. Quiet hours are from 10:00 PM to 7:00 AM. Please respect other campers.
+
+3. Do not exceed the maximum occupancy listed for your campsite.
+
+4. Fires are only allowed in designated fire pits. Never leave a fire unattended and fully extinguish it before leaving.
+
+5. Pack out everything you bring in. Dispose of garbage and recyclables properly.
+
+6. Pets must be leashed at all times and cleaned up after.
+
+7. Do not damage trees, plants, or campsite property.
+
+8. Follow all local wildlife and safety regulations. Store food securely.
+
+9. The campsite owner may cancel a reservation if these rules are violated.
+"""
