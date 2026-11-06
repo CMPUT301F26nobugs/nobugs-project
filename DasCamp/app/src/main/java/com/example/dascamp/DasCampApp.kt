@@ -7,6 +7,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.Session
 import com.example.dascamp.screens.entrantScreens.EntrantCampsiteList
@@ -62,8 +63,9 @@ fun DasCampApp() {
 
     // Page Navigation
     val navController = rememberNavController()
-    val startDestination = "signUpScreen"// CHANGE HERE TO SWITCH LANDING PAGE (owner: OwnerRoutes.DASHBOARD, admin: AdminRoutes.DASHBOARD)
+    val startDestination = OwnerRoutes.DASHBOARD// CHANGE HERE TO SWITCH LANDING PAGE (owner: OwnerRoutes.DASHBOARD, admin: AdminRoutes.DASHBOARD)
     val repository = remember { DasCampRepository() }
+    val scheduleController = remember{ ScheduleController(repository) }
     val context = LocalContext.current
     val session = remember { Session(repository, context.applicationContext) }
 
@@ -92,7 +94,7 @@ fun DasCampApp() {
         composable(OwnerRoutes.ADD) { OwnerAddCampsite(navController, repository) }
         composable(OwnerRoutes.CAMPSITE) { OwnerCampsite(navController, repository) }
         composable(OwnerRoutes.EDIT) { OwnerEditCampsite(navController, repository) }
-        composable(OwnerRoutes.BOOKED) { OwnerBookedDates(navController, repository) }
+        composable(OwnerRoutes.BOOKED) { OwnerBookedDates(navController,repository, scheduleController) }
         composable(OwnerRoutes.MAP) { OwnerMapLocation(navController) }
         composable(OwnerRoutes.QR) { OwnerQrCode(navController) }
         composable(OwnerRoutes.LOTTERIES) { OwnerLotteryList(navController, repository) }

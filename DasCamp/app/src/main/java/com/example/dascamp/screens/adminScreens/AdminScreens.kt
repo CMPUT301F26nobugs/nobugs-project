@@ -44,7 +44,6 @@ import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
-import com.example.dascamp.screens.EntrantCalendarGrid
 import com.example.dascamp.ui.theme.DasCampTheme
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.*
@@ -507,8 +506,6 @@ fun AdminViewCampsite(navController: NavController) {
             Spacer(modifier = Modifier.height(10.dp))
 
             // Entrant Calendar Grid
-            EntrantCalendarGrid()
-            Spacer(modifier = Modifier.padding(8.dp))
 
             // Legend
             Row() {
