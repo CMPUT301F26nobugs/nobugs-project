@@ -13,24 +13,6 @@ import com.example.dascamp.model.EntrantProfile
  * Collaborators: DasCampRepository, EntrantProfile
  *
  * Used by screens: EntrantProfileScreen
- */
-class ProfileController(private val repository: DasCampRepository) {
-
-    fun saveEntrantProfile(
-        current: EntrantProfile,
-        first: String,
-        last: String,
-        email: String,
-        phone: String
-    ) {
-        repository.updateEntrant(
-            current.copy(
-                firstName = first.trim(),
-                lastName = last.trim(),
-                email = email.trim(),
-                phoneNumber = phone.trim()
-            )
-        )
  * - Change what roles the signed-in user holds
  * - Update notification preference
  * - Delete the signed-in user's profile
@@ -56,5 +38,22 @@ class ProfileController(private val repository: DasCampRepository) {
     fun deleteProfile() {
         val user = repository.currentUser ?: return
         repository.deleteUser(user)
+    }
+
+    fun saveEntrantProfile(
+        current: EntrantProfile,
+        first: String,
+        last: String,
+        email: String,
+        phone: String
+    ) {
+        repository.updateEntrant(
+            current.copy(
+                firstName = first.trim(),
+                lastName = last.trim(),
+                email = email.trim(),
+                phoneNumber = phone.trim()
+            )
+        )
     }
 }
