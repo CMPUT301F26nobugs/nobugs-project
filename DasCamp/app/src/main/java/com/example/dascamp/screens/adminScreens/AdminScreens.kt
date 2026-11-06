@@ -49,6 +49,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.unit.dp
+import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
 
 
 // 2 types of profiles that can be browsed
@@ -504,7 +505,7 @@ fun AdminViewCampsite(navController: NavController) {
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            Spacer(modifier = Modifier.padding(8.dp))
+            // Entrant Calendar Grid
 
             // Legend
             Row() {

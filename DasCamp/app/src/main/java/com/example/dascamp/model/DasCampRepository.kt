@@ -141,4 +141,7 @@ class DasCampRepository(val uid: String): ObservableModel {
     private fun remove(ref: CollectionReference, id: String) {
         ref.document(id).delete()
     }
+
+    //the unsaved campsite data -> save data while picking a location
+    var campDraft: CampsiteFormState? = null
 }

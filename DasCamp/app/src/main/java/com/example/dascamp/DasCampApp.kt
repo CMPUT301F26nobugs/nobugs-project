@@ -7,6 +7,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.screens.entrantScreens.EntrantCampsiteList
 import com.example.dascamp.screens.entrantScreens.EntrantCampsiteScreen
@@ -69,6 +70,7 @@ fun DasCampApp() {
         ) ?: ""
         DasCampRepository(uid)
     }
+    val scheduleController = remember{ ScheduleController(repository) }
 
     // The only navigation rule for sign-in state
     LaunchedEffect(repository.usersLoaded, repository.currentUser) {
@@ -98,7 +100,7 @@ fun DasCampApp() {
         // ENTRANT NAVIGATION
         composable(EntrantRoutes.DASHBOARD) { EntrantDashboard(navController) }
         composable(EntrantRoutes.CAMPSITE_LIST) { EntrantCampsiteList(navController) }
-        composable(EntrantRoutes.CAMPSITE) { EntrantCampsiteScreen(navController) }
+        composable(EntrantRoutes.CAMPSITE) { EntrantCampsiteScreen(navController, scheduleController) }
         composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
         composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
         composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
@@ -113,7 +115,7 @@ fun DasCampApp() {
         composable(OwnerRoutes.ADD) { OwnerAddCampsite(navController, repository) }
         composable(OwnerRoutes.CAMPSITE) { OwnerCampsite(navController, repository) }
         composable(OwnerRoutes.EDIT) { OwnerEditCampsite(navController, repository) }
-        composable(OwnerRoutes.BOOKED) { OwnerBookedDates(navController, repository) }
+        composable(OwnerRoutes.BOOKED) { OwnerBookedDates(navController,repository, scheduleController) }
         composable(OwnerRoutes.MAP) { OwnerMapLocation(navController) }
         composable(OwnerRoutes.QR) { OwnerQrCode(navController) }
         composable(OwnerRoutes.LOTTERIES) { OwnerLotteryList(navController, repository) }
