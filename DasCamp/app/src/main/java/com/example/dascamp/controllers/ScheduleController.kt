@@ -4,6 +4,7 @@ import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
+import com.google.type.Date
 
 /**
  * SCHEDULE CONTROLLER
@@ -62,4 +63,24 @@ class ScheduleController (private val repository: DasCampRepository){
         return true
     }
 
+    //Checks if whole range can be booked
+    fun isRangeAvailable(campsite: Campsite, startDate: String, endDate: String): Boolean{
+        var fits = false
+        for (range in campsite.availability){
+            if(startDate >= range.start && endDate <= range.end){
+                fits = true
+            }
+        }
+        if (!fits){
+            return false
+        }
+        //check if overlaps
+        val booked = bookedReservations(campsite.id, repository.reservations)
+        for (reservation in booked){
+            if(startDate <= reservation.endDate && endDate >= reservation.startDate){
+                return false
+            }
+        }
+        return true
+    }
 }
