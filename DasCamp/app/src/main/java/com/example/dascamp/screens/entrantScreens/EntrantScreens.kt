@@ -53,12 +53,14 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.example.dascamp.controllers.CampsiteController
+import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.DasCampRepository
@@ -508,11 +510,15 @@ fun EntrantNotificationRow(
 
 // RESERVATION LIST SCREEN
 @Composable
-fun EntrantReservationList(navController: NavController) {
-    EntrantPage(
-        navController = navController,
-        showBack = false
-    ) {
+fun EntrantReservationList(
+    navController: NavController,
+    reservationController: ReservationController? = null
+) {
+    var showPast by rememberSaveable { mutableStateOf(false) }
+    val shown = if (showPast) reservationController?.past().orEmpty()
+                else reservationController?.active().orEmpty()
+
+    EntrantPage(navController = navController, showBack = false) {
 
         // Title
         Row(
@@ -520,11 +526,47 @@ fun EntrantReservationList(navController: NavController) {
             horizontalArrangement = Arrangement.Center
         ) { Text(text = "Reservations", style = MaterialTheme.typography.titleLarge) }
 
+        // Active / Past tabs
         // Display Reservations
-        EmptyCard {
-            navController.navigate(
-                EntrantRoutes.RESERVATION
-            )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (!showPast) {
+                Button(onClick = {}) { Text("Active") }
+            } else {
+                OutlinedButton(onClick = { showPast = false }) { Text("Active") }
+            }
+
+            if (showPast) {
+                Button(onClick = {}) { Text("Past") }
+            } else {
+                OutlinedButton(onClick = { showPast = true }) { Text("Past") }
+            }
+        }
+
+        if (shown.isEmpty()) Text(if (showPast) "No past reservations" else "No active reservations")
+        shown.forEach { reservation ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                    Text(reservation.campsiteName, style = MaterialTheme.typography.titleMedium)
+                    Text("${reservation.startDate} to ${reservation.endDate}")
+                    if (!showPast) {
+                        Button(onClick = { reservationController?.cancel(reservation) }) {
+                            Text("Cancel reservation")
+                        }
+                    }
+                }
+            }
         }
     }
 }
