@@ -377,11 +377,12 @@ fun OwnerMapLocation(navController: NavController, repository: DasCampRepository
             Text("Campsite Name: " + campsite.name)
             Text("Location Name: " + campsite.location)
 
+            //geolocation box
             Box(modifier = Modifier.fillMaxWidth().height(300.dp).clipToBounds()){
                 CampsiteMap(
                     latitude = campsite.latitude,
                     longitude = campsite.longitude,
-                    modifier = Modifier.fillMaxWidth().height(300.dp)
+                    modifier = Modifier.fillMaxWidth().height(300.dp)  //onLocationPicked = null -> view only, pin cannot be moved
                 )
             }
 
