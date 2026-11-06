@@ -53,6 +53,7 @@ import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
+import com.example.dascamp.views.ReservationView
 
 /**
  * Owner home. The two large buttons open the campsite list and the lottery list.
@@ -337,13 +338,13 @@ private fun CampsiteForm(
 
 // Booked dates for one campsite. controller picks the active reservation
 @Composable
-fun OwnerBookedDates(navController: NavController, repository: DasCampRepository? = null, scheduleController: ScheduleController? = null) {
+fun OwnerBookedDates(navController: NavController, repository: DasCampRepository? = null, scheduleController: ScheduleController? = null, reservationView: ReservationView? = null) {
     val campsite = repository?.campsites?.find { it.id == repository.openCampsiteId }
 
     // ask controller for booked reservation
     var booked = listOf<Reservation>()
-    if (campsite != null && scheduleController != null){
-        booked = scheduleController.bookedReservations(campsite.id, repository.reservations)
+    if (campsite != null && scheduleController != null && reservationView != null){
+        booked = scheduleController.bookedReservations(campsite.id, reservationView.reservations)
     }
     OwnerPage(navController, showBack = true){
         Text("Booked dates", style = MaterialTheme.typography.titleLarge)

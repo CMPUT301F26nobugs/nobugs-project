@@ -31,5 +31,24 @@ class ProfileController(private val store: CampStore) {
     fun deleteProfile() {
         val user = store.currentUser ?: return
         store.deleteUser(user)
+        val user = repository.currentUser ?: return
+        repository.deleteUser(user)
+    }
+
+    fun saveProfile(
+        first: String,
+        last: String,
+        email: String,
+        phone: String
+    ) {
+        val user = repository.currentUser ?: return
+        repository.updateUser(
+            user.copy(
+                firstName = first.trim(),
+                lastName = last.trim(),
+                email = email.trim(),
+                phoneNumber = phone.trim()
+            )
+        )
     }
 }
