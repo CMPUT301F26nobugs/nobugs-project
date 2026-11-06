@@ -1,5 +1,6 @@
 package com.example.dascamp.screens.ownerScreens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -10,7 +11,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -23,17 +23,18 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.background
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
@@ -43,15 +44,15 @@ import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.DateRange
 import com.example.dascamp.model.LotteryFormState
 import com.example.dascamp.model.LotteryStatus
-import com.example.dascamp.model.OwnerMessage
 import com.example.dascamp.model.Notification
-import com.example.dascamp.model.OwnerProfile
+import com.example.dascamp.model.OwnerMessage
 import java.util.UUID
 import com.example.dascamp.model.Reservation
-import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.formatPrice
+import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.CampsiteMap
-
+import com.example.dascamp.screens.EmptyCard
+import com.example.dascamp.screens.EmptyValue
 
 /**
  * Owner home. The two large buttons open the campsite list and the lottery list.
@@ -262,7 +263,7 @@ private fun CampsiteForm(
         Text(title, style = MaterialTheme.typography.titleLarge)
         FormField("Name", form.name, onValueChange = { typed -> form = form.copy(name = typed) })
         FormField("Location", form.location, onValueChange = { typed -> form = form.copy(location = typed) })
-        Text("Map Location", style = MaterialTheme.typography.titleMedium)
+        Text("Map Location, Click on the map to choose a pin location", style = MaterialTheme.typography.titleMedium)
         var startLatitude = form.latitude.toDoubleOrNull()
         if (startLatitude == null){
             startLatitude = 53.55
@@ -275,7 +276,7 @@ private fun CampsiteForm(
         CampsiteMap(
             latitude = startLatitude,
             longitude = startLongitude,
-            modifier = Modifier.fillMaxWidth().height(250.dp),
+            modifier = Modifier.fillMaxWidth().height(180.dp),
             onLocationPicked = {
                 pickedLatitude, pickedLongitude ->
                 form = form.copy(
@@ -317,7 +318,7 @@ private fun CampsiteForm(
             onClick = {
                 val built = form.toCampsite(
                     id = existing?.id ?: UUID.randomUUID().toString(),
-                    ownerId = existing?.ownerId ?: "owner-1",
+                    ownerId = existing?.ownerId ?: repository?.uid.orEmpty(),
                     rating = existing?.rating ?: 0.0,
                     ratingCount = existing?.ratingCount ?: 0
                 )
@@ -334,17 +335,17 @@ private fun CampsiteForm(
     }
 }
 
-/** Calendar layout. No days are marked, because no stays are loaded yet. */
+// Booked dates for one campsite. controller picks the active reservation
 @Composable
-fun OwnerBookedDates(navController: NavController, repository: DasCampRepository? = null) {
+fun OwnerBookedDates(navController: NavController, repository: DasCampRepository? = null, scheduleController: ScheduleController? = null) {
     val campsite = repository?.campsites?.find { it.id == repository.openCampsiteId }
-    val booked = mutableListOf<Reservation>()
-    for (reservation in repository?.reservations.orEmpty()){
-        if(reservation.campsiteId == campsite?.id && reservation.status == ReservationStatus.ACTIVE){
-            booked.add(reservation)
-        }
+
+    // ask controller for booked reservation
+    var booked = listOf<Reservation>()
+    if (campsite != null && scheduleController != null){
+        booked = scheduleController.bookedReservations(campsite.id, repository.reservations)
     }
-    OwnerPage(navController, showBack = true) {
+    OwnerPage(navController, showBack = true){
         Text("Booked dates", style = MaterialTheme.typography.titleLarge)
         Text(campsite?.name?: "Campsite")
         CalendarGrid()
@@ -359,36 +360,36 @@ fun OwnerBookedDates(navController: NavController, repository: DasCampRepository
     }
 }
 
-/** Map layout. The box is where the pin will be drawn from the campsite coordinates. */
+/** Campsite location on a map, to edit the location, the edit button goes to the edit campsite page */
 @Composable
-fun OwnerMapLocation(navController: NavController) {
-    var query by remember { mutableStateOf("") }
+fun OwnerMapLocation(navController: NavController, repository: DasCampRepository? = null) {
+    val campsite = repository?.campsites?.find{it.id == repository.openCampsiteId}
+
     OwnerPage(navController, showBack = true) {
         Text("Map location", style = MaterialTheme.typography.titleLarge)
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search Location") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-            singleLine = true
-        )
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            BlockBox(220)
-            Icon(
-                Icons.Default.LocationOn,
-                contentDescription = "Map pin",
-                modifier = Modifier.size(48.dp)
-            )
-        }
 
+        if(campsite == null){
+            Text("Unable to find campsite")
+        }else {
+            Text("Campsite Name: " + campsite.name)
+            Text("Location Name: " + campsite.location)
 
-        EmptyValue(0.5f)
-        EmptyValue(0.5f)
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.popBackStack() }) {
-            Text("Confirm Location")
+            //geolocation box
+            Box(modifier = Modifier.fillMaxWidth().height(300.dp).clipToBounds()){
+                CampsiteMap(
+                    latitude = campsite.latitude,
+                    longitude = campsite.longitude,
+                    modifier = Modifier.fillMaxWidth().height(300.dp)  //onLocationPicked = null -> view only, pin cannot be moved
+                )
+            }
+
+            Text("Location Coordinates: " + campsite.latitude + ", " + campsite.longitude)
+
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(OwnerRoutes.EDIT) }) {
+                Text("Edit Location")
+            }
         }
     }
 }
@@ -659,11 +660,6 @@ fun OwnerSendNotification(navController: NavController, repository: DasCampRepos
 fun OwnerMessageList(navController: NavController, repository: DasCampRepository? = null) {
     OwnerPage(navController, showBack = true) {
         Text("Message logs", style = MaterialTheme.typography.titleLarge)
-        repository?.messages?.forEach { message ->
-            TextButton(onClick = { navController.navigate(OwnerRoutes.MESSAGE) }) {
-                Text("${message.entrantName}: ${message.body}")
-            }
-        }
     }
 }
 
@@ -673,82 +669,61 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
     var body by remember { mutableStateOf("") }
     OwnerPage(navController, showBack = true) {
         Text("Message", style = MaterialTheme.typography.titleLarge)
-        repository?.messages?.forEach { message ->
-            Text(message.body)
-        }
         EmptyValue(0.5f)
         BlockBox(80)
         FormField("Write a message", body, onValueChange = { typed -> body = typed })
         Button(onClick = {
-            if (body.isNotBlank()) {
-                repository?.addMessage(
-                    OwnerMessage(
-                        id = UUID.randomUUID().toString(),
-                        reservationId = "",
-                        entrantName = "Entrant",
-                        body = body.trim(),
-                        sentAt = System.currentTimeMillis().toString()
-                    )
-                )
-                body = ""
+            // TODO implement messaging w/ firestore
             }
-        }) { Text("Send") }
+        ) { Text("Send") }
     }
 }
 
 /**
- * Profile tab. Edit only unlocks the fields on this screen.
- * Nothing here is written to OwnerProfile yet.
- */
-/**
  * Profile tab. Edit unlocks the fields, Done saves them.
  */
 @Composable
-fun OwnerProfile(navController: NavController, repository: DasCampRepository? = null) {
-    val saved = repository?.owners?.firstOrNull()
-    var profileId by remember { mutableStateOf("") }
+fun OwnerProfile(
+    navController: NavController,
+    repository: DasCampRepository? = null,
+) {
+    val saved = repository?.currentUser
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
-    var organization by remember { mutableStateOf("") }
     var notificationsOn by remember { mutableStateOf(true) }
     var loaded by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
+
     LaunchedEffect(saved?.id) {
         if (saved != null && !loaded) {
-            profileId = saved.id
             firstName = saved.firstName
             lastName = saved.lastName
             email = saved.email
             phoneNumber = saved.phoneNumber
-            organization = saved.organizationName
             notificationsOn = saved.notificationsOn
             loaded = true
         }
     }
+
     OwnerPage(navController, showBack = false) {
         Text("Profile", style = MaterialTheme.typography.titleLarge)
         FormField("First name", firstName, { firstName = it }, editing)
         FormField("Last name", lastName, { lastName = it }, editing)
         FormField("Email", email, { email = it }, editing)
         FormField("Phone", phoneNumber, { phoneNumber = it }, editing)
-        FormField("Organization", organization, { organization = it }, editing)
         Button(onClick = {
-            if (editing && repository != null) {
-                val id = profileId.ifBlank { UUID.randomUUID().toString() }
-                profileId = id
-                val profile = OwnerProfile(
-                    id = id,
-                    firstName = firstName.trim(),
-                    lastName = lastName.trim(),
-                    email = email.trim(),
-                    phoneNumber = phoneNumber.trim(),
-                    notificationsOn = notificationsOn,
-                    organizationName = organization.trim()
+            if (editing && repository != null && saved != null) {
+                repository.updateUser(
+                    saved.copy(
+                        firstName = firstName.trim(),
+                        lastName = lastName.trim(),
+                        email = email.trim(),
+                        phoneNumber = phoneNumber.trim(),
+                        notificationsOn = notificationsOn
+                    )
                 )
-                if (repository.owners.any { it.id == id }) repository.updateOwner(profile)
-                else repository.addOwner(profile)
             }
             editing = !editing
         }) { Text(if (editing) "Done" else "Edit") }
@@ -763,14 +738,7 @@ fun OwnerProfile(navController: NavController, repository: DasCampRepository? = 
         }
         Button(onClick = {}) { Text("App policy and guidelines") }
         Button(onClick = {
-            saved?.let { repository.deleteOwner(it) }
-            profileId = ""
-            firstName = ""
-            lastName = ""
-            email = ""
-            phoneNumber = ""
-            organization = ""
-            loaded = false
+            if (repository != null && saved != null) { repository.deleteUser(saved) }
         }) { Text("Delete profile") }
     }
 }

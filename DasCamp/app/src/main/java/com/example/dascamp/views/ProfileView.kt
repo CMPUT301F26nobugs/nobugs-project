@@ -11,7 +11,7 @@ import com.google.firebase.firestore.ListenerRegistration
 /**
  * PROFILE VIEW
  *
- * Responsibilites:
+ * Responsibilities:
  * - Watch the model and keep up-to-date copy of the data
  *
  * Collaborators: DasCampRepository(ObservableModel), the data class
