@@ -24,7 +24,7 @@ import org.osmdroid.views.overlay.Marker
 fun CampsiteMap(latitude: Double,
                 longitude: Double,
                 modifier: Modifier = Modifier,
-                onLocationPicked: ((latitude: Double, longitude: Double) -> Unit) // location picked by owner
+                onLocationPicked: ((latitude: Double, longitude: Double) -> Unit)? = null // location picked by owner, can be null when map needs to be view only
 ){
     val context = LocalContext.current  //apps link to andriod, needed to create the map
     val currentCallback by rememberUpdatedState(onLocationPicked)  //keep latest location picked
@@ -64,9 +64,7 @@ fun CampsiteMap(latitude: Double,
         Marker(map).apply{  //mark the location
             position = GeoPoint(latitude, longitude)
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-            //---------------------------------------
-            title = "Campsite Name"  //PLACEHODLER
-            //---------------------------------------
+            title = "Campsite Location"
         }
     }
 
@@ -75,9 +73,14 @@ fun CampsiteMap(latitude: Double,
         //listen for taps on the map
         val tapReciver = object: MapEventsReceiver{
             override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
+                val callback = currentCallback
+                if(callback == null){  //if there is no tap/ignore taps -> for when map is view only
+                    return false
+                }
                 pin.position = p  //moving the pin
                 map.invalidate()  //redraw the map
-                currentCallback(p.latitude, p.longitude)  //tell the owner screen
+                callback(p.latitude, p.longitude)  //tell the owner screen
+
                 return true
             }
 
