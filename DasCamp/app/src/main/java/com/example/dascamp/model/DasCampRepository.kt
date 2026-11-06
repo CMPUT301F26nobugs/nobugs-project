@@ -15,7 +15,7 @@ import com.google.firebase.firestore.firestore
  * every list in the app (like campsites, lotteries) is stored as its own collection
  * the listener reacts to the change in firestore and rebuilds the on-screen list for UI to Update
  */
-class DasCampRepository(val uid: String): ObservableModel {
+class DasCampRepository(override val uid: String): ObservableModel, CampStore {
     // FIRESTORE COLLECTIONS
     private val db = Firebase.firestore
     private val campsitesRef = db.collection("campsites")
