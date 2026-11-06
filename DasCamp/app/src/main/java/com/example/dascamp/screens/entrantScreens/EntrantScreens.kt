@@ -53,6 +53,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
@@ -64,6 +65,7 @@ import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.formatPrice
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.EmptyCard
+import com.example.dascamp.model.Lottery
 
 // DASHBOARD SCREEN
 @Composable
@@ -262,6 +264,32 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
         }
         return
     }
+
+    //lottery for campsite
+    var lottery: Lottery? = null
+    if(repository != null){
+        for(item in repository.lotteries){
+            if(item.campsiteIds.contains(campsite.id)){
+                lottery = item
+            }
+        }
+    }
+
+    // who is reserving and has todo not for halfway tho
+    var entrantId = "test-entrant"
+    var entrantName = "Test User"
+    if(repository != null && repository.entrants.isNotEmpty()){
+        entrantId = repository.entrants[0].id
+        entrantName = repository.entrants[0].firstName + " " + repository.entrants[0].lastName
+    }
+
+    //what entrant picks
+    var startDate by remember {mutableStateOf("")}
+    var endDate by remember {mutableStateOf("")}
+    var guests by remember {mutableStateOf("1")}
+    var rulesAccepted by remember {mutableStateOf(false)}
+    var bookingMessage by remember {mutableStateOf("")}
+
     EntrantPage(
         navController = navController,
         showBack = true,
@@ -382,6 +410,32 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                 Text("Unavailable = ")
                 Box(modifier = Modifier.size(20.dp).background(Color.Red))
             }
+            Spacer(modifier = Modifier.padding(8.dp))
+
+            //Dates Selected
+            Text(text = "Select your dates", style = MaterialTheme.typography.labelLarge )
+            if(lottery != null){
+                Text("Book between " + lottery.bookingStart + " and " + lottery.bookingEnd)
+            }
+            OutlinedTextField(
+                value = startDate,
+                onValueChange = {typed -> startDate = typed},
+                label = {Text("Start date (yyyy-mm-dd)")},
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = endDate,
+                onValueChange = {typed -> endDate = typed},
+                label = {Text("End date (yyyy-mm-dd)")},
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = guests,
+                onValueChange = {typed -> guests = typed},
+                label = {Text("Number of guests")},
+                modifier = Modifier.fillMaxWidth()
+            )
+
         }
 
         Spacer(modifier = Modifier.padding(vertical = 16.dp))
@@ -403,6 +457,43 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                 Text("End Date: May 10, 2026")
             }
         }
+
+        //Confirm rules
+        Row(verticalAlignment = Alignment.CenterVertically){
+            Checkbox(
+                checked = rulesAccepted,
+                onCheckedChange = { checked -> rulesAccepted = checked}
+            )
+            Text("I have read the rules and policies")
+        }
+        //Book reservation
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                var guestCount = guests.toIntOrNull()
+                if(guestCount == null){
+                    guestCount = 0
+                }
+                if(scheduleController != null){
+                    val error = scheduleController.reserveDates(
+                        campsite = campsite,
+                        lottery = lottery,
+                        entrantId = entrantId,
+                        entrantName = entrantName,
+                        startDate = startDate,
+                        endDate = endDate,
+                        guestCount = guestCount,
+                        rulesAccepted = rulesAccepted
+                    )
+                    if(error == null){
+                        bookingMessage = "Reserved " + startDate + " to " + endDate
+                    }else{
+                        bookingMessage = error
+                    }
+                }
+            }
+        ){Text("Book Reservation")}
+        Text(bookingMessage)
 
         // Chat owner button
         Button(
