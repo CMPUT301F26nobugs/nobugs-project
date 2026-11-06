@@ -1,5 +1,6 @@
 package com.example.dascamp.screens
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -18,6 +19,7 @@ import org.osmdroid.views.overlay.CopyrightOverlay
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 
+@SuppressLint("ClickableViewAccessibility")  //hide touch warnings -> harmless, for the scrollable map implementation
 @Composable
 fun CampsiteMap(latitude: Double,
                 longitude: Double,
@@ -45,6 +47,15 @@ fun CampsiteMap(latitude: Double,
             controller.setZoom(10.0)  //how zoomed in it is
             controller.setCenter(GeoPoint(latitude, longitude))  //set map start location to location picked
             overlays.add(CopyrightOverlay(context))  //show the OpenStreetMap credit
+
+            //allow map to be scrollable without scrolling the parent page
+            setOnTouchListener{touchedMap, _ ->
+                val parent = touchedMap.parent  //the page holding the map
+                if(parent != null){  //if parent exists
+                    parent.requestDisallowInterceptTouchEvent(true)  //tell parent to let the map handle the drag touch
+                }
+                false  //return false, map uses its own drag handler
+            }
         }  //bc this is the last line, remeber returns the map view
     }
 
