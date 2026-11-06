@@ -109,6 +109,7 @@ import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import androidx.camera.core.Preview as CameraPreview
 import com.example.dascamp.model.Lottery
+import com.example.dascamp.views.ReservationView
 
 // DASHBOARD SCREEN
 @Composable
@@ -272,7 +273,7 @@ fun EntrantCampsiteListPreview() {
 
 // CAMPSITE SCREEN
 @Composable
-fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepository? = null, scheduleController: ScheduleController? = null) {
+fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepository? = null, scheduleController: ScheduleController? = null, reservationView: ReservationView? = null) {
 
     // campsite entrant tapped
     var campsite: Campsite? = null
@@ -417,8 +418,8 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
 
             //date is booked
             var booked = listOf<Reservation>()
-            if (scheduleController != null && repository != null){
-                booked = scheduleController.bookedReservations(campsite.id, repository.reservations)
+            if (scheduleController != null && reservationView != null){
+                booked = scheduleController.bookedReservations(campsite.id,  reservationView.reservations)
             }
             if(booked.isEmpty()){
                 Text("No dates booked")
