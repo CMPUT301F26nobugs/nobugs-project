@@ -50,8 +50,6 @@ import java.util.UUID
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
 
-
-
 /**
  * Owner home. The two large buttons open the campsite list and the lottery list.
  * The three wide buttons open alerts, message logs, and reservations.
