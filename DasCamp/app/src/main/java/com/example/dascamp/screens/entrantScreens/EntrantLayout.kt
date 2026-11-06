@@ -42,7 +42,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.model.Role
 import com.example.dascamp.screens.AppScaffold
+import com.example.dascamp.screens.RoleMenu
 
 // ENTRANT ROUTES
 object EntrantRoutes {
@@ -71,7 +73,8 @@ fun EntrantPage(
         onBackClick = if (showBack) {
             { navController.popBackStack() }
         } else null,
-        navBar = { EntrantNavBar(navController) }
+        navBar = { EntrantNavBar(navController) },
+        roleMenu = { RoleMenu(navController, Role.ENTRANT) }
     ) { innerPadding ->
         Column(
             modifier = Modifier

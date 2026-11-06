@@ -1,7 +1,10 @@
 package com.example.dascamp.model
 
 import android.util.Log
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.CollectionReference
@@ -12,17 +15,14 @@ import com.google.firebase.firestore.firestore
  * every list in the app (like campsites, lotteries) is stored as its own collection
  * the listener reacts to the change in firestore and rebuilds the on-screen list for UI to Update
  */
-class DasCampRepository: ObservableModel {
+class DasCampRepository(val uid: String): ObservableModel {
     // FIRESTORE COLLECTIONS
     private val db = Firebase.firestore
     private val campsitesRef = db.collection("campsites")
     private val lotteriesRef = db.collection("lotteries")
     private val reservationsRef = db.collection("reservations")
     private val notificationsRef = db.collection("notifications")
-    private val messagesRef = db.collection("messages")
-    private val ownersRef = db.collection("owners")
-    private val entrantsRef = db.collection("entrants")
-    private val adminsRef = db.collection("admins")
+    private val usersRef = db.collection("users")
 
     // LIVE LISTS (filled from Firestore, read-only from the outside)
     private val _campsites = mutableStateListOf<Campsite>()
@@ -37,26 +37,21 @@ class DasCampRepository: ObservableModel {
     private val _notifications = mutableStateListOf<Notification>()
     val notifications: List<Notification> get() = _notifications
 
-    private val _messages = mutableStateListOf<OwnerMessage>()
-    val messages: List<OwnerMessage> get() = _messages
+    private val _users = mutableStateListOf<User>()
+    val users: List<User> get() = _users
+    val currentUser: User? get() = _users.firstOrNull { it.id == uid } // This device's user, or null if it hasn't signed up (or was deleted)
 
-    private val _owners = mutableStateListOf<OwnerProfile>()
-    val owners: List<OwnerProfile> get() = _owners
-
-    private val _entrants = mutableStateListOf<EntrantProfile>()
-    val entrants: List<EntrantProfile> get() = _entrants
-
-    private val _admins = mutableStateListOf<AdminProfile>()
-    val admins: List<AdminProfile> get() = _admins
+    // False until the first users snapshot arrives
+    // Tells "still loading" apart from "loaded, and this device has no user yet"
+    var usersLoaded by mutableStateOf(false)
+        private set
 
     // OPEN ITEMS (which campsites/lottery the user tapped)
     // TODO: this is screen state, not data. Move it into the route arguments later.
-
     var openCampsiteId: String = ""
     var openLotteryId: String = ""
 
     // OBSERVER PATTERN
-
     private val views = mutableListOf<ModelView>()
 
     override fun addView(view: ModelView) {
@@ -73,17 +68,12 @@ class DasCampRepository: ObservableModel {
         }
     }
 
-    // LISTENING
-    private val loadedPaths = mutableStateListOf<String>()
     init {
         listen(campsitesRef, _campsites, Campsite::class.java)
         listen(lotteriesRef, _lotteries, Lottery::class.java)
         listen(reservationsRef, _reservations, Reservation::class.java)
         listen(notificationsRef, _notifications, Notification::class.java)
-        listen(messagesRef, _messages, OwnerMessage::class.java)
-        listen(ownersRef, _owners, OwnerProfile::class.java)
-        listen(entrantsRef, _entrants, EntrantProfile::class.java)
-        listen(adminsRef, _admins, AdminProfile::class.java)
+        listen(usersRef, _users, User::class.java) { usersLoaded = true }
     }
 
     // CAMPSITES
@@ -105,41 +95,11 @@ class DasCampRepository: ObservableModel {
     fun addNotification(notification: Notification) = save(notificationsRef, notification.id, notification)
     fun deleteNotification(notification: Notification) = remove(notificationsRef, notification.id)
 
-    // MESSAGES
-    fun addMessage(message: OwnerMessage) = save(messagesRef, message.id, message)
-    fun deleteMessage(message: OwnerMessage) = remove(messagesRef, message.id)
-
-    // -----------
-    // PROFILES
-    // -----------
-
-    // OWNER
-    fun addOwner(owner: OwnerProfile) = save(ownersRef, owner.id, owner)
-    fun updateOwner(owner: OwnerProfile) = save(ownersRef, owner.id, owner)
-    fun deleteOwner(owner: OwnerProfile) = remove(ownersRef, owner.id)
-
-    // ENTRANT
-    fun addEntrant(entrant: EntrantProfile) = save(entrantsRef, entrant.id, entrant)
-    fun updateEntrant(entrant: EntrantProfile) = save(entrantsRef, entrant.id, entrant)
-    fun deleteEntrant(entrant: EntrantProfile) = remove(entrantsRef, entrant.id)
-
-    // ADMIN
-    fun addAdmin(admin: AdminProfile) = save(adminsRef, admin.id, admin)
-    fun updateAdmin(admin: AdminProfile) = save(adminsRef, admin.id, admin)
-    fun deleteAdmin(admin: AdminProfile) = remove(adminsRef, admin.id)
-
-    // MULTI-USER INTERACTION (ROLES)
-    fun entrantById(id: String) = _entrants.firstOrNull { it.id == id }
-    fun ownerById(id: String) = _owners.firstOrNull { it.id == id }
-    fun adminById(id: String) = _admins.firstOrNull { it.id == id }
-
-    fun rolesOf(uid: String): Set<Role> = buildSet {
-        if (entrantById(uid) != null) add(Role.ENTRANT)
-        if (ownerById(uid) != null) add(Role.OWNER)
-        if (adminById(uid) != null) add(Role.ADMIN)
-    }
-    val rolesLoaded: Boolean
-        get() = listOf("entrants", "owners", "admins").all { it in loadedPaths }
+    // USERS
+    fun userById(id: String): User? = _users.firstOrNull { it.id == id }
+    fun addUser(user: User) = save(usersRef, user.id, user)
+    fun updateUser(user: User) = save(usersRef, user.id, user)
+    fun deleteUser(user: User) = remove(usersRef, user.id)
 
     // HELPERS
     /**
@@ -151,24 +111,24 @@ class DasCampRepository: ObservableModel {
     private fun <T : Any> listen(
         ref: CollectionReference,
         list: SnapshotStateList<T>,
-        type: Class<T>
+        type: Class<T>,
+        onLoaded: () -> Unit = {}
     ) {
         ref.addSnapshotListener { snapshot, error ->
             if (error != null || snapshot == null) {
                 Log.e("Firestore", "Listen failed", error)
                 return@addSnapshotListener
             }
+
             list.clear()
             for (document in snapshot.documents) {
                 val item = document.toObject(type)
                 if (item != null) list.add(item)
             }
-            list.clear()
-            for (document in snapshot.documents) {
-                val item = document.toObject(type)
-                if (item != null) list.add(item)
-            }
-            if (ref.path !in loadedPaths) loadedPaths.add(ref.path)
+
+            // 
+            onLoaded()
+            notifyViews()
         }
     }
 
@@ -176,7 +136,6 @@ class DasCampRepository: ObservableModel {
     private fun <T : Any> save(ref: CollectionReference, id: String, item: T) {
         ref.document(id).set(item)
     }
-
 
     // Removes the document that is referenced. Used by every delete method above
     private fun remove(ref: CollectionReference, id: String) {
