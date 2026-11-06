@@ -44,13 +44,13 @@ import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
-import com.example.dascamp.screens.EntrantCalendarGrid
 import com.example.dascamp.ui.theme.DasCampTheme
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.unit.dp
+import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
 
 
 // 2 types of profiles that can be browsed
