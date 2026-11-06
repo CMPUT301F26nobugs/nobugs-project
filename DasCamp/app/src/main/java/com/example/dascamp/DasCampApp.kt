@@ -105,6 +105,17 @@ fun DasCampApp() {
         }
     }
 
+        // ENTRANT NAVIGATION
+        composable(EntrantRoutes.DASHBOARD) { EntrantDashboard(navController) }
+        composable(EntrantRoutes.CAMPSITE_LIST) { EntrantCampsiteList(navController) }
+        composable(EntrantRoutes.CAMPSITE) { EntrantCampsiteScreen(navController) }
+        composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
+        composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
+        composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
+        composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController, repository, entrantId = "b3bdb3e495b45b16") }
+        //composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController) }
+        composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController) }
+        composable(EntrantRoutes.RESERVATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite screen
     // Provide the local user to the navhost
     CompositionLocalProvider(LocalCurrentUser provides repository.currentUser) {
         NavHost(navController = navController, startDestination = startDestination) {
