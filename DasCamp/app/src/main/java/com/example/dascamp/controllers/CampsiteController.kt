@@ -1,7 +1,7 @@
 package com.example.dascamp.controllers
 
+import com.example.dascamp.model.CampStore
 import com.example.dascamp.model.Campsite
-import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.ReservationStatus
 
 /**
@@ -12,14 +12,14 @@ import com.example.dascamp.model.ReservationStatus
  * - Hide campsites whose requested dates are already reserved
  *
  * Collaborators:
- * - DasCampRepository (campsites and reservations)
+ * - DasCampstore (campsites and reservations)
  * - Entrant campsite list screen
  *
  * Stories: US 01.01.01, 01.01.02, 01.01.03, 01.01.04
  */
-class CampsiteController(private val repository: DasCampRepository) {
+class CampsiteController(private val store: CampStore) {
 
-    // Filters the repository's campsites for the entrant search. Blank or null filters are ignored
+    // Filters the store's campsites for the entrant search. Blank or null filters are ignored
     fun searchCampsites(
         query: String = "",
         location: String = "",
@@ -27,10 +27,10 @@ class CampsiteController(private val repository: DasCampRepository) {
         startDate: String = "",
         endDate: String = ""
     ): List<Campsite> {
-        val reservations = repository.reservations
+        val reservations = store.reservations
         val q = query.trim()
 
-        return repository.campsites.filter { campsite ->
+        return store.campsites.filter { campsite ->
 
             // Search text matches the name, location, or any tag
             val matchesQuery = q.isEmpty() ||
