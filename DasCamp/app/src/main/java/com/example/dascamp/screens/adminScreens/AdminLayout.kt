@@ -26,7 +26,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.model.Role
 import com.example.dascamp.screens.AppScaffold
+import com.example.dascamp.screens.RoleMenu
 
 // ADMIN ROUTES
 object AdminRoutes {
@@ -58,7 +60,8 @@ fun AdminPage(
 ) {
     AppScaffold(
         onBackClick = if (showBack) {{ navController.popBackStack() }} else null,
-        navBar = { AdminNavBar(navController) }
+        navBar = { AdminNavBar(navController) },
+        roleMenu = { RoleMenu(navController, Role.ADMIN) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
