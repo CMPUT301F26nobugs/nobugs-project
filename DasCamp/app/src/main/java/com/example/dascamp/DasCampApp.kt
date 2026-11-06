@@ -1,6 +1,8 @@
 package com.example.dascamp
 
+import android.os.Build
 import android.provider.Settings
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -61,6 +63,7 @@ import com.example.dascamp.screens.ownerScreens.OwnerReservations
 import com.example.dascamp.screens.ownerScreens.OwnerRoutes
 import com.example.dascamp.screens.ownerScreens.OwnerSendNotification
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DasCampApp() {
 
@@ -105,17 +108,7 @@ fun DasCampApp() {
         }
     }
 
-        // ENTRANT NAVIGATION
-        composable(EntrantRoutes.DASHBOARD) { EntrantDashboard(navController) }
-        composable(EntrantRoutes.CAMPSITE_LIST) { EntrantCampsiteList(navController) }
-        composable(EntrantRoutes.CAMPSITE) { EntrantCampsiteScreen(navController) }
-        composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
-        composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
-        composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
-        composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController, repository, entrantId = "b3bdb3e495b45b16") }
-        //composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController) }
-        composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController) }
-        composable(EntrantRoutes.RESERVATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite screen
+
     // Provide the local user to the navhost
     CompositionLocalProvider(LocalCurrentUser provides repository.currentUser) {
         NavHost(navController = navController, startDestination = startDestination) {
@@ -131,6 +124,15 @@ fun DasCampApp() {
                     campsiteController
                 )
             }
+            composable(EntrantRoutes.CAMPSITE) { EntrantCampsiteScreen(navController, repository) }
+            composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
+            composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
+            composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
+            composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController, reservationController) }
+            composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController, repository) }
+
+            composable(EntrantRoutes.RESERVATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite screen
+
             composable(EntrantRoutes.CAMPSITE) {
                 EntrantCampsiteScreen(
                     navController,
@@ -138,17 +140,9 @@ fun DasCampApp() {
                     scheduleController
                 )
             }
-            composable(EntrantRoutes.NOTIFICATION_LIST) { EntrantNotificationList(navController) }
-            composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
-            composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
-            composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController) }
-            composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController) }
-            composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController, reservationController) }
-            composable(EntrantRoutes.RESERVATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite screen
+            //composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController) }
 
             // OWNER NAVIGATION
-            composable(OwnerRoutes.DASHBOARD) { OwnerDashboard(navController) }
-            composable(OwnerRoutes.CAMPSITES) { OwnerCampsitesList(navController, repository) }
             composable(OwnerRoutes.ADD) { OwnerAddCampsite(navController, repository) }
             composable(OwnerRoutes.CAMPSITE) { OwnerCampsite(navController, repository) }
             composable(OwnerRoutes.EDIT) { OwnerEditCampsite(navController, repository) }
