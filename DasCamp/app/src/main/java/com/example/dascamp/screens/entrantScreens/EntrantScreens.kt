@@ -264,9 +264,12 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
     // who is reserving and has todo not for halfway tho
     var entrantId = "test-entrant"
     var entrantName = "Test User"
-    if(repository != null && repository.entrants.isNotEmpty()){
-        entrantId = repository.entrants[0].id
-        entrantName = repository.entrants[0].firstName + " " + repository.entrants[0].lastName
+    if(repository != null) {
+        val user = repository.currentUser
+        if(user != null){
+            entrantId = user.id
+            entrantName = user.firstName + " " + user.lastName
+        }
     }
 
     //what entrant picks
