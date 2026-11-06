@@ -1,5 +1,6 @@
 package com.example.dascamp.controllers
 
+import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
@@ -27,6 +28,38 @@ class ScheduleController (private val repository: DasCampRepository){
             }
         }
         return booked
+    }
+
+    // Checks if date is available within owners availability
+    fun isInAvailability(campsite: Campsite, date: String): Boolean{
+        for (range in campsite.availability){
+            if(date >= range.start && date <= range.end){
+                return true
+            }
+        }
+        return false
+    }
+
+    // checks if an active reservation has this date
+    fun isDateBooked(campsiteId: String, date: String): Boolean{
+        val booked = bookedReservations(campsiteId, repository.reservations)
+        for (reservation in booked){
+            if(date >= reservation.startDate && date <= reservation.endDate){
+                return true
+            }
+        }
+        return false
+    }
+
+    // checks if entrant can pick this date
+    fun isDateAvailable(campsite: Campsite, date: String): Boolean{
+        if (!isInAvailability(campsite, date)){
+            return false
+        }
+        if (isDateBooked(campsite.id, date)){
+            return false
+        }
+        return true
     }
 
 }
