@@ -11,6 +11,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.controllers.CampsiteController
 import com.example.dascamp.controllers.ProfileController
+import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.screens.LocalCurrentUser
@@ -80,6 +81,7 @@ fun DasCampApp() {
     val scheduleController = remember{ ScheduleController(repository) }
     val campsiteController = remember { CampsiteController(repository) }
     val profileController = remember { ProfileController(repository) }
+    val reservationController = remember { ReservationController(repository) }   // next to the other controllers
 
     // The only navigation rule for sign-in state
     LaunchedEffect(repository.usersLoaded, repository.currentUser) {
@@ -130,7 +132,7 @@ fun DasCampApp() {
             composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
             composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController) }
             composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController) }
-            composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController) }
+            composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController, reservationController) }
             composable(EntrantRoutes.RESERVATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite screen
 
             // OWNER NAVIGATION
