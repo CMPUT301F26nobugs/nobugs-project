@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
@@ -44,7 +43,6 @@ import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
-import com.example.dascamp.screens.EntrantCalendarGrid
 import com.example.dascamp.ui.theme.DasCampTheme
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.*
@@ -506,8 +504,6 @@ fun AdminViewCampsite(navController: NavController) {
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Entrant Calendar Grid
-            EntrantCalendarGrid()
             Spacer(modifier = Modifier.padding(8.dp))
 
             // Legend

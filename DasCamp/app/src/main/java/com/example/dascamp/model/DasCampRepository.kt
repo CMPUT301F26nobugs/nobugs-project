@@ -15,7 +15,7 @@ import com.google.firebase.firestore.firestore
  * every list in the app (like campsites, lotteries) is stored as its own collection
  * the listener reacts to the change in firestore and rebuilds the on-screen list for UI to Update
  */
-class DasCampRepository: ObservableModel {
+class DasCampRepository(val uid: String): ObservableModel {
     // FIRESTORE COLLECTIONS
     private val db = Firebase.firestore
     private val campsitesRef = db.collection("campsites")
@@ -39,10 +39,12 @@ class DasCampRepository: ObservableModel {
 
     private val _users = mutableStateListOf<User>()
     val users: List<User> get() = _users
+    val currentUser: User? get() = _users.firstOrNull { it.id == uid } // This device's user, or null if it hasn't signed up (or was deleted)
 
     // False until the first users snapshot arrives
     // Tells "still loading" apart from "loaded, and this device has no user yet"
     var usersLoaded by mutableStateOf(false)
+        private set
 
     // OPEN ITEMS (which campsites/lottery the user tapped)
     // TODO: this is screen state, not data. Move it into the route arguments later.
@@ -66,8 +68,6 @@ class DasCampRepository: ObservableModel {
         }
     }
 
-    // LISTENING
-    private val loadedPaths = mutableStateListOf<String>()
     init {
         listen(campsitesRef, _campsites, Campsite::class.java)
         listen(lotteriesRef, _lotteries, Lottery::class.java)
@@ -95,6 +95,12 @@ class DasCampRepository: ObservableModel {
     fun addNotification(notification: Notification) = save(notificationsRef, notification.id, notification)
     fun deleteNotification(notification: Notification) = remove(notificationsRef, notification.id)
 
+    // USERS
+    fun userById(id: String): User? = _users.firstOrNull { it.id == id }
+    fun addUser(user: User) = save(usersRef, user.id, user)
+    fun updateUser(user: User) = save(usersRef, user.id, user)
+    fun deleteUser(user: User) = remove(usersRef, user.id)
+
     // HELPERS
     /**
      * Watches one collection
@@ -105,7 +111,7 @@ class DasCampRepository: ObservableModel {
     private fun <T : Any> listen(
         ref: CollectionReference,
         list: SnapshotStateList<T>,
-        type: Class<T>
+        type: Class<T>,
         onLoaded: () -> Unit = {}
     ) {
         ref.addSnapshotListener { snapshot, error ->
@@ -130,7 +136,6 @@ class DasCampRepository: ObservableModel {
     private fun <T : Any> save(ref: CollectionReference, id: String, item: T) {
         ref.document(id).set(item)
     }
-
 
     // Removes the document that is referenced. Used by every delete method above
     private fun remove(ref: CollectionReference, id: String) {

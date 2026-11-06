@@ -8,7 +8,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.model.DasCampRepository
-import com.example.dascamp.model.Session
 import com.example.dascamp.screens.entrantScreens.EntrantCampsiteList
 import com.example.dascamp.screens.entrantScreens.EntrantCampsiteScreen
 import com.example.dascamp.screens.entrantScreens.EntrantDashboard
@@ -20,8 +19,6 @@ import com.example.dascamp.screens.entrantScreens.EntrantQrCodeScreen
 import com.example.dascamp.screens.entrantScreens.EntrantReservationList
 import com.example.dascamp.screens.entrantScreens.EntrantRoutes
 import com.example.dascamp.screens.SignUpScreen
-
-
 import com.example.dascamp.screens.ownerScreens.OwnerAddCampsite
 import com.example.dascamp.screens.ownerScreens.OwnerBookedDates
 import com.example.dascamp.screens.ownerScreens.OwnerCampsite
@@ -56,23 +53,47 @@ import com.example.dascamp.screens.adminScreens.AdminMessageList
 import com.example.dascamp.screens.adminScreens.AdminViewCampsite
 import com.example.dascamp.screens.adminScreens.AdminViewMessage
 import com.example.dascamp.screens.adminScreens.ImageGallery
+import android.provider.Settings
+
 
 @Composable
 fun DasCampApp() {
 
     // Page Navigation
     val navController = rememberNavController()
-    val startDestination = "signUpScreen"// CHANGE HERE TO SWITCH LANDING PAGE (owner: OwnerRoutes.DASHBOARD, admin: AdminRoutes.DASHBOARD)
-    val repository = remember { DasCampRepository() }
+    val startDestination = "signUpScreen"
     val context = LocalContext.current
-    val session = remember { Session(repository, context.applicationContext) }
+    val repository = remember {
+        val uid = Settings.Secure.getString(
+            context.contentResolver, Settings.Secure.ANDROID_ID
+        ) ?: ""
+        DasCampRepository(uid)
+    }
 
-    LaunchedEffect(session.uid, session.roles) { session.chooseRole() }
+    // The only navigation rule for sign-in state
+    LaunchedEffect(repository.usersLoaded, repository.currentUser) {
+        if (!repository.usersLoaded) return@LaunchedEffect
+        val user = repository.currentUser
+        val route = navController.currentDestination?.route
+        if (user == null) {
+            // New device, or the profile was deleted
+            if (route != "signUpScreen") {
+                navController.navigate("signUpScreen") { popUpTo(0) }
+            }
+        } else if (route == "signUpScreen") {
+            // Signed up or returning: leave the form
+            val home = when {
+                user.admin -> AdminRoutes.DASHBOARD
+                user.owner -> OwnerRoutes.DASHBOARD
+                else -> EntrantRoutes.DASHBOARD
+            }
+            navController.navigate(home) { popUpTo("signUpScreen") { inclusive = true } }
+        }
+    }
 
     NavHost(navController = navController, startDestination = startDestination) {
-
         // First-time download landing page (i.e. devices not in FireBase)
-        composable("signUpScreen") { SignUpScreen(navController, repository, session) }
+        composable("signUpScreen") { SignUpScreen(navController, repository) }
 
         // ENTRANT NAVIGATION
         composable(EntrantRoutes.DASHBOARD) { EntrantDashboard(navController) }

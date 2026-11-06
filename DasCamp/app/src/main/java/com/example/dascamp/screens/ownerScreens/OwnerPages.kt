@@ -45,7 +45,6 @@ import com.example.dascamp.model.LotteryFormState
 import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.OwnerMessage
 import com.example.dascamp.model.Notification
-import com.example.dascamp.model.OwnerProfile
 import java.util.UUID
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
@@ -248,7 +247,7 @@ private fun CampsiteForm(
             onClick = {
                 val built = form.toCampsite(
                     id = existing?.id ?: UUID.randomUUID().toString(),
-                    ownerId = existing?.ownerId ?: "owner-1",
+                    ownerId = existing?.ownerId ?: repository?.uid.orEmpty(),
                     rating = existing?.rating ?: 0.0,
                     ratingCount = existing?.ratingCount ?: 0
                 )
@@ -590,11 +589,6 @@ fun OwnerSendNotification(navController: NavController, repository: DasCampRepos
 fun OwnerMessageList(navController: NavController, repository: DasCampRepository? = null) {
     OwnerPage(navController, showBack = true) {
         Text("Message logs", style = MaterialTheme.typography.titleLarge)
-        repository?.messages?.forEach { message ->
-            TextButton(onClick = { navController.navigate(OwnerRoutes.MESSAGE) }) {
-                Text("${message.entrantName}: ${message.body}")
-            }
-        }
     }
 }
 
@@ -604,82 +598,61 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
     var body by remember { mutableStateOf("") }
     OwnerPage(navController, showBack = true) {
         Text("Message", style = MaterialTheme.typography.titleLarge)
-        repository?.messages?.forEach { message ->
-            Text(message.body)
-        }
         EmptyValue(0.5f)
         BlockBox(80)
         FormField("Write a message", body, onValueChange = { typed -> body = typed })
         Button(onClick = {
-            if (body.isNotBlank()) {
-                repository?.addMessage(
-                    OwnerMessage(
-                        id = UUID.randomUUID().toString(),
-                        reservationId = "",
-                        entrantName = "Entrant",
-                        body = body.trim(),
-                        sentAt = System.currentTimeMillis().toString()
-                    )
-                )
-                body = ""
+            // TODO implement messaging w/ firestore
             }
-        }) { Text("Send") }
+        ) { Text("Send") }
     }
 }
 
 /**
- * Profile tab. Edit only unlocks the fields on this screen.
- * Nothing here is written to OwnerProfile yet.
- */
-/**
  * Profile tab. Edit unlocks the fields, Done saves them.
  */
 @Composable
-fun OwnerProfile(navController: NavController, repository: DasCampRepository? = null) {
-    val saved = repository?.owners?.firstOrNull()
-    var profileId by remember { mutableStateOf("") }
+fun OwnerProfile(
+    navController: NavController,
+    repository: DasCampRepository? = null,
+) {
+    val saved = repository?.currentUser
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
-    var organization by remember { mutableStateOf("") }
     var notificationsOn by remember { mutableStateOf(true) }
     var loaded by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
+
     LaunchedEffect(saved?.id) {
         if (saved != null && !loaded) {
-            profileId = saved.id
             firstName = saved.firstName
             lastName = saved.lastName
             email = saved.email
             phoneNumber = saved.phoneNumber
-            organization = saved.organizationName
             notificationsOn = saved.notificationsOn
             loaded = true
         }
     }
+
     OwnerPage(navController, showBack = false) {
         Text("Profile", style = MaterialTheme.typography.titleLarge)
         FormField("First name", firstName, { firstName = it }, editing)
         FormField("Last name", lastName, { lastName = it }, editing)
         FormField("Email", email, { email = it }, editing)
         FormField("Phone", phoneNumber, { phoneNumber = it }, editing)
-        FormField("Organization", organization, { organization = it }, editing)
         Button(onClick = {
-            if (editing && repository != null) {
-                val id = profileId.ifBlank { UUID.randomUUID().toString() }
-                profileId = id
-                val profile = OwnerProfile(
-                    id = id,
-                    firstName = firstName.trim(),
-                    lastName = lastName.trim(),
-                    email = email.trim(),
-                    phoneNumber = phoneNumber.trim(),
-                    notificationsOn = notificationsOn,
-                    organizationName = organization.trim()
+            if (editing && repository != null && saved != null) {
+                repository.updateUser(
+                    saved.copy(
+                        firstName = firstName.trim(),
+                        lastName = lastName.trim(),
+                        email = email.trim(),
+                        phoneNumber = phoneNumber.trim(),
+                        notificationsOn = notificationsOn
+                    )
                 )
-                if (repository.owners.any { it.id == id }) repository.updateOwner(profile)
-                else repository.addOwner(profile)
             }
             editing = !editing
         }) { Text(if (editing) "Done" else "Edit") }
@@ -694,14 +667,7 @@ fun OwnerProfile(navController: NavController, repository: DasCampRepository? = 
         }
         Button(onClick = {}) { Text("App policy and guidelines") }
         Button(onClick = {
-            saved?.let { repository.deleteOwner(it) }
-            profileId = ""
-            firstName = ""
-            lastName = ""
-            email = ""
-            phoneNumber = ""
-            organization = ""
-            loaded = false
+            if (repository != null && saved != null) { repository.deleteUser(saved) }
         }) { Text("Delete profile") }
     }
 }

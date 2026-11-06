@@ -28,39 +28,24 @@ import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.screens.entrantScreens.EntrantRoutes
 import com.example.dascamp.ui.theme.DasCampTheme
 import com.example.dascamp.model.DasCampRepository
-import com.example.dascamp.model.EntrantProfile
 import com.example.dascamp.model.Role
+import com.example.dascamp.model.User
 import com.example.dascamp.screens.adminScreens.AdminRoutes
 import com.example.dascamp.screens.ownerScreens.OwnerRoutes
-import com.example.dascamp.model.Session
 
 // SIGN-UP SCREEN
 @Composable
 fun SignUpScreen(
     navController: NavController,
-    repository: DasCampRepository? = null,
-    session: Session? = null
+    repository: DasCampRepository? = null
 ) {
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
 
-    // Returning users skip this screen
-    LaunchedEffect(session?.activeRole) {
-        val route = when (session?.activeRole) {
-            Role.ENTRANT -> EntrantRoutes.DASHBOARD
-            Role.OWNER -> OwnerRoutes.DASHBOARD
-            Role.ADMIN -> AdminRoutes.DASHBOARD
-            null -> return@LaunchedEffect
-        }
-        navController.navigate(route) { popUpTo("signUpScreen") { inclusive = true } }
-    }
-
-    // Still waiting for the first Firestore snapshots: don't flash the form
-    val ready = session != null && repository != null &&
-            session.uid.isNotEmpty() && repository.rolesLoaded
-    if (session != null && !ready) {
+    // Waiting for the first users snapshot: don't flash the form
+    if (repository != null && !repository.usersLoaded) {
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
@@ -146,14 +131,12 @@ fun SignUpScreen(
 
                 // Sign-Up Button
                 Button(
-                    enabled = session != null,
+                    enabled = repository != null && repository.uid.isNotEmpty(),
                     onClick = {
-                        if (repository != null && session != null &&
-                            firstName.isNotBlank() && email.isNotBlank()
-                        ) {
-                            repository.addEntrant(
-                                EntrantProfile(
-                                    id = session.uid,
+                        if (repository != null && firstName.isNotBlank() && lastName.isNotBlank() && email.isNotBlank()) {
+                            repository.addUser(
+                                User(
+                                    id = repository.uid,
                                     firstName = firstName.trim(),
                                     lastName = lastName.trim(),
                                     email = email.trim(),
