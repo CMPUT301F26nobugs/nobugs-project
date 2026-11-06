@@ -18,10 +18,9 @@
 ##
 - **Full Name**: Joshua Okhifoh
 - **CCID**: jfokhifo
-  
+
+## Documentation
+- [Kotlin Documentation](https://cmput301f26nobugs.github.io/nobugs-project/)
+
 ## References and Resources
 'N/A'
-
-## Verbal Collaboration
-'N/A'
-
