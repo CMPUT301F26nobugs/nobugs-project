@@ -1,13 +1,16 @@
 package com.example.dascamp.model
 
 /**
- * App-wide policy text shown to entrants and owners.
+ * Holds the app's policy text, to be displayed to users (e.g. on a policies screen).
+ *
+ * Implemented as a singleton `object`, so the text is accessed directly as [Policy.TEXT].
  */
 object Policy {
     /**
-     * Full policy and guidelines string displayed in the profile / policy screen.
+     * The policy text shown to users.
+     *
+     * Currently, a placeholder; the real policies still need to be written.
      */
-    const val TEXT =
-        "DasCamp guidelines: treat hosts and guests respectfully, " +
+    const val TEXT = "DasCamp guidelines: treat hosts and guests respectfully, " +
                 "follow each campsite's rules, cancel with notice, and do not misuse lotteries."
 }
