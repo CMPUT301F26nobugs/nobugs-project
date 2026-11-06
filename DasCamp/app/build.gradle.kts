@@ -38,6 +38,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.ui)
     implementation(libs.play.services.maps)
     implementation("org.osmdroid:osmdroid-android:6.1.20")  //OpenStreetMap

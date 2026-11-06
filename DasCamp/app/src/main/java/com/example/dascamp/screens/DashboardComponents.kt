@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,8 +24,32 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import com.example.dascamp.model.Role
+import com.example.dascamp.model.User
+import com.example.dascamp.screens.adminScreens.AdminRoutes
+import com.example.dascamp.screens.entrantScreens.EntrantRoutes
+import com.example.dascamp.screens.ownerScreens.OwnerRoutes
 import com.example.dascamp.ui.theme.DasCampTheme
 
+/** Buttons to jump to the other dashboards this user is allowed to use */
+@Composable
+fun RoleSwitcher(navController: NavController, user: User?, current: Role) {
+    if (user == null) return
+    val targets = listOf(
+        Triple(Role.ENTRANT, user.entrant, EntrantRoutes.DASHBOARD),
+        Triple(Role.OWNER, user.owner, OwnerRoutes.DASHBOARD),
+        Triple(Role.ADMIN, user.admin, AdminRoutes.DASHBOARD)
+    )
+    targets.forEach { (role, has, route) ->
+        if (has && role != current) {
+            OutlinedButton(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(route) { popUpTo(route) { inclusive = true } } }
+            ) { Text("Switch to ${role.name.lowercase()} view") }
+        }
+    }
+}
 
 // BIG BUTTON SKELETON (can be used for big buttons on dashboards)
 @Composable

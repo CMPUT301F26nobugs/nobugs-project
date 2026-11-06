@@ -55,9 +55,11 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.example.dascamp.controllers.CampsiteController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.DasCampRepository
@@ -149,15 +151,30 @@ fun EntrantDashboardPreview() {
 
 // CAMPSITE LIST SCREEN
 @Composable
-fun EntrantCampsiteList(navController: NavController) {
-    // Dummy data
-    val nums = (1..6).toList()
-
+fun EntrantCampsiteList(
+    navController: NavController,
+    repository: DasCampRepository? = null,
+    campsiteController: CampsiteController? = null
+) {
     var query by rememberSaveable { mutableStateOf("") }                // campsite search
     var isToggled by rememberSaveable { mutableStateOf(false) }         // bool for showing filters
     var locationFilter by rememberSaveable { mutableStateOf("") }       // location filter
     var dateFilter by rememberSaveable { mutableStateOf("") }           // date filter
     var occupancyFilter by rememberSaveable { mutableStateOf("") }      // occupancy filter
+
+    // Only apply the date filter once it is a full yyyy-MM-dd date
+    val date = dateFilter.trim()
+        .takeIf { Regex("\\d{4}-\\d{2}-\\d{2}").matches(it) }
+        .orEmpty()
+
+    // Searching results
+    val results = campsiteController?.searchCampsites(
+        query = query,
+        location = locationFilter,
+        guests = occupancyFilter.toIntOrNull(),
+        startDate = date,
+        endDate = date,
+    ).orEmpty() // or return empty if campsiteController is null
 
     EntrantPage(
         navController = navController,
@@ -192,44 +209,13 @@ fun EntrantCampsiteList(navController: NavController) {
         )
 
         // Display Campsites
-        /*TODO("Implement campsites class logic")*/
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(nums) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { navController.navigate(EntrantRoutes.CAMPSITE) },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            modifier = Modifier
-                                .padding(start = 16.dp)
-                                .weight(1f),
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Start,
-                            text = "Campsite $it"
-                        )
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = "Go to details",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
+        if (results.isEmpty()) { Text("No campsites match") }
+        results.forEach { campsite ->
+            TextButton(onClick = {
+                repository?.openCampsiteId = campsite.id
+                navController.navigate(EntrantRoutes.CAMPSITE)
+            }) {
+                Text("${campsite.name} · ${campsite.location} · up to ${campsite.maxOccupancy} · ★ ${"%.1f".format(campsite.rating)}")
             }
         }
     }

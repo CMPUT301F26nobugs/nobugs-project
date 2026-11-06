@@ -30,7 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.model.Role
 import com.example.dascamp.screens.AppScaffold
+import com.example.dascamp.screens.RoleMenu
 
 /**
  * Every owner screen in the storyboard
@@ -110,7 +112,8 @@ fun OwnerPage(
         onBackClick = if (showBack) {
             { navController.popBackStack() }
         } else null,
-        navBar = { OwnerNavBar(navController) }
+        navBar = { OwnerNavBar(navController) },
+        roleMenu = { RoleMenu(navController, Role.OWNER) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
