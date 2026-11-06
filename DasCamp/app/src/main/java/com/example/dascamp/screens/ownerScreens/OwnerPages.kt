@@ -49,7 +49,7 @@ import com.example.dascamp.model.OwnerProfile
 import java.util.UUID
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
-
+import com.example.dascamp.model.formatPrice
 
 
 /**
@@ -141,36 +141,81 @@ fun OwnerCampsite(
     repository: DasCampRepository? = null
 ) {
     val campsite = repository?.campsites?.find { it.id == repository.openCampsiteId }
+
+    if (campsite == null){
+        OwnerPage(navController, showBack = true ) {
+            Text("Campsite not found")
+        }
+        return
+    }
     OwnerPage(navController, showBack = true) {
-        Text(campsite?.name ?: "Campsite", style = MaterialTheme.typography.titleLarge)
+        Text(campsite.name, style = MaterialTheme.typography.titleLarge)
+
+        //Location
         Text("Location", style = MaterialTheme.typography.titleMedium)
-        Text(campsite?.location.orEmpty())
+        Text(campsite.location)
+
+        //Price
+        Text("Price per Night", style = MaterialTheme.typography.titleMedium)
+        Text("$" + formatPrice(campsite.pricePerNight))
+
+        //Maximum guests
+        Text("Maximum Guests", style = MaterialTheme.typography.titleMedium)
+        Text(campsite.maxOccupancy.toString())
+
+        //Tags
+        Text("Tags", style = MaterialTheme.typography.titleMedium)
+        Text(campsite.tags.joinToString(", "))
+
+        //Description
         Text("Description", style = MaterialTheme.typography.titleMedium)
-        Text(campsite?.description.orEmpty())
+        Text(campsite.description)
+
+        //Rules
         Text("Rules", style = MaterialTheme.typography.titleMedium)
-        Text(campsite?.rules.orEmpty())
+        Text(campsite.rules)
+
+        //Cancellation
         Text("Cancellation", style = MaterialTheme.typography.titleMedium)
-        Text(campsite?.cancellationPolicy.orEmpty())
+        Text(campsite.cancellationPolicy)
+
+        //Availability
+        Text("Availability", style = MaterialTheme.typography.titleMedium)
+        for (range in campsite.availability){
+            Text(range.start + " to " + range.end)
+        }
+
+        //Button Edit
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { navController.navigate(OwnerRoutes.EDIT) }
         ) { Text("Edit campsite") }
+
+        //Booked dates
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { navController.navigate(OwnerRoutes.BOOKED) }
         ) { Text("Booked dates") }
+
+        //Map button
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { navController.navigate(OwnerRoutes.MAP) }
         ) { Text("Map location") }
+
+        //Qr code button
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { navController.navigate(OwnerRoutes.QR) }
         ) { Text("QR code") }
+
+        //Create lottery button
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { navController.navigate(OwnerRoutes.CREATE) }
         ) { Text("Create lottery") }
+
+        //Delete button
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
