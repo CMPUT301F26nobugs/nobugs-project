@@ -20,6 +20,8 @@ import com.example.dascamp.screens.entrantScreens.EntrantQrCodeScreen
 import com.example.dascamp.screens.entrantScreens.EntrantReservationList
 import com.example.dascamp.screens.entrantScreens.EntrantRoutes
 import com.example.dascamp.screens.SignUpScreen
+
+
 import com.example.dascamp.screens.ownerScreens.OwnerAddCampsite
 import com.example.dascamp.screens.ownerScreens.OwnerBookedDates
 import com.example.dascamp.screens.ownerScreens.OwnerCampsite
@@ -49,6 +51,11 @@ import com.example.dascamp.screens.adminScreens.NotificationLog
 import com.example.dascamp.screens.adminScreens.OtherLog
 import com.example.dascamp.screens.adminScreens.ProfileType
 import com.example.dascamp.screens.adminScreens.RequestLog
+import com.example.dascamp.screens.adminScreens.AdminCampsiteList
+import com.example.dascamp.screens.adminScreens.AdminMessageList
+import com.example.dascamp.screens.adminScreens.AdminViewCampsite
+import com.example.dascamp.screens.adminScreens.AdminViewMessage
+import com.example.dascamp.screens.adminScreens.ImageGallery
 
 @Composable
 fun DasCampApp() {
@@ -85,7 +92,7 @@ fun DasCampApp() {
         composable(OwnerRoutes.ADD) { OwnerAddCampsite(navController, repository) }
         composable(OwnerRoutes.CAMPSITE) { OwnerCampsite(navController, repository) }
         composable(OwnerRoutes.EDIT) { OwnerEditCampsite(navController, repository) }
-        composable(OwnerRoutes.BOOKED) { OwnerBookedDates(navController) }
+        composable(OwnerRoutes.BOOKED) { OwnerBookedDates(navController, repository) }
         composable(OwnerRoutes.MAP) { OwnerMapLocation(navController) }
         composable(OwnerRoutes.QR) { OwnerQrCode(navController) }
         composable(OwnerRoutes.LOTTERIES) { OwnerLotteryList(navController, repository) }
@@ -115,5 +122,16 @@ fun DasCampApp() {
         composable(AdminRoutes.REQUEST_LOG) { RequestLog(navController) }
         composable(AdminRoutes.APPROVED_LOG) { ApprovedLog(navController) }
         composable(AdminRoutes.OTHER_LOG) { OtherLog(navController) }
+        composable(AdminRoutes.CAMPSITE_LIST) { AdminCampsiteList(navController) }
+        composable(AdminRoutes.CAMPSITE) { entry ->
+            val campsiteId = entry.arguments?.getString("campsiteId") ?: "default_id"
+            AdminViewCampsite(navController)
+        }
+        composable(AdminRoutes.IMAGE_GALLERY) { ImageGallery(navController) }
+        composable(AdminRoutes.MESSAGE_LIST) { AdminMessageList(navController) }
+        composable(AdminRoutes.MESSAGE) { entry ->
+            val messageId = entry.arguments?.getString("messageId") ?: "default_id"
+            AdminViewMessage(navController)
+        }
     }
 }

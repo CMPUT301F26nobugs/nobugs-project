@@ -47,6 +47,9 @@ import com.example.dascamp.model.OwnerMessage
 import com.example.dascamp.model.Notification
 import com.example.dascamp.model.OwnerProfile
 import java.util.UUID
+import com.example.dascamp.model.Reservation
+import com.example.dascamp.model.ReservationStatus
+
 
 
 /**
@@ -219,6 +222,24 @@ private fun CampsiteForm(
         FormField("Rules", form.rules, onValueChange = { typed -> form = form.copy(rules = typed) })
         FormField("Cancellation policy", form.cancellationPolicy, onValueChange = { typed -> form = form.copy(cancellationPolicy = typed) })
         FormField("Tags", form.tags, onValueChange = { typed -> form = form.copy(tags = typed) })
+        FormField(
+            "Available from (yyyy-MM-dd)",
+            form.availability[0].start,
+            onValueChange = {typed ->
+                val oldRange = form.availability[0]
+                val newRange = DateRange(typed, oldRange.end)
+                form = form.copy(availability = listOf(newRange))
+            }
+        )
+        FormField(
+            "Available to (yyyy-MM-dd)",
+            form.availability[0].end,
+            onValueChange = {typed ->
+                val oldRange = form.availability[0]
+                val newRange = DateRange(oldRange.start, typed)
+                form = form.copy(availability = listOf(newRange))
+            }
+        )
         error?.let { Text(it) }
         Button(onClick = {}) { Text("Upload photo") }
         Button(
@@ -248,13 +269,26 @@ private fun CampsiteForm(
 
 /** Calendar layout. No days are marked, because no stays are loaded yet. */
 @Composable
-fun OwnerBookedDates(navController: NavController) {
+fun OwnerBookedDates(navController: NavController, repository: DasCampRepository? = null) {
+    val campsite = repository?.campsites?.find { it.id == repository.openCampsiteId }
+    val booked = mutableListOf<Reservation>()
+    for (reservation in repository?.reservations.orEmpty()){
+        if(reservation.campsiteId == campsite?.id && reservation.status == ReservationStatus.ACTIVE){
+            booked.add(reservation)
+        }
+    }
     OwnerPage(navController, showBack = true) {
         Text("Booked dates", style = MaterialTheme.typography.titleLarge)
-        EmptyValue(0.6f)
+        Text(campsite?.name?: "Campsite")
         CalendarGrid()
         Text("Stays", style = MaterialTheme.typography.titleMedium)
-        EmptyCard { navController.navigate(OwnerRoutes.RESERVATION) }
+        if(booked.isEmpty()){
+            Text("No booked dates")
+        }else{
+            for (reservation in booked){
+                Text(reservation.startDate + " to " + reservation.endDate + " · " + reservation.entrantName)
+            }
+        }
     }
 }
 
