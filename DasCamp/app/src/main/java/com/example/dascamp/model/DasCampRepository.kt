@@ -34,8 +34,8 @@ class DasCampRepository: ObservableModel {
     private val _reservations = mutableStateListOf<Reservation>()
     val reservations: List<Reservation> get() = _reservations
 
-    private val _notifications = mutableStateListOf<OwnerNotification>()
-    val notifications: List<OwnerNotification> get() = _notifications
+    private val _notifications = mutableStateListOf<Notification>()
+    val notifications: List<Notification> get() = _notifications
 
     private val _messages = mutableStateListOf<OwnerMessage>()
     val messages: List<OwnerMessage> get() = _messages
@@ -79,7 +79,7 @@ class DasCampRepository: ObservableModel {
         listen(campsitesRef, _campsites, Campsite::class.java)
         listen(lotteriesRef, _lotteries, Lottery::class.java)
         listen(reservationsRef, _reservations, Reservation::class.java)
-        listen(notificationsRef, _notifications, OwnerNotification::class.java)
+        listen(notificationsRef, _notifications, Notification::class.java)
         listen(messagesRef, _messages, OwnerMessage::class.java)
         listen(ownersRef, _owners, OwnerProfile::class.java)
         listen(entrantsRef, _entrants, EntrantProfile::class.java)
@@ -102,8 +102,8 @@ class DasCampRepository: ObservableModel {
     fun deleteReservation(reservation: Reservation) = remove(reservationsRef, reservation.id)
 
     // NOTIFICATIONS
-    fun addNotification(notification: OwnerNotification) = save(notificationsRef, notification.id, notification)
-    fun deleteNotification(notification: OwnerNotification) = remove(notificationsRef, notification.id)
+    fun addNotification(notification: Notification) = save(notificationsRef, notification.id, notification)
+    fun deleteNotification(notification: Notification) = remove(notificationsRef, notification.id)
 
     // MESSAGES
     fun addMessage(message: OwnerMessage) = save(messagesRef, message.id, message)

@@ -44,7 +44,7 @@ import com.example.dascamp.model.DateRange
 import com.example.dascamp.model.LotteryFormState
 import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.OwnerMessage
-import com.example.dascamp.model.OwnerNotification
+import com.example.dascamp.model.Notification
 import com.example.dascamp.model.OwnerProfile
 import java.util.UUID
 
@@ -539,7 +539,7 @@ fun OwnerSendNotification(navController: NavController, repository: DasCampRepos
             onClick = {
                 if (message.isNotBlank()) {
                     repository?.addNotification(
-                        OwnerNotification(
+                        Notification(
                             id = UUID.randomUUID().toString(),
                             recipientName = send,
                             message = message.trim(),
@@ -599,13 +599,17 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
  * Profile tab. Edit only unlocks the fields on this screen.
  * Nothing here is written to OwnerProfile yet.
  */
+/**
+ * Profile tab. Edit unlocks the fields, Done saves them.
+ */
 @Composable
 fun OwnerProfile(navController: NavController, repository: DasCampRepository? = null) {
     val saved = repository?.owners?.firstOrNull()
     var profileId by remember { mutableStateOf("") }
-    var contactName by remember { mutableStateOf("") }
+    var firstName by remember { mutableStateOf("") }
+    var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
     var organization by remember { mutableStateOf("") }
     var notificationsOn by remember { mutableStateOf(true) }
     var loaded by remember { mutableStateOf(false) }
@@ -613,9 +617,10 @@ fun OwnerProfile(navController: NavController, repository: DasCampRepository? = 
     LaunchedEffect(saved?.id) {
         if (saved != null && !loaded) {
             profileId = saved.id
-            contactName = saved.contactName
+            firstName = saved.firstName
+            lastName = saved.lastName
             email = saved.email
-            phone = saved.phone
+            phoneNumber = saved.phoneNumber
             organization = saved.organizationName
             notificationsOn = saved.notificationsOn
             loaded = true
@@ -623,21 +628,23 @@ fun OwnerProfile(navController: NavController, repository: DasCampRepository? = 
     }
     OwnerPage(navController, showBack = false) {
         Text("Profile", style = MaterialTheme.typography.titleLarge)
-        FormField("Contact name", contactName, { contactName = it }, editing)
+        FormField("First name", firstName, { firstName = it }, editing)
+        FormField("Last name", lastName, { lastName = it }, editing)
         FormField("Email", email, { email = it }, editing)
-        FormField("Phone", phone, { phone = it }, editing)
+        FormField("Phone", phoneNumber, { phoneNumber = it }, editing)
         FormField("Organization", organization, { organization = it }, editing)
         Button(onClick = {
             if (editing && repository != null) {
                 val id = profileId.ifBlank { UUID.randomUUID().toString() }
                 profileId = id
                 val profile = OwnerProfile(
-                    id,
-                    organization.trim(),
-                    contactName.trim(),
-                    email.trim(),
-                    phone.trim(),
-                    notificationsOn
+                    id = id,
+                    firstName = firstName.trim(),
+                    lastName = lastName.trim(),
+                    email = email.trim(),
+                    phoneNumber = phoneNumber.trim(),
+                    notificationsOn = notificationsOn,
+                    organizationName = organization.trim()
                 )
                 if (repository.owners.any { it.id == id }) repository.updateOwner(profile)
                 else repository.addOwner(profile)
@@ -657,9 +664,10 @@ fun OwnerProfile(navController: NavController, repository: DasCampRepository? = 
         Button(onClick = {
             saved?.let { repository.deleteOwner(it) }
             profileId = ""
-            contactName = ""
+            firstName = ""
+            lastName = ""
             email = ""
-            phone = ""
+            phoneNumber = ""
             organization = ""
             loaded = false
         }) { Text("Delete profile") }
