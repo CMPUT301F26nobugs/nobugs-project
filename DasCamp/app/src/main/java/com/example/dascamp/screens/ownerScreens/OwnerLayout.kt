@@ -128,8 +128,6 @@ fun OwnerPage(
     }
 }
 
-
-
 @Composable
 fun BlockBox(height: Int) {
     Box(
