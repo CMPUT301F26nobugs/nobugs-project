@@ -1,11 +1,14 @@
 package com.example.dascamp
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.model.DasCampRepository
+import com.example.dascamp.model.Session
 import com.example.dascamp.screens.entrantScreens.EntrantCampsiteList
 import com.example.dascamp.screens.entrantScreens.EntrantCampsiteScreen
 import com.example.dascamp.screens.entrantScreens.EntrantDashboard
@@ -17,6 +20,8 @@ import com.example.dascamp.screens.entrantScreens.EntrantQrCodeScreen
 import com.example.dascamp.screens.entrantScreens.EntrantReservationList
 import com.example.dascamp.screens.entrantScreens.EntrantRoutes
 import com.example.dascamp.screens.SignUpScreen
+
+
 import com.example.dascamp.screens.ownerScreens.OwnerAddCampsite
 import com.example.dascamp.screens.ownerScreens.OwnerBookedDates
 import com.example.dascamp.screens.ownerScreens.OwnerCampsite
@@ -46,6 +51,11 @@ import com.example.dascamp.screens.adminScreens.NotificationLog
 import com.example.dascamp.screens.adminScreens.OtherLog
 import com.example.dascamp.screens.adminScreens.ProfileType
 import com.example.dascamp.screens.adminScreens.RequestLog
+import com.example.dascamp.screens.adminScreens.AdminCampsiteList
+import com.example.dascamp.screens.adminScreens.AdminMessageList
+import com.example.dascamp.screens.adminScreens.AdminViewCampsite
+import com.example.dascamp.screens.adminScreens.AdminViewMessage
+import com.example.dascamp.screens.adminScreens.ImageGallery
 
 @Composable
 fun DasCampApp() {
@@ -54,11 +64,15 @@ fun DasCampApp() {
     val navController = rememberNavController()
     val startDestination = "signUpScreen"// CHANGE HERE TO SWITCH LANDING PAGE (owner: OwnerRoutes.DASHBOARD, admin: AdminRoutes.DASHBOARD)
     val repository = remember { DasCampRepository() }
+    val context = LocalContext.current
+    val session = remember { Session(repository, context.applicationContext) }
+
+    LaunchedEffect(session.uid, session.roles) { session.chooseRole() }
 
     NavHost(navController = navController, startDestination = startDestination) {
 
         // First-time download landing page (i.e. devices not in FireBase)
-        composable("signUpScreen") { SignUpScreen(navController, repository)}
+        composable("signUpScreen") { SignUpScreen(navController, repository, session) }
 
         // ENTRANT NAVIGATION
         composable(EntrantRoutes.DASHBOARD) { EntrantDashboard(navController) }
@@ -108,5 +122,16 @@ fun DasCampApp() {
         composable(AdminRoutes.REQUEST_LOG) { RequestLog(navController) }
         composable(AdminRoutes.APPROVED_LOG) { ApprovedLog(navController) }
         composable(AdminRoutes.OTHER_LOG) { OtherLog(navController) }
+        composable(AdminRoutes.CAMPSITE_LIST) { AdminCampsiteList(navController) }
+        composable(AdminRoutes.CAMPSITE) { entry ->
+            val campsiteId = entry.arguments?.getString("campsiteId") ?: "default_id"
+            AdminViewCampsite(navController)
+        }
+        composable(AdminRoutes.IMAGE_GALLERY) { ImageGallery(navController) }
+        composable(AdminRoutes.MESSAGE_LIST) { AdminMessageList(navController) }
+        composable(AdminRoutes.MESSAGE) { entry ->
+            val messageId = entry.arguments?.getString("messageId") ?: "default_id"
+            AdminViewMessage(navController)
+        }
     }
 }
