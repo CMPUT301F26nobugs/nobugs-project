@@ -262,7 +262,7 @@ private fun CampsiteForm(
         Text(title, style = MaterialTheme.typography.titleLarge)
         FormField("Name", form.name, onValueChange = { typed -> form = form.copy(name = typed) })
         FormField("Location", form.location, onValueChange = { typed -> form = form.copy(location = typed) })
-        Text("Map Location", style = MaterialTheme.typography.titleMedium)
+        Text("Map Location, Click on the map to choose a pin location", style = MaterialTheme.typography.titleMedium)
         var startLatitude = form.latitude.toDoubleOrNull()
         if (startLatitude == null){
             startLatitude = 53.55
@@ -275,7 +275,7 @@ private fun CampsiteForm(
         CampsiteMap(
             latitude = startLatitude,
             longitude = startLongitude,
-            modifier = Modifier.fillMaxWidth().height(250.dp),
+            modifier = Modifier.fillMaxWidth().height(180.dp),
             onLocationPicked = {
                 pickedLatitude, pickedLongitude ->
                 form = form.copy(
