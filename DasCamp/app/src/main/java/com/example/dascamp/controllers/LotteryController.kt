@@ -3,12 +3,9 @@ package com.example.dascamp.controllers
 import com.example.dascamp.model.CampStore
 import com.example.dascamp.model.Lottery
 import com.example.dascamp.model.LotteryStatus
-import com.example.dascamp.model.Notification
-import com.example.dascamp.model.NotificationType
 import com.example.dascamp.model.WaitlistEntrant
 import com.example.dascamp.model.WaitlistStatus
 import java.util.Random
-import java.util.UUID
 
 /**
  * Handles lottery waitlists and winner draws for DasCamp.
@@ -25,6 +22,11 @@ class LotteryController(private val store: CampStore) {
         val formatter = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
         return formatter.format(java.util.Date())
     }
+
+    /** True only while an OPEN lottery is accepting interest from entrants. */
+    fun registrationOpen(lottery: Lottery): Boolean =
+        lottery.status == LotteryStatus.OPEN &&
+                today() >= lottery.registrationStart && today() <= lottery.registrationEnd
     /**
      * Returns every entrant currently on the given lottery waitlist.
      *
@@ -113,24 +115,18 @@ class LotteryController(private val store: CampStore) {
         store.updateLottery(lottery.copy(status = LotteryStatus.DRAWN, entrants = updated))
 
         updated.forEach { entry ->
-            val type = when (entry.status) {
-                WaitlistStatus.SELECTED -> NotificationType.WIN
-                WaitlistStatus.NOT_SELECTED -> NotificationType.LOSE
+            val selected = when (entry.status) {
+                WaitlistStatus.SELECTED -> true
+                WaitlistStatus.NOT_SELECTED -> false
                 else -> return@forEach
             }
             store.addNotification(
-                Notification(
-                    id = UUID.randomUUID().toString(),
+                NotificationsController.lotteryOutcome(
                     lotteryId = lottery.id,
-                    recipientName = entry.name,
-                    recipientId = entry.entrantId,
-                    message = if (type == NotificationType.WIN) {
-                        "You won the lottery: ${lottery.name}"
-                    } else {
-                        "You were not selected for: ${lottery.name}"
-                    },
-                    sentAt = System.currentTimeMillis().toString(),
-                    type = type
+                    lotteryName = lottery.name,
+                    entrantId = entry.entrantId,
+                    entrantName = entry.name,
+                    selected = selected
                 )
             )
         }

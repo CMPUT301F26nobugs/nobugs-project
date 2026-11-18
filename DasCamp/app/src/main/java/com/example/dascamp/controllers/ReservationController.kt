@@ -120,6 +120,7 @@ class ReservationController(private val store: CampStore) {
                 id = UUID.randomUUID().toString(),
                 lotteryId = lotteryId,
                 recipientName = user.displayName(),
+                recipientId = user.id,
                 message = message,
                 sentAt = System.currentTimeMillis().toString()
             )

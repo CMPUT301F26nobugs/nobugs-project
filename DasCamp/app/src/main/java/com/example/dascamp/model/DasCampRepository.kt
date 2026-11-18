@@ -27,6 +27,8 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
     // LIVE LISTS (filled from Firestore, read-only from the outside)
     private val _campsites = mutableStateListOf<Campsite>()
     override val campsites: List<Campsite> get() = _campsites
+    var campsitesLoaded by mutableStateOf(false)
+        private set
 
     private val _lotteries = mutableStateListOf<Lottery>()
     override val lotteries: List<Lottery> get() = _lotteries
@@ -69,7 +71,7 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
     }
 
     init {
-        listen(campsitesRef, _campsites, Campsite::class.java)
+        listen(campsitesRef, _campsites, Campsite::class.java) { campsitesLoaded = true }
         listen(lotteriesRef, _lotteries, Lottery::class.java)
         listen(reservationsRef, _reservations, Reservation::class.java)
         listen(notificationsRef, _notifications, Notification::class.java)
