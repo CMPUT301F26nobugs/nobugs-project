@@ -4,8 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -31,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -54,6 +57,7 @@ import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
+import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
 import com.example.dascamp.views.ReservationView
 
 /**
@@ -356,7 +360,17 @@ fun OwnerBookedDates(navController: NavController, repository: DasCampRepository
     OwnerPage(navController, showBack = true){
         Text("Booked dates", style = MaterialTheme.typography.titleLarge)
         Text(campsite?.name?: "Campsite")
-        CalendarGrid()
+        EntrantCalendarGrid(campsite, scheduleController)
+        Row(verticalAlignment = Alignment.CenterVertically){
+            Text("Open = ")
+            Box(modifier = Modifier.size(20.dp).background(Color.Green))
+            Spacer(modifier = Modifier.padding(8.dp))
+            Text("Booked = ")
+            Box(modifier = Modifier.size(20.dp).background(Color.Red))
+            Spacer(modifier = Modifier.padding(8.dp))
+            Text("Closed = ")
+            Box(modifier = Modifier.size(20.dp).background(Color.LightGray))
+        }
         Text("Stays", style = MaterialTheme.typography.titleMedium)
         if(booked.isEmpty()){
             Text("No booked dates")
