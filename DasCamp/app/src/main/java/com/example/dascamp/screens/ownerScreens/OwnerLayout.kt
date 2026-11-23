@@ -33,6 +33,7 @@ import androidx.navigation.NavController
 import com.example.dascamp.model.Role
 import com.example.dascamp.screens.AppScaffold
 import com.example.dascamp.screens.RoleMenu
+import com.example.dascamp.ui.theme.OwnerTheme
 
 /**
  * Every owner screen in the storyboard
@@ -108,23 +109,25 @@ fun OwnerPage(
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    AppScaffold(
-        onBackClick = if (showBack) {
-            { navController.popBackStack() }
-        } else null,
-        navBar = { OwnerNavBar(navController) },
-        roleMenu = { RoleMenu(navController, Role.OWNER) }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = horizontalAlignment,
-            content = content
-        )
+    OwnerTheme {
+        AppScaffold(
+            onBackClick = if (showBack) {
+                { navController.popBackStack() }
+            } else null,
+            navBar = { OwnerNavBar(navController) },
+            roleMenu = { RoleMenu(navController, Role.OWNER) }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = horizontalAlignment,
+                content = content
+            )
+        }
     }
 }
 
