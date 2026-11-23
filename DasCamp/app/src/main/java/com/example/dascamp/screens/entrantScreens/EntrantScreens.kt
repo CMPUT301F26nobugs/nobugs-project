@@ -462,7 +462,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
             }
 
             // Entrant Calendar Grid
-            EntrantCalendarGrid()
+            EntrantCalendarGrid(campsite, scheduleController)
 
             // Legend
             Row() {
