@@ -49,6 +49,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.unit.dp
+import com.example.dascamp.controllers.AdminController
+import com.example.dascamp.model.DasCampRepository
+import com.example.dascamp.model.Policy
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
 
 
@@ -431,9 +434,16 @@ fun RequestLogPreview() {
  * @param navController used to navigate to a campsite
  */
 @Composable
-fun AdminCampsiteList(navController: NavController) {
+fun AdminCampsiteList(
+    navController: NavController,
+    repository: DasCampRepository? = null
+) {
     var query by rememberSaveable { mutableStateOf("") } // campsite search
-    var selectedType by rememberSaveable { mutableStateOf<ProfileType?>(null) } // null = show all
+    val shown = repository?.campsites?.filter { site ->
+        query.isBlank() ||
+            site.name.contains(query, ignoreCase = true) ||
+            site.location.contains(query, ignoreCase = true)
+    }.orEmpty()
     AdminPage(
         navController = navController,
         showBack = true,
@@ -454,8 +464,19 @@ fun AdminCampsiteList(navController: NavController) {
             singleLine = true
         )
 
-        EmptyCard {
-            navController.navigate(AdminRoutes.campsite("123"))
+        if (repository == null) {
+            EmptyCard {
+                navController.navigate(AdminRoutes.campsite("123"))
+            }
+        } else if (shown.isEmpty()) {
+            Text("No campsites")
+        } else {
+            shown.forEach { site ->
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { navController.navigate(AdminRoutes.campsite(site.id)) }
+                ) { Text("${site.name} · ${site.location}") }
+            }
         }
     }
 }
@@ -478,8 +499,15 @@ fun AdminCampsiteListPreview() {
  * @param navController used for back navigation and for following actions
  */
 @Composable
-fun AdminViewCampsite(navController: NavController) {
-    var showConfirmation by remember { mutableStateOf(false) }
+fun AdminViewCampsite(
+    navController: NavController,
+    repository: DasCampRepository? = null,
+    campsiteId: String? = null
+) {
+    var pendingRemoval by remember { mutableStateOf<Pair<String, String>?>(null) }
+    val admin = remember(repository) { repository?.let { AdminController(it) } }
+    val campsite = repository?.campsites?.find { it.id == campsiteId }
+    val reviews = repository?.reviews?.filter { it.campsiteId == campsiteId }.orEmpty()
     AdminPage(
         navController = navController,
         showBack = true,
@@ -491,7 +519,7 @@ fun AdminViewCampsite(navController: NavController) {
             horizontalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Campsite Name",
+                text = campsite?.name ?: "Campsite",
                 style = MaterialTheme.typography.titleLarge
             )
         }
@@ -524,9 +552,12 @@ fun AdminViewCampsite(navController: NavController) {
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Location", style = MaterialTheme.typography.labelLarge)
+                Text(campsite?.location ?: "Location", style = MaterialTheme.typography.labelLarge)
                 Text(" | Max Occupancy | ", style = MaterialTheme.typography.labelLarge)
-                Text("Rating", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    campsite?.let { "${it.rating} (${it.ratingCount})" } ?: "Rating",
+                    style = MaterialTheme.typography.labelLarge
+                )
             }
         }
 
@@ -589,6 +620,60 @@ fun AdminViewCampsite(navController: NavController) {
         }
 
         Spacer(modifier = Modifier.height(10.dp))
+
+        Text("Ratings and reviews", style = MaterialTheme.typography.titleMedium)
+        Text(Policy.TEXT, style = MaterialTheme.typography.bodySmall)
+        if (reviews.isEmpty()) {
+            Text("No reviews on this campsite")
+        }
+        reviews.forEach { review ->
+            Text("${review.entrantName}", style = MaterialTheme.typography.labelLarge)
+            Text(
+                if (review.ratingRemoved) "Rating removed for policy" else "Rating ${review.rating}/5"
+            )
+            if (review.body.isNotBlank()) Text(review.body)
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !review.ratingRemoved,
+                colors = destructiveButtonColors(),
+                onClick = { pendingRemoval = review.id to "rating" }
+            ) { Text("Remove rating") }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                colors = destructiveButtonColors(),
+                onClick = { pendingRemoval = review.id to "review" }
+            ) { Text("Remove review") }
+        }
+        pendingRemoval?.let { (reviewId, kind) ->
+            Dialog(onDismissRequest = { pendingRemoval = null }) {
+                Column(
+                    modifier = Modifier
+                        .background(Color.DarkGray, RoundedCornerShape(8.dp))
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        if (kind == "rating") {
+                            "Remove this rating? It will no longer count toward the campsite average."
+                        } else {
+                            "Remove this review? This can't be undone."
+                        },
+                        color = Color.White
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { pendingRemoval = null }) { Text("Cancel") }
+                        TextButton(onClick = {
+                            pendingRemoval = null
+                            if (kind == "rating") admin?.removeRating(reviewId)
+                            else admin?.removeReview(reviewId)
+                        }) { Text("Remove", color = Color.Red) }
+                    }
+                }
+            }
+        }
 
         // view messages with entrants (same message list as from a campsite)
             Button(

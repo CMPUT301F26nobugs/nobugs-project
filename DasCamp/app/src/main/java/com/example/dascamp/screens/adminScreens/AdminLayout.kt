@@ -63,7 +63,7 @@ object AdminRoutes {
      *
      * @param id the campsite id; defaults to `"default_id"`
      */
-    fun campsite(id: String = "default_id") = "AdminViewCampsite/$id"
+    fun campsite(id: String = "default_id") = "adminViewCampsite/$id"
 
     /**
      * Builds the route for viewing a single message.

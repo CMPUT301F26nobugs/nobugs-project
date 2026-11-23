@@ -13,12 +13,16 @@ class FakeCampStore(override val uid: String) : CampStore {
     private val _reservations = mutableListOf<Reservation>()
     private val _notifications = mutableListOf<Notification>()
     private val _users = mutableListOf<User>()
+    private val _messages = mutableListOf<OwnerMessage>()
+    private val _reviews = mutableListOf<CampsiteReview>()
 
     override val campsites: List<Campsite> get() = _campsites
     override val lotteries: List<Lottery> get() = _lotteries
     override val reservations: List<Reservation> get() = _reservations
     override val notifications: List<Notification> get() = _notifications
     override val users: List<User> get() = _users
+    override val messages: List<OwnerMessage> get() = _messages
+    override val reviews: List<CampsiteReview> get() = _reviews
     override val currentUser: User? get() = _users.firstOrNull { it.id == uid }
 
     override fun addCampsite(campsite: Campsite) {
@@ -64,5 +68,23 @@ class FakeCampStore(override val uid: String) : CampStore {
     override fun updateUser(user: User) = addUser(user)
     override fun deleteUser(user: User) {
         _users.removeAll { it.id == user.id }
+    }
+
+    override fun addMessage(message: OwnerMessage) {
+        _messages.removeAll { it.id == message.id }
+        _messages.add(message)
+    }
+    override fun updateMessage(message: OwnerMessage) = addMessage(message)
+    override fun deleteMessage(message: OwnerMessage) {
+        _messages.removeAll { it.id == message.id }
+    }
+
+    override fun addReview(review: CampsiteReview) {
+        _reviews.removeAll { it.id == review.id }
+        _reviews.add(review)
+    }
+    override fun updateReview(review: CampsiteReview) = addReview(review)
+    override fun deleteReview(review: CampsiteReview) {
+        _reviews.removeAll { it.id == review.id }
     }
 }

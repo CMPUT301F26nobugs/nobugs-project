@@ -3,7 +3,9 @@ package com.example.dascamp
 import android.os.Build
 import android.provider.Settings
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -166,7 +168,11 @@ fun DasCampApp() {
 
     // Provide the local user to the navhost
     CompositionLocalProvider(LocalCurrentUser provides repository.currentUser) {
-        NavHost(navController = navController, startDestination = startDestination) {
+        NavHost(
+            navController = navController,
+            startDestination = startDestination,
+            modifier = Modifier.fillMaxSize()
+        ) {
             // First-time download landing page (i.e. devices not in FireBase)
             composable("signUpScreen") { SignUpScreen(navController, repository) }
 
@@ -187,9 +193,11 @@ fun DasCampApp() {
                     onLotterySelected = { repository.openLotteryId = it }
                 )
             }
-            composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
-            composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
-            composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController, reservationController) }
+            composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController, repository) }
+            composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController, repository) }
+            composable(EntrantRoutes.RESERVATION_LIST) {
+                EntrantReservationList(navController, reservationController, repository)
+            }
             composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController, repository) }
 
             composable(EntrantRoutes.RESERVATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite screen
@@ -247,10 +255,10 @@ fun DasCampApp() {
             composable(AdminRoutes.REQUEST_LOG) { RequestLog(navController) }
             composable(AdminRoutes.APPROVED_LOG) { ApprovedLog(navController) }
             composable(AdminRoutes.OTHER_LOG) { OtherLog(navController) }
-            composable(AdminRoutes.CAMPSITE_LIST) { AdminCampsiteList(navController) }
+            composable(AdminRoutes.CAMPSITE_LIST) { AdminCampsiteList(navController, repository) }
             composable(AdminRoutes.CAMPSITE) { entry ->
                 val campsiteId = entry.arguments?.getString("campsiteId") ?: "default_id"
-                AdminViewCampsite(navController)
+                AdminViewCampsite(navController, repository, campsiteId)
             }
             composable(AdminRoutes.IMAGE_GALLERY) { ImageGallery(navController) }
             composable(AdminRoutes.MESSAGE_LIST) { AdminMessageList(navController) }

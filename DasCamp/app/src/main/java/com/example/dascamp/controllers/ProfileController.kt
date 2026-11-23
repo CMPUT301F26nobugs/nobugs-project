@@ -50,4 +50,16 @@ class ProfileController(private val store: CampStore) {
             )
         )
     }
+
+    /**
+     * Saves or replaces the signed-in user's profile picture.
+     *
+     * [path] is a file this app already copied into its private storage.
+     * Pass null to clear the picture. US 01.08.02
+     */
+    fun setProfileImage(path: String?) {
+        val user = store.currentUser ?: return
+        val stored = path?.trim()?.ifBlank { null }
+        store.updateUser(user.copy(profileImageUri = stored))
+    }
 }

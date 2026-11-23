@@ -23,6 +23,8 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
     private val reservationsRef = db.collection("reservations")
     private val notificationsRef = db.collection("notifications")
     private val usersRef = db.collection("users")
+    private val messagesRef = db.collection("messages")
+    private val reviewsRef = db.collection("reviews")
 
     // LIVE LISTS (filled from Firestore, read-only from the outside)
     private val _campsites = mutableStateListOf<Campsite>()
@@ -41,6 +43,13 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
 
     private val _users = mutableStateListOf<User>()
     override val users: List<User> get() = _users
+
+    private val _messages = mutableStateListOf<OwnerMessage>()
+    override val messages: List<OwnerMessage> get() = _messages
+
+    private val _reviews = mutableStateListOf<CampsiteReview>()
+    override val reviews: List<CampsiteReview> get() = _reviews
+
     override val currentUser: User? get() = _users.firstOrNull { it.id == uid } // This device's user, or null if it hasn't signed up (or was deleted)
 
     // False until the first users snapshot arrives
@@ -52,6 +61,8 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
     // TODO: this is screen state, not data. Move it into the route arguments later.
     var openCampsiteId: String = ""
     var openLotteryId: String = ""
+    /** Reservation whose owner/entrant thread is open. US 01.14.01 */
+    var openReservationId: String = ""
 
     // OBSERVER PATTERN
     private val views = mutableListOf<ModelView>()
@@ -76,6 +87,8 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
         listen(reservationsRef, _reservations, Reservation::class.java)
         listen(notificationsRef, _notifications, Notification::class.java)
         listen(usersRef, _users, User::class.java) { usersLoaded = true }
+        listen(messagesRef, _messages, OwnerMessage::class.java)
+        listen(reviewsRef, _reviews, CampsiteReview::class.java)
     }
 
     // CAMPSITES
@@ -102,6 +115,16 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
     override fun addUser(user: User) = save(usersRef, user.id, user)
     override fun updateUser(user: User) = save(usersRef, user.id, user)
     override fun deleteUser(user: User) = remove(usersRef, user.id)
+
+    // MESSAGES (US 01.14.01)
+    override fun addMessage(message: OwnerMessage) = save(messagesRef, message.id, message)
+    override fun updateMessage(message: OwnerMessage) = save(messagesRef, message.id, message)
+    override fun deleteMessage(message: OwnerMessage) = remove(messagesRef, message.id)
+
+    // REVIEWS (US 01.13.02, US 03.09.01, US 03.10.01)
+    override fun addReview(review: CampsiteReview) = save(reviewsRef, review.id, review)
+    override fun updateReview(review: CampsiteReview) = save(reviewsRef, review.id, review)
+    override fun deleteReview(review: CampsiteReview) = remove(reviewsRef, review.id)
 
     // HELPERS
     /**

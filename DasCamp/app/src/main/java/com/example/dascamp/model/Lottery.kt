@@ -88,7 +88,8 @@ data class LotteryFormState(
         id: String,
         status: LotteryStatus,
         entrants: List<WaitlistEntrant>,
-        validCampsiteIds: Set<String>
+        validCampsiteIds: Set<String>,
+        organizerCampsiteIds: Set<String>? = null
     ): LotteryBuild {
         val trimmedName = name.trim()
         if (trimmedName.isEmpty()) return LotteryBuild(null, "Enter a name for this lottery")
@@ -97,6 +98,14 @@ data class LotteryFormState(
         }
         if (campsiteIds.any { it !in validCampsiteIds }) {
             return LotteryBuild(null, "One of the selected campsites no longer exists")
+        }
+        // US 02.04.08: a lottery can include other owners' campsites, but the
+        // organizer still has to put at least one of their own sites in it.
+        if (organizerCampsiteIds != null && campsiteIds.none { it in organizerCampsiteIds }) {
+            return LotteryBuild(
+                null,
+                "Include at least one of your own campsites. Other owners' campsites can be added as well."
+            )
         }
         if (invalidDate(registrationStart) || invalidDate(registrationEnd)) {
             return LotteryBuild(null, "Enter the registration period")

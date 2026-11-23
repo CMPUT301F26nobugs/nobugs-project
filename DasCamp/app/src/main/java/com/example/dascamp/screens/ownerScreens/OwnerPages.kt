@@ -46,10 +46,13 @@ import com.example.dascamp.model.LotteryFormState
 import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.label
 import com.example.dascamp.model.Notification
-import com.example.dascamp.model.OwnerMessage
 import java.util.UUID
+import com.example.dascamp.controllers.MessageController
 import com.example.dascamp.model.Reservation
+import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.formatPrice
+import com.example.dascamp.views.MessageView
+import androidx.compose.runtime.DisposableEffect
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.screens.EmptyCard
@@ -487,9 +490,18 @@ fun OwnerLotteryDetails(navController: NavController, repository: DasCampReposit
         Text("Registration: ${lottery.registrationStart} to ${lottery.registrationEnd}")
         Text("Booking: ${lottery.bookingStart} to ${lottery.bookingEnd}")
         Text("Winner count: ${lottery.winnerCount} · ${lottery.status.label()}")
-        Text("Campsites", style = MaterialTheme.typography.titleMedium)
+        Text("Campsites in this period", style = MaterialTheme.typography.titleMedium)
         lottery.campsiteIds.forEach { siteId ->
-            Text(repository?.campsites?.find { it.id == siteId }?.name ?: siteId)
+            val site = repository?.campsites?.find { it.id == siteId }
+            val ownerName = repository?.users?.find { it.id == site?.ownerId }?.displayName().orEmpty()
+            val label = site?.name ?: siteId
+            Text(if (ownerName.isBlank()) label else "$label · $ownerName")
+        }
+        val ownerCount = lottery.campsiteIds.mapNotNull { siteId ->
+            repository?.campsites?.find { it.id == siteId }?.ownerId
+        }.distinct().size
+        if (ownerCount > 1) {
+            Text("Shared lottery: campsites from $ownerCount owners")
         }
         Button(
             modifier = Modifier.fillMaxWidth(),
@@ -502,6 +514,19 @@ fun OwnerLotteryDetails(navController: NavController, repository: DasCampReposit
         lottery.entrants.forEach { entrant ->
             Text("${entrant.name} · ${entrant.status.label()}")
         }
+    }
+}
+
+@Composable
+private fun LotteryCampsiteRow(
+    name: String,
+    ownerLabel: String,
+    checked: Boolean,
+    onChecked: (Boolean) -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(checked = checked, onCheckedChange = onChecked)
+        Text("$name · $ownerLabel")
     }
 }
 
@@ -530,19 +555,33 @@ private fun LotteryForm(
     OwnerPage(navController, showBack = true) {
         Text(title, style = MaterialTheme.typography.titleLarge)
         FormField("Lottery name", form.name, onValueChange = { typed -> form = form.copy(name = typed) })
-        Text("Campsites", style = MaterialTheme.typography.titleMedium)
-        repository?.let { repo -> repo.campsites.filter { it.ownerId == repo.uid } }?.forEach { campsite ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                    checked = campsite.id in form.campsiteIds,
-                    onCheckedChange = { checked ->
-                        form = form.copy(
-                            campsiteIds = if (checked) form.campsiteIds + campsite.id
-                            else form.campsiteIds - campsite.id
-                        )
-                    }
+        Text("Lottery period", style = MaterialTheme.typography.titleMedium)
+        Text("The lottery only runs between these dates. You can list several of your campsites together with campsites that belong to other owners.")
+        Text("Your campsites", style = MaterialTheme.typography.titleMedium)
+        val mine = repository?.campsites?.filter { it.ownerId == repository.uid }.orEmpty()
+        val others = repository?.campsites?.filter { it.ownerId != repository.uid }.orEmpty()
+        if (mine.isEmpty()) Text("Add one of your campsites before publishing a lottery.")
+        mine.forEach { campsite ->
+            LotteryCampsiteRow(campsite.name, "You", campsite.id in form.campsiteIds) { checked ->
+                form = form.copy(
+                    campsiteIds = if (checked) form.campsiteIds + campsite.id
+                    else form.campsiteIds - campsite.id
                 )
-                Text(campsite.name)
+            }
+        }
+        Text("Other owners' campsites", style = MaterialTheme.typography.titleMedium)
+        if (others.isEmpty()) Text("No other campsites are listed yet.")
+        others.forEach { campsite ->
+            val ownerName = repository?.users
+                ?.find { it.id == campsite.ownerId }
+                ?.displayName()
+                ?.ifBlank { null }
+                ?: "Another owner"
+            LotteryCampsiteRow(campsite.name, ownerName, campsite.id in form.campsiteIds) { checked ->
+                form = form.copy(
+                    campsiteIds = if (checked) form.campsiteIds + campsite.id
+                    else form.campsiteIds - campsite.id
+                )
             }
         }
         FormField("Registration start", form.registrationStart, onValueChange = { typed -> form = form.copy(registrationStart = typed) })
@@ -560,7 +599,12 @@ private fun LotteryForm(
                     id = existing?.id ?: UUID.randomUUID().toString(),
                     status = existing?.status ?: LotteryStatus.OPEN,
                     entrants = existing?.entrants ?: emptyList(),
-                    validCampsiteIds = repository?.let { repo -> repo.campsites.filter { it.ownerId == repo.uid }.map { it.id }.toSet() } ?: emptySet()
+                    validCampsiteIds = repository?.campsites?.map { it.id }?.toSet() ?: emptySet(),
+                    organizerCampsiteIds = repository?.campsites
+                        ?.filter { it.ownerId == repository.uid }
+                        ?.map { it.id }
+                        ?.toSet()
+                        ?: emptySet()
                 )
                 val lottery = built.lottery
                 if (lottery == null) {
@@ -600,7 +644,10 @@ fun OwnerReservations(navController: NavController, repository: DasCampRepositor
         }
         if (reservations.isEmpty()) Text("No ${selected.lowercase()} reservations")
         reservations.forEach { reservation ->
-            OutlinedButton(onClick = { navController.navigate(OwnerRoutes.RESERVATION) }, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = {
+                repository?.openReservationId = reservation.id
+                navController.navigate(OwnerRoutes.RESERVATION)
+            }, modifier = Modifier.fillMaxWidth()) {
                 Text("${reservation.campsiteName} · ${reservation.entrantName} · ${reservation.startDate} to ${reservation.endDate}")
             }
         }
@@ -685,27 +732,60 @@ fun OwnerSendNotification(navController: NavController, repository: DasCampRepos
     }
 }
 
-/** Message logs, opened from the home screen. The blank card opens a thread. */
+/** Threads for reservations on this owner's campsites. */
 @Composable
 fun OwnerMessageList(navController: NavController, repository: DasCampRepository? = null) {
+    val mine = repository?.campsites
+        ?.filter { it.ownerId == repository.uid }
+        ?.map { it.id }
+        ?.toSet()
+        .orEmpty()
+    val threads = repository?.reservations?.filter { reservation ->
+        reservation.campsiteId in mine && reservation.status != ReservationStatus.CANCELLED
+    }.orEmpty()
     OwnerPage(navController, showBack = true) {
         Text("Message logs", style = MaterialTheme.typography.titleLarge)
+        if (threads.isEmpty()) Text("No reservation messages yet")
+        threads.forEach { reservation ->
+            TextButton(onClick = {
+                repository?.openReservationId = reservation.id
+                navController.navigate(OwnerRoutes.MESSAGE)
+            }) {
+                Text("${reservation.entrantName} · ${reservation.campsiteName}")
+            }
+        }
     }
 }
 
-/** One message thread. The list area and the write box are empty. */
+/** One reservation thread. The owner can reply to the entrant. */
 @Composable
 fun OwnerMessages(navController: NavController, repository: DasCampRepository? = null) {
     var body by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    val controller = remember(repository) { repository?.let { MessageController(it) } }
+    val view = remember(repository, repository?.openReservationId) {
+        repository?.let { MessageView(it) }
+    }
+    DisposableEffect(view) { onDispose { view?.remove() } }
+    val reservation = repository?.reservations?.find { it.id == repository.openReservationId }
     OwnerPage(navController, showBack = true) {
-        Text("Message", style = MaterialTheme.typography.titleLarge)
-        EmptyValue(0.5f)
-        BlockBox(80)
+        Text(
+            reservation?.let { "${it.entrantName} · ${it.campsiteName}" } ?: "Message",
+            style = MaterialTheme.typography.titleLarge
+        )
+        if (view == null || view.messages.isEmpty()) Text("No messages yet")
+        view?.messages?.forEach { message ->
+            val mine = message.senderId == repository?.uid
+            Text(if (mine) "You: ${message.body}" else "${reservation?.entrantName ?: "Entrant"}: ${message.body}")
+        }
+        error?.let { Text(it) }
         FormField("Write a message", body, onValueChange = { typed -> body = typed })
         Button(onClick = {
-            // TODO implement messaging w/ firestore
-            }
-        ) { Text("Send") }
+            val reservationId = repository?.openReservationId.orEmpty()
+            val result = controller?.send(reservationId, body)
+            error = result
+            if (result == null) body = ""
+        }) { Text("Send") }
     }
 }
 
