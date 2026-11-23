@@ -87,6 +87,7 @@ import com.example.dascamp.views.ProfileView
 import com.example.dascamp.model.Lottery
 import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.WaitlistStatus
+import com.example.dascamp.model.label
 import com.example.dascamp.views.ReservationView
 import com.example.dascamp.views.NotificationView
 
@@ -319,7 +320,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
     val winningLottery = reservationController?.wonLottery(campsite.id)
     val waitingLottery = repository?.let { repo ->
         repo.lotteries.firstOrNull { lottery ->
-            campsite.id in lottery.campsiteIds && lottery.status == LotteryStatus.OPEN &&
+            campsite.id in lottery.campsiteIds && lottery.status != LotteryStatus.COMPLETED &&
                     lottery.entrants.any { it.entrantId == repo.uid && it.status == WaitlistStatus.WAITING }
         }
     }
@@ -328,7 +329,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
     var lottery: Lottery? = null
     if(repository != null){
         for(item in repository.lotteries){
-            if(item.campsiteIds.contains(campsite.id) && lotteryController?.registrationOpen(item) == true){
+            if(item.campsiteIds.contains(campsite.id) && lotteryController?.waitlistOpen(item) == true){
                 lottery = item
             }
         }
@@ -479,6 +480,10 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
 
             if (winningLottery != null) {
                 Text("You were selected. Choose dates to book", style = MaterialTheme.typography.labelLarge)
+                winningLottery.entrants.firstOrNull { it.entrantId == entrantId }
+                    ?.responseDeadlineAt?.let { deadline ->
+                        Text("Respond by: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.US).format(java.util.Date(deadline))}")
+                    }
                 Text("Booking window: ${winningLottery.bookingStart} to ${winningLottery.bookingEnd}")
                 OutlinedTextField(
                     value = startDate,
@@ -544,22 +549,26 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
         } else if (lottery != null) {
             val activeLottery = lottery
             val currentEntry = activeLottery.entrants.firstOrNull { it.entrantId == repository?.uid }
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Button(onClick = {
-                    lotteryMessage = if (currentEntry == null) {
-                        lotteryController?.joinWaitlist(activeLottery, entrantName) ?: "Joined ${activeLottery.name}"
-                    } else {
-                        lotteryController?.leaveWaitlist(activeLottery) ?: "Left ${activeLottery.name}"
+            if (currentEntry == null || currentEntry.status == WaitlistStatus.WAITING) {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Button(onClick = {
+                        lotteryMessage = if (currentEntry == null) {
+                            lotteryController?.joinWaitlist(activeLottery, entrantName) ?: "Joined ${activeLottery.name}"
+                        } else {
+                            lotteryController?.leaveWaitlist(activeLottery) ?: "Left ${activeLottery.name}"
+                        }
+                    }) {
+                        Text(if (currentEntry == null) "Join waiting list" else "Leave waiting list")
                     }
-                }) {
-                    Text(if (currentEntry == null) "Join waiting list" else "Leave waiting list")
+                    Spacer(modifier = Modifier.padding(8.dp))
+                    Text("${activeLottery.entrants.size}/${activeLottery.waitlistCapacity ?: "∞"} · booking ends ${activeLottery.bookingEnd}")
                 }
-                Spacer(modifier = Modifier.padding(8.dp))
-                Text("${activeLottery.entrants.size}/${activeLottery.waitlistCapacity ?: "∞"} · ends ${activeLottery.registrationEnd}")
+                Text("Joining adds you to the waiting list. You are not guaranteed selection; replacements may be drawn if needed.")
+            } else {
+                Text("You are ${currentEntry.status.label()} in this lottery.")
             }
-            Text("Joining adds you to the waiting list. You can book only if selected after the draw.")
         } else if (waitingLottery != null) {
-            Text("Registration has closed. You are on the waitlist and winners will be drawn after the period ends.")
+            Text("You remain on the waitlist while selected entrants respond. You may be selected if more entrants are needed.")
         } else {
             Text("There is no lottery currently accepting entrants for this campsite.")
         }

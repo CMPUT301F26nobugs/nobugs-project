@@ -7,6 +7,9 @@ import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.WaitlistStatus
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 /**
@@ -23,6 +26,8 @@ import java.util.UUID
  * Stories: US 02.06.01, US 01.04.01
  */
 class ScheduleController (private val store: CampStore){
+    private fun today(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+
     //active reservations for campsite
     fun bookedReservations(campsiteId: String, reservations: List<Reservation>): List<Reservation>{
         val booked = mutableListOf<Reservation>()
@@ -103,12 +108,16 @@ class ScheduleController (private val store: CampStore){
         }
         // A campsite reservation is only available to a selected lottery entrant.
         if (lottery == null || lottery.status != LotteryStatus.DRAWN) {
-            return "You can book only after being selected in a completed lottery"
+            return "You can book only after being selected in an active lottery"
         }
         val entry = lottery.entrants.firstOrNull { it.entrantId == entrantId }
             ?: return "You are not on this lottery waitlist"
         if (entry.status != WaitlistStatus.SELECTED) {
             return "Only selected entrants can book this campsite"
+        }
+        if (today() > lottery.bookingEnd) return "The booking period has ended"
+        if (entry.responseDeadlineAt?.let { System.currentTimeMillis() >= it } == true) {
+            return "Your response period has ended"
         }
 
         //Entrant must accept rules
@@ -157,7 +166,9 @@ class ScheduleController (private val store: CampStore){
         store.addReservation(reservation)
 
         store.updateLottery(lottery.copy(entrants = lottery.entrants.map {
-            if (it.entrantId == entrantId) it.copy(status = WaitlistStatus.BOOKED) else it
+            if (it.entrantId == entrantId) {
+                it.copy(status = WaitlistStatus.BOOKED, responseDeadlineAt = null)
+            } else it
         }))
         return null
     }

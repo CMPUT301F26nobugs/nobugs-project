@@ -214,6 +214,22 @@ class HalfwayCheckpointTest {
     }
 
     @Test
+    fun toLottery_responseWindowMustBePositive() {
+        val built = LotteryFormState(
+            name = "Short window",
+            campsiteIds = listOf("camp-1"),
+            registrationStart = "2027-05-01",
+            registrationEnd = "2027-05-15",
+            bookingStart = "2027-05-16",
+            bookingEnd = "2027-06-01",
+            winnerCount = "1",
+            responseWindowHours = "0"
+        ).toLottery("l", LotteryStatus.OPEN, emptyList(), setOf("camp-1"))
+
+        assertEquals("Response window must be at least 1 hour", built.error)
+    }
+
+    @Test
     fun updateLottery_winnerCount_successful() {
         // US 02.04.06 — update lottery listing
         store.addLottery(openLottery())
@@ -228,7 +244,7 @@ class HalfwayCheckpointTest {
         val lottery = openLottery().copy(
             registrationEnd = "2020-01-01",
             bookingStart = "2020-01-02",
-            bookingEnd = "2020-12-31",
+            bookingEnd = "2099-12-31",
             entrants = listOf(
                 WaitlistEntrant("e1", "A", status = WaitlistStatus.WAITING),
                 WaitlistEntrant("e2", "B", status = WaitlistStatus.WAITING)
@@ -400,7 +416,7 @@ class HalfwayCheckpointTest {
         val lottery = openLottery().copy(
             registrationEnd = "2020-01-01",
             bookingStart = "2020-01-02",
-            bookingEnd = "2020-12-31",
+            bookingEnd = "2099-12-31",
             entrants = listOf(
                 WaitlistEntrant(entrantId, "Ada", status = WaitlistStatus.WAITING)
             )
@@ -417,7 +433,7 @@ class HalfwayCheckpointTest {
         val lottery = openLottery().copy(
             registrationEnd = "2020-01-01",
             bookingStart = "2020-01-02",
-            bookingEnd = "2020-12-31",
+            bookingEnd = "2099-12-31",
             winnerCount = 1,
             entrants = listOf(
                 WaitlistEntrant("winner", "W", status = WaitlistStatus.WAITING),
@@ -427,7 +443,76 @@ class HalfwayCheckpointTest {
         store.addLottery(lottery)
         lotteryController.drawWinners(lottery, Random(42))
 
+        assertFalse(store.notifications.any { it.type == NotificationType.LOSE })
+        assertEquals(
+            1,
+            store.lotteries.first().entrants.count { it.status == WaitlistStatus.WAITING }
+        )
+
+        val bookingEnded = store.lotteries.first().copy(bookingEnd = "2020-12-31")
+        lotteryController.drawWinners(bookingEnded, Random(42))
+
         assertTrue(store.notifications.any { it.type == NotificationType.LOSE })
+        assertEquals(LotteryStatus.COMPLETED, store.lotteries.first().status)
+    }
+
+    @Test
+    fun joinWaitlist_afterRegistrationBeforeBookingEnd_successful() {
+        val lottery = openLottery().copy(
+            registrationStart = "2020-01-01",
+            registrationEnd = "2020-01-02",
+            bookingStart = "2020-01-03",
+            bookingEnd = "2099-12-31",
+            status = LotteryStatus.DRAWN
+        )
+        store.addLottery(lottery)
+
+        val error = lotteryController.joinWaitlist(lottery, "Ada")
+
+        assertNull(error)
+        assertEquals(1, store.lotteries.first().entrants.size)
+    }
+
+    @Test
+    fun drawWinners_declinedOffer_selectsReplacement() {
+        val lottery = openLottery().copy(
+            registrationEnd = "2020-01-01",
+            bookingStart = "2020-01-02",
+            bookingEnd = "2099-12-31",
+            status = LotteryStatus.DRAWN,
+            entrants = listOf(
+                WaitlistEntrant("declined", "D", status = WaitlistStatus.DECLINED),
+                WaitlistEntrant("waiting", "W", status = WaitlistStatus.WAITING)
+            )
+        )
+        store.addLottery(lottery)
+
+        val error = lotteryController.drawWinners(lottery, Random(1))
+
+        assertNull(error)
+        assertEquals(WaitlistStatus.SELECTED, store.lotteries.first().entrants.last().status)
+        assertTrue(store.notifications.any { it.recipientId == "waiting" && it.type == NotificationType.WIN })
+    }
+
+    @Test
+    fun drawWinners_expiredOffer_selectsReplacement() {
+        val lottery = openLottery().copy(
+            registrationEnd = "2020-01-01",
+            bookingStart = "2020-01-02",
+            bookingEnd = "2099-12-31",
+            status = LotteryStatus.DRAWN,
+            entrants = listOf(
+                WaitlistEntrant("expired", "E", status = WaitlistStatus.SELECTED, responseDeadlineAt = 1L),
+                WaitlistEntrant("waiting", "W", status = WaitlistStatus.WAITING)
+            )
+        )
+        store.addLottery(lottery)
+
+        val error = lotteryController.drawWinners(lottery, Random(1))
+
+        assertNull(error)
+        assertEquals(WaitlistStatus.EXPIRED, store.lotteries.first().entrants.first().status)
+        assertEquals(WaitlistStatus.SELECTED, store.lotteries.first().entrants.last().status)
     }
 
     @Test
@@ -456,6 +541,7 @@ class HalfwayCheckpointTest {
             openLottery().copy(
                 bookingStart = "2020-01-01",
                 bookingEnd = "2099-12-31",
+                status = LotteryStatus.DRAWN,
                 entrants = listOf(
                     WaitlistEntrant(entrantId, "Ada", status = WaitlistStatus.SELECTED)
                 )
@@ -471,6 +557,32 @@ class HalfwayCheckpointTest {
 
         assertNull(error)
         assertTrue(store.notifications.any { it.message.contains("Reservation confirmed") })
+    }
+
+    @Test
+    fun reserve_selectedEntrantAfterResponseDeadline_unsuccessful() {
+        val lottery = openLottery().copy(
+            bookingStart = "2020-01-01",
+            bookingEnd = "2099-12-31",
+            status = LotteryStatus.DRAWN,
+            entrants = listOf(
+                WaitlistEntrant(
+                    entrantId = entrantId,
+                    name = "Ada",
+                    status = WaitlistStatus.SELECTED,
+                    responseDeadlineAt = 1L
+                )
+            )
+        )
+
+        val error = reservationController.reserve(
+            lottery,
+            sampleCampsite(),
+            "2027-06-01",
+            "2027-06-03"
+        )
+
+        assertEquals("Your response period has ended", error)
     }
 
     @Test
