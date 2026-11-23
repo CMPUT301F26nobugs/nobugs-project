@@ -3,6 +3,7 @@ package com.example.dascamp.controllers
 import com.example.dascamp.model.CampStore
 import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.Lottery
+import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.Notification
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
@@ -60,6 +61,13 @@ class ReservationController(private val store: CampStore) {
         if (entry == null || entry.status != WaitlistStatus.SELECTED) {
             return "You were not selected for this lottery"
         }
+        if (lottery.status != LotteryStatus.DRAWN) {
+            return "This lottery is not accepting bookings"
+        }
+        if (today() > lottery.bookingEnd) return "The booking period has ended"
+        if (entry.responseDeadlineAt?.let { System.currentTimeMillis() >= it } == true) {
+            return "Your response period has ended"
+        }
         if (today() < lottery.bookingStart || today() > lottery.bookingEnd) {
             return "Booking is not open right now"
         }
@@ -95,6 +103,10 @@ class ReservationController(private val store: CampStore) {
     }
 
     fun decline(lottery: Lottery) {
+        val entry = lottery.entrants.firstOrNull { it.entrantId == store.uid } ?: return
+        if (entry.status != WaitlistStatus.SELECTED) return
+        if (entry.responseDeadlineAt?.let { System.currentTimeMillis() >= it } == true) return
+        if (today() > lottery.bookingEnd) return
         setEntryStatus(lottery, WaitlistStatus.DECLINED)
     }
 
@@ -108,7 +120,9 @@ class ReservationController(private val store: CampStore) {
     private fun setEntryStatus(lottery: Lottery, status: WaitlistStatus) {
         store.updateLottery(
             lottery.copy(entrants = lottery.entrants.map {
-                if (it.entrantId == store.uid) it.copy(status = status) else it
+                if (it.entrantId == store.uid) {
+                    it.copy(status = status, responseDeadlineAt = null)
+                } else it
             })
         )
     }

@@ -23,13 +23,13 @@ class LotteryDrawWorker(context: Context, parameters: WorkerParameters) : Worker
 
     override fun doWork(): Result = try {
         val firestore = Firebase.firestore
-        val openLotteries = Tasks.await(
+        val activeLotteries = Tasks.await(
             firestore.collection("lotteries")
-                .whereEqualTo("status", LotteryStatus.OPEN.name)
+                .whereIn("status", listOf(LotteryStatus.OPEN.name, LotteryStatus.DRAWN.name))
                 .get()
         )
 
-        openLotteries.documents.forEach { document ->
+        activeLotteries.documents.forEach { document ->
             val lotteryRef = document.reference
             Tasks.await(firestore.runTransaction { transaction ->
                 val current = transaction.get(lotteryRef).toObject(Lottery::class.java)
