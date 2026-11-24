@@ -956,7 +956,7 @@ fun EntrantMessageScreen(navController: NavController) {
  * Campsite Owner" card, and a "Delete Profile" card.
  *
  * All of the profile data is hardcoded, and the edit, picture, policy, apply, and
- * delete cards don't do anything yet. Only the notifications toggle changes its
+ * delete cards asks for confirmation then deletes profile. Only the notifications toggle changes its
  * own label.
  *
  * @param navController used for the scaffold's navigation
@@ -972,6 +972,7 @@ fun EntrantProfileScreen(
     // Dummy data
     var notifications by remember { mutableStateOf(false) }
     var showRules by rememberSaveable { mutableStateOf(false) } //app rules
+    var showDelete by rememberSaveable {mutableStateOf(false) }
     val view = remember(entrantId) { ProfileView(repository, entrantId) }
     val controller = remember { ProfileController(repository) }
     DisposableEffect(view) { onDispose { view.remove() } }
@@ -1242,7 +1243,7 @@ fun EntrantProfileScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {},
+                    .clickable {showDelete = true},
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color(0xFFFEE2E2)
@@ -1266,6 +1267,29 @@ fun EntrantProfileScreen(
                         color = Color(0xFF991B1B)
                     )
                 }
+            }
+
+            if (showDelete){
+                AlertDialog(
+                    onDismissRequest = {showDelete = false},
+                    title = {Text("Delete Profile?")},
+                    text = {
+                        Text("This removes your profile and cancels your active reservations. This cant be undone")
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                controller.deleteProfile()
+                                showDelete = false
+                            }
+                        ) { Text("Delete", color = Color(0xFF991B1B))}
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {showDelete = false}) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
 
 

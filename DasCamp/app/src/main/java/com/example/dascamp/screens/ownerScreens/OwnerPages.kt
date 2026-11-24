@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.EmptyCard
@@ -52,6 +53,7 @@ import com.example.dascamp.model.Notification
 import com.example.dascamp.model.OwnerMessage
 import java.util.UUID
 import com.example.dascamp.model.Reservation
+import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.formatPrice
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.CampsiteMap
@@ -614,36 +616,92 @@ fun OwnerReservations(navController: NavController, repository: DasCampRepositor
         }
         if (reservations.isEmpty()) Text("No ${selected.lowercase()} reservations")
         reservations.forEach { reservation ->
-            OutlinedButton(onClick = { navController.navigate(OwnerRoutes.RESERVATION) }, modifier = Modifier.fillMaxWidth()) {
-                Text("${reservation.campsiteName} · ${reservation.entrantName} · ${reservation.startDate} to ${reservation.endDate}")
+            OutlinedButton(onClick = {
+                repository?.openReservationId = reservation.id
+                navController.navigate(OwnerRoutes.RESERVATION)
+            },
+            modifier = Modifier.fillMaxWidth()  )
+            {Text("${reservation.campsiteName} · ${reservation.entrantName} · ${reservation.startDate} to ${reservation.endDate}")
             }
         }
     }
 }
 
-/** One reservation. Reject is present for the layout. Message opens the thread. */
+/**
+ * One reservation at the owner's campsite (US 02.08.01).
+ * Shows the booking details and whether the rules were confirmed.
+ * The owner can reject an active reservation by giving a reason.
+ *
+ * @param navController used to go back, open messages, or view booked dates
+ * @param repository source of the reservation the owner tapped
+ */
 @Composable
-fun OwnerReservationDetails(navController: NavController) {
-    OwnerPage(navController, showBack = true) {
-        EmptyValue(0.8f)
-        EmptyValue(0.3f)
-        EmptyValue(0.5f)
-        EmptyValue(0.6f)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = true, onCheckedChange = null)
+fun OwnerReservationDetails(navController: NavController, repository: DasCampRepository? = null) {
+    var reservation: Reservation? = null
+    if(repository != null){
+        for (item in repository.reservations){
+            if(item.id == repository.openReservationId){
+                reservation = item
+            }
+        }
+    }
+    val controller = remember(repository){ repository?.let { ReservationController(it) }}
+    var reason by remember {mutableStateOf("")}
+    var message by remember {mutableStateOf("")}
+
+    if (reservation == null){
+        OwnerPage(navController, showBack = true){
+            Text("Reservation not found")
+        }
+        return
+    }
+    OwnerPage(navController, showBack = true){
+        Text("Reservation", style = MaterialTheme.typography.titleLarge)
+        Text("Campsite: " + reservation.campsiteName)
+        Text("Entrant: " + reservation.entrantName)
+        Text("Dates: " + reservation.startDate + " to " + reservation.endDate)
+        Text("Guests: " + reservation.guestCount)
+        Text("Status: " + reservation.status)
+        if(reservation.cancelReason != null){
+            Text("Reason: " + reservation.cancelReason)
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically){
+            Checkbox(checked = reservation.rulesAccepted, onCheckedChange = null)
             Text("Rules & Policies Confirmed")
         }
-        FormField("Reason for rejection")
+
+        if(reservation.status == ReservationStatus.ACTIVE){
+            FormField("Reason for rejection", reason, onValueChange = {
+                typed -> reason = typed
+            })
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    if(controller != null){
+                        val error = controller.reject(reservation, reason)
+                        if(error == null){
+                            navController.popBackStack()
+                        } else{
+                            message = error
+                        }
+                    }
+                }
+            ) {Text("Reject Reservation")}
+            Text(message)
+        }
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.popBackStack() }) { Text("Reject reservation") }
+            onClick = {navController.navigate(OwnerRoutes.MESSAGE)}){Text("Message")}
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate(OwnerRoutes.MESSAGE) }) { Text("Message") }
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate(OwnerRoutes.BOOKED) }) { Text("View Dates") }
+            onClick = {
+                repository?.openCampsiteId = reservation.campsiteId
+                navController.navigate(OwnerRoutes.BOOKED)
+            }
+        ) {Text("View Dates")}
     }
+
 }
 
 /** Alerts tab. The blank card is one sent notification. */
