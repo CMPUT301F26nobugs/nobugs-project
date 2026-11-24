@@ -49,8 +49,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.unit.dp
+import com.example.dascamp.controllers.AdminController
+import com.example.dascamp.model.CampStore
+import com.example.dascamp.model.OwnerApplicationStatus
+import com.example.dascamp.model.User
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
-
 
 /**
  * The kinds of profile an admin can browse.
@@ -124,6 +127,12 @@ fun AdminDashboard(navController: NavController) {
             ) {
                 Text("Notification Logs")
             }
+
+            // Owner Applications
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AdminRoutes.OWNER_APPLICATIONS) }
+            ) { Text("Owner Applications") }
         }
     }
 }
@@ -359,6 +368,69 @@ fun NotificationLog(navController: NavController) {
 fun NotificationLogPreview() {
     DasCampTheme {
         NotificationLog(rememberNavController())
+    }
+}
+
+/**
+ * Lists users whose owner application is pending, with approve and deny actions.
+ *
+ * @param navController used for back navigation
+ * @param store source of all users
+ * @param adminController performs the approve and deny actions
+ */
+@Composable
+fun AdminOwnerApplications(
+    navController: NavController,
+    store: CampStore? = null,
+    adminController: AdminController? = null
+) {
+    val pending = store?.users.orEmpty()
+        .filter { it.ownerApplication == OwnerApplicationStatus.PENDING }
+
+    AdminPage(
+        navController = navController,
+        showBack = true,
+    ) {
+        // Title
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) { Text(text = "Owner Applications", style = MaterialTheme.typography.titleLarge) }
+
+        if (pending.isEmpty()) Text("No pending applications")
+
+        pending.forEach { user ->
+            OwnerApplicationCard(
+                user = user,
+                onApprove = { adminController?.approveOwner(user) },
+                onDeny = { adminController?.rejectOwner(user) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun OwnerApplicationCard(user: User, onApprove: () -> Unit, onDeny: () -> Unit) {
+    // rememberConfirmClick must be called inside a composable, so each card makes its own
+    val confirmDeny = rememberConfirmClick(
+        message = "Deny ${user.firstName}'s application?",
+        confirmText = "Deny",
+        onConfirm = onDeny
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(user.displayName(), style = MaterialTheme.typography.titleMedium)
+            Text(user.email, style = MaterialTheme.typography.bodyMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onApprove) { Text("Approve") }
+                Button(onClick = confirmDeny, colors = destructiveButtonColors()) { Text("Deny") }
+            }
+        }
     }
 }
 

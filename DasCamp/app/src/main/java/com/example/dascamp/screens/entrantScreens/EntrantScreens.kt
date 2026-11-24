@@ -86,6 +86,7 @@ import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.views.ProfileView
 import com.example.dascamp.model.Lottery
 import com.example.dascamp.model.LotteryStatus
+import com.example.dascamp.model.OwnerApplicationStatus
 import com.example.dascamp.model.WaitlistStatus
 import com.example.dascamp.model.label
 import com.example.dascamp.views.ReservationView
@@ -961,7 +962,11 @@ fun EntrantMessageScreen(navController: NavController) {
  * @param navController used for the scaffold's navigation
  */
 @Composable
-fun EntrantProfileScreen(navController: NavController, repository: DasCampRepository) {
+fun EntrantProfileScreen(
+    navController: NavController,
+    repository: DasCampRepository,
+    profileController: ProfileController
+) {
     val entrantId = repository.uid
 
     // Dummy data
@@ -1206,12 +1211,12 @@ fun EntrantProfileScreen(navController: NavController, repository: DasCampReposi
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {},
+                    .clickable(enabled = profileController.canApply(profile)) { profileController.applyToBeOwner() },
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color(0xFFF3E8FF)
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             ) {
                 Row(
                     modifier = Modifier
