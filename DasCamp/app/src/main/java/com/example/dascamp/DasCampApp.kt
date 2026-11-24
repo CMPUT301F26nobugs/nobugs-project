@@ -227,7 +227,7 @@ fun DasCampApp() {
             composable(OwnerRoutes.ALERTS) { OwnerNotifications(navController, repository) }
             composable(OwnerRoutes.SEND) { OwnerSendNotification(navController, repository) }
             composable(OwnerRoutes.RESERVATIONS) { OwnerReservations(navController, repository) }
-            composable(OwnerRoutes.RESERVATION) { OwnerReservationDetails(navController) }
+            composable(OwnerRoutes.RESERVATION) { OwnerReservationDetails(navController, repository) }
             composable(OwnerRoutes.PROFILE) { OwnerProfile(navController, repository) }
             composable(OwnerRoutes.MESSAGE_LIST) { OwnerMessageList(navController, repository) }
             composable(OwnerRoutes.MESSAGE) { OwnerMessages(navController, repository) }
