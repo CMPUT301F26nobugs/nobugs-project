@@ -52,6 +52,7 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
     // TODO: this is screen state, not data. Move it into the route arguments later.
     var openCampsiteId: String = ""
     var openLotteryId: String = ""
+    var openReservationId: String = ""
 
     // OBSERVER PATTERN
     private val views = mutableListOf<ModelView>()
