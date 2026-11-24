@@ -29,6 +29,7 @@ import androidx.navigation.NavController
 import com.example.dascamp.model.Role
 import com.example.dascamp.screens.AppScaffold
 import com.example.dascamp.screens.RoleMenu
+import com.example.dascamp.ui.theme.AdminTheme
 
 /**
  * Navigation routes for the admin screens.
@@ -50,6 +51,7 @@ object AdminRoutes {
     const val REQUEST_LOG = "adminRequestLog"
     const val APPROVED_LOG = "adminApprovedLog"
     const val OTHER_LOG = "adminOtherLog"
+    const val OWNER_APPLICATIONS = "adminOwnerApplications"
 
     /**
      * Builds the route for a profile screen, e.g. `"adminProfile/OWNER"`.
@@ -90,21 +92,23 @@ fun AdminPage(
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    AppScaffold(
-        onBackClick = if (showBack) {{ navController.popBackStack() }} else null,
-        navBar = { AdminNavBar(navController) },
-        roleMenu = { RoleMenu(navController, Role.ADMIN) }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = horizontalAlignment,
-            content = content
-        )
+    AdminTheme {
+        AppScaffold(
+            onBackClick = if (showBack) {{ navController.popBackStack() }} else null,
+            navBar = { AdminNavBar(navController) },
+            roleMenu = { RoleMenu(navController, Role.ADMIN) }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = horizontalAlignment,
+                content = content
+            )
+        }
     }
 }
 

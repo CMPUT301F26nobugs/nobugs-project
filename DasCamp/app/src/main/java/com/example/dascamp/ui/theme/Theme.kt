@@ -9,6 +9,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
@@ -53,6 +54,46 @@ fun DasCampTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        content = content
+    )
+}
+
+/**
+ * Applies the admin accent colors while preserving the surrounding theme's
+ * other colors and typography.
+ */
+@Composable
+fun AdminTheme(content: @Composable () -> Unit) {
+    val currentScheme = MaterialTheme.colorScheme
+    val adminColorScheme = currentScheme.copy(
+        primary = Color(0xFFB3261E),
+        onPrimary = Color.White,
+        primaryContainer = Color(0xFFB3261E),
+        onPrimaryContainer = Color.White
+    )
+
+    MaterialTheme(
+        colorScheme = adminColorScheme,
+        content = content
+    )
+}
+
+/**
+ * Applies the owner accent colors while preserving the surrounding theme's
+ * other colors and typography.
+ */
+@Composable
+fun OwnerTheme(content: @Composable () -> Unit) {
+    val currentScheme = MaterialTheme.colorScheme
+    val ownerColorScheme = currentScheme.copy(
+        primary = Color(0xFF2E7D32),
+        onPrimary = Color.White,
+        primaryContainer = Color(0xFF2E7D32),
+        onPrimaryContainer = Color.White
+    )
+
+    MaterialTheme(
+        colorScheme = ownerColorScheme,
         content = content
     )
 }

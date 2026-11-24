@@ -16,6 +16,7 @@ import androidx.work.WorkManager
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.dascamp.controllers.AdminController
 import com.example.dascamp.controllers.CampsiteController
 import com.example.dascamp.controllers.LotteryDrawWorker
 import com.example.dascamp.controllers.NotificationsController
@@ -28,6 +29,7 @@ import com.example.dascamp.screens.SignUpScreen
 import com.example.dascamp.screens.adminScreens.AdminCampsiteList
 import com.example.dascamp.screens.adminScreens.AdminDashboard
 import com.example.dascamp.screens.adminScreens.AdminMessageList
+import com.example.dascamp.screens.adminScreens.AdminOwnerApplications
 import com.example.dascamp.screens.adminScreens.AdminProfileList
 import com.example.dascamp.screens.adminScreens.AdminRoutes
 import com.example.dascamp.screens.adminScreens.AdminViewCampsite
@@ -124,6 +126,8 @@ fun DasCampApp() {
     val reservationView = remember{ ReservationView(repository) }
     val notificationView = remember { NotificationView(repository) }
     val notificationsController = remember { NotificationsController(repository) }
+    val adminController = remember { AdminController(repository) }
+
     // Persist the draw check across app closes and device restarts. The one-time
     // request handles lotteries that are already due; periodic work catches
     // registration periods that end later.
@@ -190,7 +194,7 @@ fun DasCampApp() {
             composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
             composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
             composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController, reservationController) }
-            composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController, repository) }
+            composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController, repository, profileController) }
 
             composable(EntrantRoutes.RESERVATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite screen
 
@@ -227,7 +231,7 @@ fun DasCampApp() {
             composable(OwnerRoutes.ALERTS) { OwnerNotifications(navController, repository) }
             composable(OwnerRoutes.SEND) { OwnerSendNotification(navController, repository) }
             composable(OwnerRoutes.RESERVATIONS) { OwnerReservations(navController, repository) }
-            composable(OwnerRoutes.RESERVATION) { OwnerReservationDetails(navController) }
+            composable(OwnerRoutes.RESERVATION) { OwnerReservationDetails(navController, repository) }
             composable(OwnerRoutes.PROFILE) { OwnerProfile(navController, repository) }
             composable(OwnerRoutes.MESSAGE_LIST) { OwnerMessageList(navController, repository) }
             composable(OwnerRoutes.MESSAGE) { OwnerMessages(navController, repository) }
@@ -258,6 +262,7 @@ fun DasCampApp() {
                 val messageId = entry.arguments?.getString("messageId") ?: "default_id"
                 AdminViewMessage(navController)
             }
+            composable(AdminRoutes.OWNER_APPLICATIONS) { AdminOwnerApplications(navController, repository, adminController) }
         }
     }
 }

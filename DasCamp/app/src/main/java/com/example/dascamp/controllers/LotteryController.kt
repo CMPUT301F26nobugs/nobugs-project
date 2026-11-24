@@ -10,9 +10,9 @@ import java.util.Random
 /**
  * Handles lottery waitlists and winner draws for DasCamp.
  *
- * Entrants join or leave a waiting list during the registration period.
- * After registration ends, [drawWinners] selects entrants and creates
- * win/lose notifications.
+ * Entrants join or leave a waiting list through the booking period. After
+ * registration ends, [drawWinners] selects entrants and fills declined or
+ * expired offers from the waitlist.
  *
  * @property store the campsite / lottery data source
  */
@@ -27,6 +27,11 @@ class LotteryController(private val store: CampStore) {
     fun registrationOpen(lottery: Lottery): Boolean =
         lottery.status == LotteryStatus.OPEN &&
                 today() >= lottery.registrationStart && today() <= lottery.registrationEnd
+
+    /** Waitlist membership remains open through the booking period. */
+    fun waitlistOpen(lottery: Lottery): Boolean =
+        lottery.status != LotteryStatus.COMPLETED &&
+                today() >= lottery.registrationStart && today() <= lottery.bookingEnd
     /**
      * Returns every entrant currently on the given lottery waitlist.
      *
@@ -39,7 +44,7 @@ class LotteryController(private val store: CampStore) {
     /**
      * Adds the signed-in user to a lottery waiting list.
      *
-     * Fails if registration is closed, the list is full, or the user
+     * Fails if the booking period is closed, the list is full, or the user
      * is already waiting.
      *
      * @param lottery the lottery to join
@@ -48,10 +53,7 @@ class LotteryController(private val store: CampStore) {
      */
     fun joinWaitlist(lottery: Lottery, entrantName: String): String? {
         val user = store.currentUser ?: return "Sign up first"
-        if (lottery.status != LotteryStatus.OPEN) return "Lottery is closed"
-        if (today() < lottery.registrationStart || today() > lottery.registrationEnd) {
-            return "Registration is not open"
-        }
+        if (!waitlistOpen(lottery)) return "Lottery is closed"
         if (lottery.entrants.any { it.entrantId == user.id }) {
             return "Already on the waiting list"
         }
@@ -79,7 +81,10 @@ class LotteryController(private val store: CampStore) {
      */
     fun leaveWaitlist(lottery: Lottery): String? {
         val user = store.currentUser ?: return "Sign up first"
-        if (lottery.entrants.none { it.entrantId == user.id }) {
+        if (!waitlistOpen(lottery)) return "Lottery is closed"
+        if (lottery.entrants.none {
+                it.entrantId == user.id && it.status == WaitlistStatus.WAITING
+            }) {
             return "Not on this waiting list"
         }
         store.updateLottery(
@@ -89,47 +94,99 @@ class LotteryController(private val store: CampStore) {
     }
 
     /**
-     * Draws lottery winners after registration ends and notifies entrants.
+     * Draws initial winners after registration closes, draws replacements for
+     * declined or expired offers, and notifies never-selected entrants when
+     * the booking period ends.
      *
-     * Selected entrants get [NotificationType.WIN]. Others who were still
-     * waiting get [NotificationType.LOSE]. The lottery status becomes DRAWN.
+     * Newly selected entrants get [NotificationType.WIN]. Waiting entrants
+     * remain eligible until booking ends, when they receive [NotificationType.LOSE].
      *
      * @param lottery the lottery to draw
      * @param random optional RNG so tests can be deterministic
      * @return null on success, or an error message if draw is not allowed
      */
     fun drawWinners(lottery: Lottery, random: Random = Random()): String? {
-        if (lottery.status == LotteryStatus.DRAWN) return "Already drawn"
-        if (today() <= lottery.registrationEnd) return "Registration has not ended"
+        if (lottery.status == LotteryStatus.COMPLETED) return "Lottery is complete"
+        if (lottery.status == LotteryStatus.OPEN && today() <= lottery.registrationEnd) {
+            return "Registration has not ended"
+        }
 
-        val waiting = lottery.entrants.filter { it.status == WaitlistStatus.WAITING }
-        val winnerIds = waiting.shuffled(random).take(lottery.winnerCount).map { it.entrantId }.toSet()
-
-        val updated = lottery.entrants.map { entry ->
-            when {
-                entry.entrantId in winnerIds -> entry.copy(status = WaitlistStatus.SELECTED)
-                entry.status == WaitlistStatus.WAITING -> entry.copy(status = WaitlistStatus.NOT_SELECTED)
-                else -> entry
+        val now = System.currentTimeMillis()
+        val bookingEnded = today() > lottery.bookingEnd
+        val expired = lottery.entrants.map { entrant ->
+            if (entrant.status != WaitlistStatus.SELECTED) entrant
+            else {
+                val deadline = entrant.responseDeadlineAt ?: responseDeadline(lottery, now)
+                if (bookingEnded || deadline <= now) {
+                    entrant.copy(status = WaitlistStatus.EXPIRED, responseDeadlineAt = null)
+                } else entrant.copy(responseDeadlineAt = deadline)
             }
         }
-        store.updateLottery(lottery.copy(status = LotteryStatus.DRAWN, entrants = updated))
 
-        updated.forEach { entry ->
-            val selected = when (entry.status) {
-                WaitlistStatus.SELECTED -> true
-                WaitlistStatus.NOT_SELECTED -> false
-                else -> return@forEach
+        if (bookingEnded) {
+            val finalized = expired.map { entrant ->
+                if (entrant.status == WaitlistStatus.WAITING) {
+                    store.addNotification(
+                        NotificationsController.lotteryOutcome(
+                            lottery.id, lottery.name, entrant.entrantId, entrant.name, selected = false
+                        )
+                    )
+                    entrant.copy(status = WaitlistStatus.NOT_SELECTED)
+                } else entrant
             }
+            store.updateLottery(lottery.copy(status = LotteryStatus.COMPLETED, entrants = finalized))
+            return null
+        }
+
+        val occupiedOffers = expired.count {
+            it.status == WaitlistStatus.SELECTED || it.status == WaitlistStatus.BOOKED
+        }
+        val vacancies = (lottery.winnerCount - occupiedOffers).coerceAtLeast(0)
+        val selectedIds = expired
+            .filter { it.status == WaitlistStatus.WAITING }
+            .shuffled(random)
+            .take(vacancies)
+            .map { it.entrantId }
+            .toSet()
+        val updated = expired.map { entrant ->
+            if (entrant.entrantId in selectedIds) {
+                entrant.copy(
+                    status = WaitlistStatus.SELECTED,
+                    responseDeadlineAt = responseDeadline(lottery, now)
+                )
+            } else entrant
+        }
+        store.updateLottery(lottery.copy(status = LotteryStatus.DRAWN, entrants = updated))
+        updated.filter { it.entrantId in selectedIds }.forEach { entrant ->
             store.addNotification(
                 NotificationsController.lotteryOutcome(
                     lotteryId = lottery.id,
                     lotteryName = lottery.name,
-                    entrantId = entry.entrantId,
-                    entrantName = entry.name,
-                    selected = selected
+                    entrantId = entrant.entrantId,
+                    entrantName = entrant.name,
+                    selected = true
                 )
             )
         }
         return null
     }
+
+    private fun responseDeadline(lottery: Lottery, now: Long): Long {
+        val windowEnd = now + lottery.responseWindowHours.coerceAtLeast(1).toLong() * 60L * 60L * 1000L
+        val endOfBooking = try {
+            val parser = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            val date = parser.parse(lottery.bookingEnd) ?: return windowEnd
+            java.util.Calendar.getInstance().apply {
+                time = date
+                set(java.util.Calendar.HOUR_OF_DAY, 23)
+                set(java.util.Calendar.MINUTE, 59)
+                set(java.util.Calendar.SECOND, 59)
+                set(java.util.Calendar.MILLISECOND, 999)
+            }.timeInMillis
+        } catch (_: Exception) {
+            windowEnd
+        }
+        return minOf(windowEnd, endOfBooking)
+    }
+
 }
