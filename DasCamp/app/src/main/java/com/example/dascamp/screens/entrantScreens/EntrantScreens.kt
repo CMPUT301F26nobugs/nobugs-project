@@ -965,12 +965,10 @@ fun EntrantMessageScreen(navController: NavController) {
 fun EntrantProfileScreen(
     navController: NavController,
     repository: DasCampRepository,
-    profileController: ProfileController
+    profileController: ProfileController,
 ) {
     val entrantId = repository.uid
 
-    // Dummy data
-    var notifications by remember { mutableStateOf(false) }
     var showRules by rememberSaveable { mutableStateOf(false) } //app rules
     var showDelete by rememberSaveable {mutableStateOf(false) }
     val view = remember(entrantId) { ProfileView(repository, entrantId) }
@@ -978,6 +976,7 @@ fun EntrantProfileScreen(
     DisposableEffect(view) { onDispose { view.remove() } }
 
     val profile = view.profile
+    val notificationsOn = profile?.notificationsOn ?: true
     var showEdit by rememberSaveable { mutableStateOf(false) }
 
     EntrantPage(
@@ -1127,7 +1126,7 @@ fun EntrantProfileScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { notifications = !notifications },
+                    .clickable { controller.setNotifications(!notificationsOn) },
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -1150,7 +1149,7 @@ fun EntrantProfileScreen(
                             .weight(1f),
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
-                        text = "Turn ${if (notifications) "off" else "on"} notifications",
+                        text = "Turn ${if (notificationsOn) "off" else "on"} notifications",
                         fontWeight = FontWeight.Bold
 
                     )
