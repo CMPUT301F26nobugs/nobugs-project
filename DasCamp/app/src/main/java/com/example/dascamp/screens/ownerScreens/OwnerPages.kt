@@ -3,6 +3,7 @@ package com.example.dascamp.screens.ownerScreens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -749,12 +750,19 @@ fun OwnerSendNotification(
     OwnerPage(navController, showBack = true) {
         Text("Send notification", style = MaterialTheme.typography.titleLarge)
         Text("Send to", style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             LotteryNotificationAudience.values().forEach { audience ->
                 if (audience == send)
-                    Button(onClick = { send = audience }) {
+                    Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { send = audience }
+                    ) {
                         Text(audience.label)
                     } else OutlinedButton(
+                    modifier = Modifier.fillMaxWidth(),
                     onClick = { send = audience }
                 ) {
                     Text(audience.label)

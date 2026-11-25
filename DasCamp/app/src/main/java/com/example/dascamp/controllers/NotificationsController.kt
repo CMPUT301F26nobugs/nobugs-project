@@ -7,7 +7,8 @@ import com.example.dascamp.model.WaitlistStatus
 import java.util.UUID
 
 enum class LotteryNotificationAudience(val label: String) {
-    ALL_WAITLIST("All Waitlist"),
+    ALL_PARTICIPANTS("All Participants"),
+    ALL_WAITLIST("Waiting Entrants"),
     WINNERS("Winners"),
     NOT_SELECTED("Not Selected")
 }
@@ -55,6 +56,7 @@ class NotificationsController(private val store: CampStore) {
                 when (audience) {
                     LotteryNotificationAudience.ALL_WAITLIST ->
                         entrant.status == WaitlistStatus.WAITING
+                    LotteryNotificationAudience.ALL_PARTICIPANTS -> true
                     LotteryNotificationAudience.WINNERS ->
                         entrant.status == WaitlistStatus.SELECTED ||
                             entrant.status == WaitlistStatus.BOOKED
