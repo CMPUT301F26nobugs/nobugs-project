@@ -246,7 +246,8 @@ fun DasCampApp() {
                         ?.getString("profileType")  // ENTRANT or OWNER -> check is inside AdminViewProfile
                         ?: "ENTRANT"                      // default to ENTRANT if getString returns null
                 )
-                AdminViewProfile(navController, type)     // show the screen
+                val uid = entry.arguments?.getString("uid") ?: ""
+                AdminViewProfile(navController, type, repository, uid)     // show the screen
             }
             composable(AdminRoutes.NOTIFICATION_LOG) { NotificationLog(navController) }
             composable(AdminRoutes.REQUEST_LOG) { RequestLog(navController) }

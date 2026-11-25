@@ -46,7 +46,7 @@ object AdminRoutes {
     const val MESSAGE_LIST = "adminMessageList"
     const val MESSAGE = "adminViewMessage/{messageId}"
     const val PROFILE_LIST = "adminProfileList"
-    const val PROFILE = "adminProfile/{profileType}" // route pattern, registed in NavHost
+    const val PROFILE = "adminProfile/{profileType}/{uid}" // route pattern, registed in NavHost
     const val NOTIFICATION_LOG = "adminNotificationLog"
     const val REQUEST_LOG = "adminRequestLog"
     const val APPROVED_LOG = "adminApprovedLog"
@@ -58,7 +58,7 @@ object AdminRoutes {
      *
      * @param type the kind of profile to show
      */
-    fun profile(type: ProfileType) = "adminProfile/${type.name}"
+    fun profile(type: ProfileType, uid: String) = "adminProfile/${type.name}/$uid"
 
     /**
      * Builds the route for viewing a single campsite.
