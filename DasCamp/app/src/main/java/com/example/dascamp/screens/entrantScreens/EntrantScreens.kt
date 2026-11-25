@@ -76,6 +76,7 @@ import com.example.dascamp.model.DasCampRepository
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.draw.clipToBounds
 import com.example.dascamp.controllers.CampsiteController
+import com.example.dascamp.controllers.CancellationCsv
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.Campsite
@@ -720,7 +721,19 @@ fun EntrantReservationList(
     var showPast by rememberSaveable { mutableStateOf(false) }
     val shown = if (showPast) reservationController?.past().orEmpty()
                 else reservationController?.active().orEmpty()
+    val context = LocalContext.current
+    var cancelled by remember { mutableStateOf<Reservation?>(null) }
 
+    val saveCsv = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        val r = cancelled
+        if (uri != null && r != null) {
+            context.contentResolver.openOutputStream(uri)?.use {
+                it.write(CancellationCsv.build(r).toByteArray())
+            }
+        }
+    }
     EntrantPage(navController = navController, showBack = false) {
 
         // Title
@@ -760,16 +773,31 @@ fun EntrantReservationList(
                     Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+                ) {
                     Text(reservation.campsiteName, style = MaterialTheme.typography.titleMedium)
                     Text("${reservation.startDate} to ${reservation.endDate}")
                     if (!showPast) {
-                        Button(onClick = { reservationController?.cancel(reservation) }) {
+                        Button(onClick = {
+                            reservationController?.cancel(reservation)
+                            cancelled = reservation
+                        }) {
                             Text("Cancel reservation")
                         }
                     }
                 }
             }
+        }
+        cancelled?.let { r ->
+            AlertDialog(
+                onDismissRequest = { cancelled = null },
+                title = { Text("Reservation cancelled") },
+                text = { Text("${r.campsiteName}, ${r.startDate} to ${r.endDate}. A confirmation was sent to your notifications.") },
+                confirmButton = {
+                    Button(onClick = { saveCsv.launch("cancellation-${r.id}.csv") }) { Text("Download CSV") }
+                },
+                dismissButton = { TextButton(onClick = { cancelled = null }) { Text("Close") } }
+            )
+
         }
     }
 }
