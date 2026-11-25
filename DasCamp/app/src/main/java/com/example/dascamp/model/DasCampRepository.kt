@@ -61,8 +61,12 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
     // TODO: this is screen state, not data. Move it into the route arguments later.
     var openCampsiteId: String = ""
     var openLotteryId: String = ""
-    /** Reservation whose owner/entrant thread is open. US 01.14.01 */
+    /** Reservation context for opening an owner/entrant conversation. US 01.14.01 */
     var openReservationId: String = ""
+    /** Owner/entrant pair currently open in the shared messaging screen. */
+    var openMessageOwnerId: String = ""
+    var openMessageEntrantId: String = ""
+    var openMessageLotteryId: String? = null
 
     // OBSERVER PATTERN
     private val views = mutableListOf<ModelView>()

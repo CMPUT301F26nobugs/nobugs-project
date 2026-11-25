@@ -649,6 +649,28 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                 if (winningLottery != null) {
                     Text("You can reserve now", style = MaterialTheme.typography.titleMedium)
                     Text(
+                        "Choose a campsite for this reservation",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    repository?.campsites
+                        ?.filter { it.id in winningLottery.campsiteIds }
+                        .orEmpty()
+                        .forEach { option ->
+                            if (option.id == campsite.id) {
+                                Text("Selected: ${option.name} · ${option.location}")
+                            } else {
+                                OutlinedButton(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = {
+                                        repository?.openCampsiteId = option.id
+                                        navController.navigate(EntrantRoutes.CAMPSITE)
+                                    }
+                                ) {
+                                    Text("Choose ${option.name}")
+                                }
+                            }
+                        }
+                    Text(
                         "You were selected. Choose dates from ${winningLottery.bookingStart} to ${winningLottery.bookingEnd}, accept the rules, then book. A saved reservation lets you post a review and message the owner.",
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -833,10 +855,19 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                 }
             ) { Text("Post review") }
             if (reviewMessage.isNotBlank()) Text(reviewMessage)
+        }
+        val participantLottery = repository?.lotteries?.firstOrNull { lottery ->
+            campsite.id in lottery.campsiteIds &&
+                lottery.entrants.any { it.entrantId == entrantId }
+        }
+        if (repository != null && (myReservation != null || participantLottery != null)) {
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
-                    repository?.openReservationId = myReservation.id
+                    repository.openMessageOwnerId = campsite.ownerId
+                    repository.openMessageEntrantId = entrantId
+                    repository.openMessageLotteryId = participantLottery?.id
+                    repository.openReservationId = myReservation?.id.orEmpty()
                     navController.navigate(EntrantRoutes.MESSAGE)
                 }
             ) { Text("Message owner") }
@@ -1110,7 +1141,13 @@ Button(onClick = {
                         }
                     }
                     Button(onClick = {
-                        repository?.openReservationId = reservation.id
+                        repository?.let { repo ->
+                            repo.openReservationId = reservation.id
+                            repo.openMessageOwnerId = repo.campsites
+                                .find { it.id == reservation.campsiteId }?.ownerId.orEmpty()
+                            repo.openMessageEntrantId = reservation.entrantId
+                            repo.openMessageLotteryId = null
+                        }
                         navController.navigate(EntrantRoutes.MESSAGE)
                     }) { Text("Message owner") }
                 }
@@ -1138,8 +1175,7 @@ Button(onClick = {
 }
 
 /**
- * Conversations the signed-in entrant can open. Each row is a reservation they
- * hold, because messages are only allowed for a reservation. US 01.14.01
+ * Existing owner/entrant conversations for the signed-in entrant. US 01.14.01
  */
 @Composable
 fun EntrantMessageList(
@@ -1148,8 +1184,10 @@ fun EntrantMessageList(
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     val controller = remember(repository) { repository?.let { MessageController(it) } }
-    val threads = controller?.entrantThreads().orEmpty().filter { reservation ->
-        query.isBlank() || reservation.campsiteName.contains(query, ignoreCase = true)
+    val threads = controller?.entrantConversations().orEmpty().filter { thread ->
+        query.isBlank() ||
+            thread.otherName.contains(query, ignoreCase = true) ||
+            thread.latestMessage.body.contains(query, ignoreCase = true)
     }
 
     EntrantPage(
@@ -1173,14 +1211,17 @@ fun EntrantMessageList(
         Spacer(modifier = Modifier.height(16.dp))
 
         if (threads.isEmpty()) {
-            Text("Message an owner from a reservation you have.")
+            Text("No conversations yet. Message an owner from a reservation or lottery.")
         }
-        threads.forEach { reservation ->
+        threads.forEach { thread ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        repository?.openReservationId = reservation.id
+                        repository?.openMessageOwnerId = thread.ownerId
+                        repository?.openMessageEntrantId = thread.entrantId
+                        repository?.openMessageLotteryId = null
+                        repository?.openReservationId = ""
                         navController.navigate(EntrantRoutes.MESSAGE)
                     },
                 shape = RoundedCornerShape(12.dp),
@@ -1195,14 +1236,16 @@ fun EntrantMessageList(
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        modifier = Modifier
-                            .padding(start = 16.dp)
-                            .weight(1f),
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Start,
-                        text = "${reservation.campsiteName} · ${reservation.startDate}"
-                    )
+                    Column(
+                        modifier = Modifier.padding(start = 16.dp).weight(1f)
+                    ) {
+                        Text(thread.otherName, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            thread.latestMessage.body,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1
+                        )
+                    }
                     Icon(
                         imageVector = Icons.Default.ChevronRight,
                         contentDescription = "Go to details",
@@ -1216,8 +1259,8 @@ fun EntrantMessageList(
 }
 
 /**
- * Thread with the owner of one reservation. The entrant's messages sit on the
- * right. Send is rejected unless this reservation belongs to the signed-in user.
+ * Shared conversation with one campsite owner. The entrant's messages sit on
+ * the right. A lottery or reservation must authorize the first message.
  * US 01.14.01
  */
 @Composable
@@ -1228,19 +1271,61 @@ fun EntrantMessageScreen(
     var newMessage by rememberSaveable { mutableStateOf("") }
     var sendError by remember { mutableStateOf<String?>(null) }
     val controller = remember(repository) { repository?.let { MessageController(it) } }
-    val view = remember(repository, repository?.openReservationId) {
+    val view = remember(
+        repository,
+        repository?.openReservationId,
+        repository?.openMessageOwnerId,
+        repository?.openMessageEntrantId
+    ) {
         repository?.let { MessageView(it) }
     }
     DisposableEffect(view) { onDispose { view?.remove() } }
 
     val reservation = repository?.reservations?.find { it.id == repository.openReservationId }
     val campsite = repository?.campsites?.find { it.id == reservation?.campsiteId }
-    val owner = repository?.users?.find { it.id == campsite?.ownerId }
+    val ownerId = repository?.openMessageOwnerId
+        ?.ifBlank { campsite?.ownerId.orEmpty() }
+        .orEmpty()
+    val entrantId = repository?.openMessageEntrantId
+        ?.ifBlank { repository?.uid.orEmpty() }
+        .orEmpty()
+    val owner = repository?.users?.find { it.id == ownerId }
     val title = owner?.displayName()?.ifBlank { null } ?: "Campsite owner"
+    val sendMessage = {
+        val error = controller?.send(
+            ownerId = ownerId,
+            entrantId = entrantId,
+            body = newMessage,
+            lotteryId = repository?.openMessageLotteryId,
+            reservationId = repository?.openReservationId
+                ?.takeIf { it.isNotBlank() }
+        )
+        sendError = error
+        if (error == null) newMessage = ""
+    }
 
     EntrantPage(
         navController,
-        showBack = true
+        showBack = true,
+        bottomBar = if (ownerId.isNotBlank() && entrantId.isNotBlank()) {{
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                sendError?.let { Text(it) }
+                OutlinedTextField(
+                    value = newMessage,
+                    onValueChange = { newMessage = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Message") },
+                    trailingIcon = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            modifier = Modifier.clickable(onClick = sendMessage)
+                        )
+                    },
+                    singleLine = true
+                )
+            }
+        }} else null
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1249,12 +1334,11 @@ fun EntrantMessageScreen(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(text = title, style = MaterialTheme.typography.titleLarge)
-                Text(reservation?.campsiteName ?: "No reservation selected")
             }
         }
 
-        if (reservation == null) {
-            Text("Open a reservation you have, then message that campsite's owner.")
+        if (ownerId.isBlank() || entrantId.isBlank()) {
+            Text("Open a conversation from a campsite, lottery, or reservation.")
         } else {
             view?.messages.orEmpty().forEach { message ->
                 val isSender = message.senderId == repository?.uid
@@ -1284,25 +1368,6 @@ fun EntrantMessageScreen(
                 }
             }
 
-            sendError?.let { Text(it) }
-            OutlinedTextField(
-                value = newMessage,
-                onValueChange = { newMessage = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Message") },
-                trailingIcon = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send",
-                        modifier = Modifier.clickable {
-                            val error = controller?.send(reservation.id, newMessage)
-                            sendError = error
-                            if (error == null) newMessage = ""
-                        }
-                    )
-                },
-                singleLine = true
-            )
         }
     }
 }
