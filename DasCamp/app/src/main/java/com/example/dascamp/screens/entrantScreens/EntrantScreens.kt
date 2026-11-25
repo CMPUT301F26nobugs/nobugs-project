@@ -89,6 +89,7 @@ import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.OwnerApplicationStatus
 import com.example.dascamp.model.WaitlistStatus
 import com.example.dascamp.model.label
+import com.example.dascamp.screens.LocalCurrentUser
 import com.example.dascamp.views.ReservationView
 import com.example.dascamp.views.NotificationView
 
@@ -562,7 +563,10 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                         Text(if (currentEntry == null) "Join waiting list" else "Leave waiting list")
                     }
                     Spacer(modifier = Modifier.padding(8.dp))
-                    Text("${activeLottery.entrants.size}/${activeLottery.waitlistCapacity ?: "∞"} · booking ends ${activeLottery.bookingEnd}")
+                    val waitingCount = activeLottery.entrants.count {
+                        it.status == WaitlistStatus.WAITING
+                    }
+                    Text("$waitingCount/${activeLottery.waitlistCapacity ?: "∞"} · booking ends ${activeLottery.bookingEnd}")
                 }
                 Text("Joining adds you to the waiting list. You are not guaranteed selection; replacements may be drawn if needed.")
             } else {
@@ -606,6 +610,8 @@ fun EntrantNotificationList(
     notificationsController: NotificationsController? = null,
     onLotterySelected: (String) -> Unit = {}
 ) {
+    val user = LocalCurrentUser.current
+    val notificationsOff = user?.notificationsOn == false
     val notifications = notificationsController?.inbox(notificationView?.notifications.orEmpty()).orEmpty()
 
     EntrantPage(
@@ -623,9 +629,12 @@ fun EntrantNotificationList(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Display the signed-in entrant's win/loss messages and other alerts.
-        if (notifications.isEmpty()) {
+        if (notificationsOff) {
+            Text("Notifications are turned off. Turn them on in your profile settings to see them.")
+        } else if (notifications.isEmpty()) {
             Text("No notifications yet")
         }
+
         LazyColumn(
             modifier = Modifier.fillMaxSize().weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -987,12 +996,10 @@ fun EntrantMessageScreen(navController: NavController) {
 fun EntrantProfileScreen(
     navController: NavController,
     repository: DasCampRepository,
-    profileController: ProfileController
+    profileController: ProfileController,
 ) {
     val entrantId = repository.uid
 
-    // Dummy data
-    var notifications by remember { mutableStateOf(false) }
     var showRules by rememberSaveable { mutableStateOf(false) } //app rules
     var showDelete by rememberSaveable {mutableStateOf(false) }
     val view = remember(entrantId) { ProfileView(repository, entrantId) }
@@ -1000,6 +1007,7 @@ fun EntrantProfileScreen(
     DisposableEffect(view) { onDispose { view.remove() } }
 
     val profile = view.profile
+    val notificationsOn = profile?.notificationsOn ?: true
     var showEdit by rememberSaveable { mutableStateOf(false) }
 
     EntrantPage(
@@ -1149,7 +1157,7 @@ fun EntrantProfileScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { notifications = !notifications },
+                    .clickable { controller.setNotifications(!notificationsOn) },
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -1172,7 +1180,7 @@ fun EntrantProfileScreen(
                             .weight(1f),
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
-                        text = "Turn ${if (notifications) "off" else "on"} notifications",
+                        text = "Turn ${if (notificationsOn) "off" else "on"} notifications",
                         fontWeight = FontWeight.Bold
 
                     )
