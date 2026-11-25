@@ -52,7 +52,7 @@ data class User(
     val email: String = "",
     val phoneNumber: String = "",
     val notificationsOn: Boolean = true,
-    val entrant: Boolean = false,
+    val entrant: Boolean = true, // by default users are entered as an entrant
     val owner: Boolean = false,
     val admin: Boolean = false,
     val ownerApplication: String = OwnerApplicationStatus.EMPTY,

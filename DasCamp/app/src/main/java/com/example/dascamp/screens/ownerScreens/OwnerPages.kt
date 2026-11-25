@@ -5,10 +5,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -37,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.controllers.NotificationsController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.screens.BigButton
@@ -60,7 +64,10 @@ import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
+import com.example.dascamp.screens.entrantScreens.EntrantNotificationRow
+import com.example.dascamp.views.NotificationView
 import com.example.dascamp.views.ReservationView
+import kotlin.collections.orEmpty
 
 /**
  * Owner home. The two large buttons open the campsite list and the lottery list.
@@ -706,10 +713,26 @@ fun OwnerReservationDetails(navController: NavController, repository: DasCampRep
 
 /** Alerts tab. The blank card is one sent notification. */
 @Composable
-fun OwnerNotifications(navController: NavController, repository: DasCampRepository? = null) {
+fun OwnerNotifications(
+    navController: NavController,
+    repository: DasCampRepository? = null,
+    notificationsController: NotificationsController? = null,
+    notificationView: NotificationView? = null
+) {
+    val sent = repository?.let { repo ->
+        val myLotteryIds = repo.lotteries
+            .filter { l -> repo.campsites.any { it.id in l.campsiteIds && it.ownerId == repo.uid } }
+            .map { it.id }
+            .toSet()
+        repo.notifications
+            .filter { it.lotteryId in myLotteryIds }
+            .sortedByDescending { it.sentAt.toLongOrNull() ?: 0L }
+    }.orEmpty()
+
     OwnerPage(navController, showBack = false) {
         Text("Sent notifications", style = MaterialTheme.typography.titleLarge)
-        repository?.notifications?.forEach { note ->
+        if (sent.isEmpty()) Text("No sent notifications")
+        sent.forEach { note ->
             Text("${note.recipientName}: ${note.message}")
         }
     }
