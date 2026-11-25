@@ -77,6 +77,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.draw.clipToBounds
 import com.example.dascamp.controllers.CampsiteController
 import com.example.dascamp.controllers.ReservationController
+import com.example.dascamp.controllers.ReservationCsv
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.Reservation
@@ -87,6 +88,7 @@ import com.example.dascamp.views.ProfileView
 import com.example.dascamp.model.Lottery
 import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.OwnerApplicationStatus
+import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.WaitlistStatus
 import com.example.dascamp.model.label
 import com.example.dascamp.screens.LocalCurrentUser
@@ -354,6 +356,18 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
     var guests by remember {mutableStateOf("1")}
     var rulesAccepted by remember {mutableStateOf(false)}
     var bookingMessage by remember {mutableStateOf("")}
+    val context = LocalContext.current
+    var confirmed by remember { mutableStateOf<Pair<Reservation, Long>?>(null) }
+    val saveCsv = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        val c = confirmed
+        if (uri != null && c != null) {
+            context.contentResolver.openOutputStream(uri)?.use {
+                it.write(ReservationCsv.build(c.first, "confirmed", c.second).toByteArray())
+            }
+        }
+    }
 
     EntrantPage(
         navController = navController,
@@ -450,7 +464,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                 Text("Open: " + range.start + " to " + range.end)
             }
 
-            //date is booked
+            // date is booked
             var booked = listOf<Reservation>()
             if (scheduleController != null && reservationView != null){
                 booked = scheduleController.bookedReservations(campsite.id,  reservationView.reservations)
@@ -537,6 +551,11 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                         )
                     }
                     bookingMessage = if (error == null) {
+                        confirmed = repository?.reservations?.firstOrNull {
+                            it.campsiteId == campsite.id && it.entrantId == entrantId &&
+                                    it.startDate == startDate && it.endDate == endDate &&
+                                    it.status == ReservationStatus.ACTIVE
+                        }?.let { it to System.currentTimeMillis() }
                         "Reserved $startDate to $endDate"
                     } else error
                 }
@@ -584,6 +603,26 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
             modifier = Modifier.fillMaxWidth(),
             onClick = { navController.navigate(EntrantRoutes.MESSAGE) }
         ) { Text("Message Owner") }
+
+        // Dialog
+        confirmed?.let { (r, _) ->
+            val off = LocalCurrentUser.current?.notificationsOn == false
+            AlertDialog(
+                onDismissRequest = { confirmed = null },
+                title = { Text("Reservation confirmed") },
+                text = {
+                    Text(
+                        "${r.campsiteName}, ${r.startDate} to ${r.endDate}. " +
+                                if (off) "Download your confirmation below."
+                                else "A confirmation was sent to your notifications."
+                    )
+                },
+                confirmButton = {
+                    Button(onClick = { saveCsv.launch("reservation-${r.id}.csv") }) { Text("Download CSV") }
+                },
+                dismissButton = { TextButton(onClick = { confirmed = null }) { Text("Close") } }
+            )
+        }
     }
 }
 
@@ -724,6 +763,19 @@ fun EntrantReservationList(
     var rateMessage by remember {mutableStateOf("")}
     val shown = if (showPast) reservationController?.past().orEmpty()
                 else reservationController?.active().orEmpty()
+    val context = LocalContext.current
+    var cancelled by remember { mutableStateOf<Pair<Reservation, Long>?>(null) }
+    val saveCsv = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        val c = cancelled
+        if (uri != null && c != null) {
+            val r = c.first.copy(status = ReservationStatus.CANCELLED)  // the copy captured is still ACTIVE
+            context.contentResolver.openOutputStream(uri)?.use {
+                it.write(ReservationCsv.build(r, "cancelled", c.second).toByteArray())
+            }
+        }
+    }
 
     EntrantPage(navController = navController, showBack = false) {
 
@@ -764,13 +816,14 @@ fun EntrantReservationList(
                     Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+                ) {
                     Text(reservation.campsiteName, style = MaterialTheme.typography.titleMedium)
                     Text("${reservation.startDate} to ${reservation.endDate}")
                     if (!showPast) {
-                        Button(onClick = { reservationController?.cancel(reservation) }) {
-                            Text("Cancel reservation")
-                        }
+Button(onClick = {
+                            reservationController?.cancel(reservation)
+                            cancelled = reservation to System.currentTimeMillis()
+                        }) { Text("Cancel reservation") }
                     } else{
                         if(reservation.rating == 0){
                             Text("Rate your stay:")
@@ -796,7 +849,24 @@ fun EntrantReservationList(
             }
         }
         Text(rateMessage)
-    }
+        cancelled?.let { (r, _) ->
+            val off = LocalCurrentUser.current?.notificationsOn == false
+            AlertDialog(
+                onDismissRequest = { cancelled = null },
+                title = { Text("Reservation cancelled") },
+                text = {
+                    Text(
+                        "${r.campsiteName}, ${r.startDate} to ${r.endDate}. " +
+                                if (off) "Download your confirmation below."
+                                else "A confirmation was sent to your notifications."
+                    )
+                },
+                confirmButton = {
+                    Button(onClick = { saveCsv.launch("cancellation-${r.id}.csv") }) { Text("Download CSV") }
+                },
+                dismissButton = { TextButton(onClick = { cancelled = null }) { Text("Close") } }
+            )
+        }    }
 }
 
 /**
