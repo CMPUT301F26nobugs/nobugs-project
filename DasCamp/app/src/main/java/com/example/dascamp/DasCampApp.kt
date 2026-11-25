@@ -229,7 +229,9 @@ fun DasCampApp() {
             composable(OwnerRoutes.LOTTERY) { OwnerLotteryDetails(navController, repository) }
             composable(OwnerRoutes.EDIT_LOTTERY) { OwnerEditLottery(navController, repository) }
             composable(OwnerRoutes.ALERTS) { OwnerNotifications(navController, repository) }
-            composable(OwnerRoutes.SEND) { OwnerSendNotification(navController, repository) }
+            composable(OwnerRoutes.SEND) {
+                OwnerSendNotification(navController, notificationsController, repository)
+            }
             composable(OwnerRoutes.RESERVATIONS) { OwnerReservations(navController, repository) }
             composable(OwnerRoutes.RESERVATION) { OwnerReservationDetails(navController, repository) }
             composable(OwnerRoutes.PROFILE) { OwnerProfile(navController, repository) }
