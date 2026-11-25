@@ -10,10 +10,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -22,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,15 +61,14 @@ import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.NotificationType
 import com.example.dascamp.model.label
 import com.example.dascamp.model.Notification
-import java.util.UUID
 import com.example.dascamp.controllers.MessageController
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.formatPrice
-import com.example.dascamp.model.label
 import com.example.dascamp.views.MessageView
 import androidx.compose.runtime.DisposableEffect
 import com.example.dascamp.screens.BigButton
+import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.screens.EmptyValue
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
@@ -664,16 +673,13 @@ fun OwnerReservations(navController: NavController, repository: DasCampRepositor
         }
         if (reservations.isEmpty()) Text("No ${selected.lowercase()} reservations")
         reservations.forEach { reservation ->
-            OutlinedButton(onClick = {
-                repository?.openReservationId = reservation.id
-                navController.navigate(OwnerRoutes.RESERVATION)
-            },
-            modifier = Modifier.fillMaxWidth()  )
-            {Text("${reservation.campsiteName} · ${reservation.entrantName} · ${reservation.startDate} to ${reservation.endDate}")
-            OutlinedButton(onClick = {
-                repository?.openReservationId = reservation.id
-                navController.navigate(OwnerRoutes.RESERVATION)
-            }, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = {
+                    repository?.openReservationId = reservation.id
+                    navController.navigate(OwnerRoutes.RESERVATION)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("${reservation.campsiteName} · ${reservation.entrantName} · ${reservation.startDate} to ${reservation.endDate}")
             }
         }
@@ -904,6 +910,7 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
 fun OwnerProfile(
     navController: NavController,
     repository: DasCampRepository? = null,
+    onSignOut: () -> Unit = {}
 ) {
     val saved = repository?.currentUser
     var firstName by remember { mutableStateOf("") }
@@ -925,39 +932,98 @@ fun OwnerProfile(
         }
     }
 
-    OwnerPage(navController, showBack = false) {
+    OwnerPage(navController, showBack = false, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Profile", style = MaterialTheme.typography.titleLarge)
-        FormField("First name", firstName, { firstName = it }, editing)
-        FormField("Last name", lastName, { lastName = it }, editing)
-        FormField("Email", email, { email = it }, editing)
-        FormField("Phone", phoneNumber, { phoneNumber = it }, editing)
-        Button(onClick = {
-            if (editing && repository != null && saved != null) {
-                repository.updateUser(
-                    saved.copy(
-                        firstName = firstName.trim(),
-                        lastName = lastName.trim(),
-                        email = email.trim(),
-                        phoneNumber = phoneNumber.trim(),
-                        notificationsOn = notificationsOn
+        Icon(
+            Icons.Default.Person,
+            contentDescription = null,
+            modifier = Modifier
+                .size(96.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                .padding(18.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            saved?.displayName()?.ifBlank { "Owner" } ?: "Owner",
+            style = MaterialTheme.typography.headlineSmall
+        )
+        Text(
+            "Signed in on this device",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (!editing) {
+            OwnerDetail(Icons.Default.Email, email.ifBlank { "No email" })
+            OwnerDetail(Icons.Default.Phone, phoneNumber.ifBlank { "No phone number" })
+        } else {
+            FormField("First name", firstName, { firstName = it }, true)
+            FormField("Last name", lastName, { lastName = it }, true)
+            FormField("Email", email, { email = it }, true)
+            FormField("Phone", phoneNumber, { phoneNumber = it }, true)
+        }
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                if (editing && repository != null && saved != null) {
+                    repository.updateUser(
+                        saved.copy(
+                            firstName = firstName.trim(),
+                            lastName = lastName.trim(),
+                            email = email.trim(),
+                            phoneNumber = phoneNumber.trim(),
+                            notificationsOn = notificationsOn
+                        )
                     )
+                }
+                editing = !editing
+            }
+        ) {
+            Icon(
+                if (editing) Icons.Default.Edit else Icons.Default.Edit,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(if (editing) "Save" else "Edit details")
+        }
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Notifications, contentDescription = null, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(12.dp))
+                Text("Notifications", modifier = Modifier.weight(1f))
+                Switch(
+                    checked = notificationsOn,
+                    onCheckedChange = { notificationsOn = it },
+                    enabled = editing
                 )
             }
-            editing = !editing
-        }) { Text(if (editing) "Done" else "Edit") }
-        Button(onClick = {}) { Text("Change profile picture") }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Turn on notifications", modifier = Modifier.weight(1f))
-            Switch(
-                checked = notificationsOn,
-                onCheckedChange = { notificationsOn = it },
-                enabled = editing
-            )
         }
-        Button(onClick = {}) { Text("App policy and guidelines") }
-        Button(onClick = {
-            if (repository != null && saved != null) { repository.deleteUser(saved) }
-        }) { Text("Delete profile") }
+        ProfileAction(Icons.AutoMirrored.Filled.Logout, "Sign out", onSignOut)
+        ProfileAction(
+            icon = Icons.Default.Delete,
+            label = "Delete profile",
+            destructive = true,
+            onClick = {
+                if (repository != null && saved != null) repository.deleteUser(saved)
+                onSignOut()
+            }
+        )
+    }
+}
+
+@Composable
+private fun OwnerDetail(icon: androidx.compose.ui.graphics.vector.ImageVector, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(8.dp))
+        Text(value, style = MaterialTheme.typography.bodyMedium)
     }
 }
 

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -54,6 +55,8 @@ import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.Role
 import com.example.dascamp.screens.AppScaffold
 import com.example.dascamp.screens.RoleMenu
+import com.example.dascamp.screens.contentMaxWidth
+import com.example.dascamp.screens.screenPadding
 
 /**
  * Navigation routes for the entrant screens.
@@ -99,16 +102,23 @@ fun EntrantPage(
         navBar = { EntrantNavBar(navController) },
         roleMenu = { RoleMenu(navController, Role.ENTRANT) }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = horizontalAlignment,
-            content = content
-        )
+        ) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .widthIn(max = contentMaxWidth)
+                    .verticalScroll(rememberScrollState())
+                    .padding(screenPadding()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = horizontalAlignment,
+                content = content
+            )
+        }
     }
 }
 

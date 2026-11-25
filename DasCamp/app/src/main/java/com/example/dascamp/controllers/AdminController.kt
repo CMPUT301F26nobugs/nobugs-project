@@ -1,18 +1,13 @@
 package com.example.dascamp.controllers
 
 import com.example.dascamp.model.CampStore
-
-import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.OwnerApplicationStatus
 import com.example.dascamp.model.User
 
 /**
- * Admin actions for content that breaks the app policy.
+ * Admin actions: moderate ratings and reviews, and decide owner applications.
  *
- * A rating can be taken off a review without deleting the written text.
- * Removing a review deletes the whole post, including its score.
- *
- * Stories: US 03.09.01, US 03.10.01
+ * Stories: US 03.07.01, US 03.09.01, US 03.10.01
  */
 class AdminController(private val store: CampStore) {
 
@@ -42,13 +37,10 @@ class AdminController(private val store: CampStore) {
         ReviewController(store).refreshCampsiteRating(campsiteId)
         return null
     }
- * ADMIN CONTROLLER
- * TO BE IMPLEMENTED
- */
-class AdminController(private val repository: DasCampRepository) {
-    /** Approve a user's application to become an owner */
+
+    /** Approve a user's application to become an owner. */
     fun approveOwner(applicant: User) {
-        repository.updateUser(
+        store.updateUser(
             applicant.copy(
                 owner = true,
                 ownerApplication = OwnerApplicationStatus.APPROVED
@@ -56,18 +48,16 @@ class AdminController(private val repository: DasCampRepository) {
         )
     }
 
-    /** Deny a user's application to become an owner */
+    /** Deny a user's application to become an owner. */
     fun rejectOwner(applicant: User) {
-        repository.updateUser(
-            applicant.copy(
-                ownerApplication = OwnerApplicationStatus.DENIED
-            )
+        store.updateUser(
+            applicant.copy(ownerApplication = OwnerApplicationStatus.DENIED)
         )
     }
 
-    /** Remove a campsite owner */
+    /** Remove a campsite owner. */
     fun revokeOwner(applicant: User) {
-        repository.updateUser(
+        store.updateUser(
             applicant.copy(
                 owner = false,
                 ownerApplication = OwnerApplicationStatus.EMPTY

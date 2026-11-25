@@ -58,8 +58,9 @@ data class User(
     val owner: Boolean = false,
     val admin: Boolean = false,
     val ownerApplication: String = OwnerApplicationStatus.EMPTY,
-    val admin: Boolean = false,
-    val profileImageUri: String? = null
+    val profileImageUri: String? = null,
+    /** Device that created this profile. Empty on older accounts, whose id is the device id. */
+    val deviceId: String = ""
 ) {
     /**
      * The set of roles this user currently holds.

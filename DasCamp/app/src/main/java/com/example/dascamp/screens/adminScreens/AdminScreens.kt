@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.HowToReg
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
@@ -41,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.screens.BigButton
+import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
 import com.example.dascamp.ui.theme.DasCampTheme
@@ -52,7 +56,6 @@ import androidx.compose.ui.unit.dp
 import com.example.dascamp.controllers.AdminController
 import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.Policy
-import com.example.dascamp.controllers.AdminController
 import com.example.dascamp.model.CampStore
 import com.example.dascamp.model.OwnerApplicationStatus
 import com.example.dascamp.model.User
@@ -75,7 +78,7 @@ enum class ProfileType(val label: String) {
  * @param navController used to navigate to the selected section
  */
 @Composable
-fun AdminDashboard(navController: NavController) {
+fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
     AdminPage(
         navController = navController,
         showBack = false,
@@ -117,26 +120,26 @@ fun AdminDashboard(navController: NavController) {
         }
 
         // Notification Logs
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
-            verticalArrangement = Arrangement.SpaceEvenly
-        ) {
-            // Notification log button
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(AdminRoutes.NOTIFICATION_LOG) }
-            ) {
-                Text("Notification Logs")
-            }
-
-            // Owner Applications
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(AdminRoutes.OWNER_APPLICATIONS) }
-            ) { Text("Owner Applications") }
-        }
+        Text(
+            "Signed in on this device",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        ProfileAction(
+            icon = Icons.Default.Campaign,
+            label = "Notification logs",
+            onClick = { navController.navigate(AdminRoutes.NOTIFICATION_LOG) }
+        )
+        ProfileAction(
+            icon = Icons.Default.HowToReg,
+            label = "Owner applications",
+            onClick = { navController.navigate(AdminRoutes.OWNER_APPLICATIONS) }
+        )
+        ProfileAction(
+            icon = Icons.AutoMirrored.Filled.Logout,
+            label = "Sign out",
+            onClick = onSignOut
+        )
     }
 }
 
@@ -868,7 +871,7 @@ fun AdminViewMessage(navController: NavController) {
         showBack = true,
     ) { Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
