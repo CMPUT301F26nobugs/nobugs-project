@@ -51,6 +51,7 @@ import com.example.dascamp.ui.theme.DasCampTheme
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.unit.dp
 import com.example.dascamp.controllers.AdminController
@@ -161,9 +162,26 @@ fun AdminDashboardPreview() {
  * @param navController used to navigate to a profile
  */
 @Composable
-fun AdminProfileList(navController: NavController) {
+fun AdminProfileList(navController: NavController, campStore: CampStore) {
     var query by rememberSaveable { mutableStateOf("") }                        // profile search
     var selectedType by rememberSaveable { mutableStateOf<ProfileType?>(null) } // null = show all
+
+    //filter by entrant or owner toggles
+    val filteredUsers = campStore.users.filter {u ->
+        val userType = if(selectedType == ProfileType.ENTRANT){
+            u.entrant
+        }else if(selectedType == ProfileType.OWNER){
+            u.owner
+        }else{
+            u.entrant || u.owner  //no filter appiled, only show entrants and owners, no admins
+        }
+
+        val searchQuery = query.isBlank() ||
+                u.displayName().contains(query, ignoreCase = true) ||
+                u.email.contains(query, ignoreCase = true)
+
+        userType && searchQuery  //what the filter returns
+    }
 
     AdminPage(
         navController = navController,
@@ -201,19 +219,31 @@ fun AdminProfileList(navController: NavController) {
                 )
             }
         }
-
-        // Display Profiles (PLACEHOLDER)
-        EmptyCard {
-            navController.navigate(AdminRoutes.profile(selectedType ?: ProfileType.ENTRANT))
+        if(filteredUsers.isEmpty()){
+            Text("No profiles found")
         }
-    }
-}
-
-@Preview
-@Composable
-fun AdminProfileListPreview() {
-    DasCampTheme {
-        AdminProfileList(rememberNavController())
+        filteredUsers.forEach{user ->
+            Card(
+                modifier = Modifier.fillMaxWidth()
+                    .clickable {
+                        val type = if(user.owner){  //determine the user type of the clicked profile
+                            ProfileType.OWNER
+                        } else{
+                            ProfileType.ENTRANT
+                        }
+                        navController.navigate(AdminRoutes.profile(type, user.id))
+                    },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ){
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(user.displayName(), style = MaterialTheme.typography.titleMedium)
+                    Text(user.email, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
     }
 }
 
@@ -229,7 +259,10 @@ fun AdminProfileListPreview() {
  * @param profileType whether this is an entrant or an owner profile
  */
 @Composable
-fun AdminViewProfile(navController: NavController, profileType: ProfileType) {
+fun AdminViewProfile(navController: NavController, profileType: ProfileType, campStore: CampStore, uid: String) {
+
+    val user = campStore.userById(uid)  //get the specific user by the uid
+
     AdminPage(
         navController = navController,
         showBack = true,
@@ -246,64 +279,74 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType) {
             )
         }
 
-        // Profile picture (PLACEHOLDER)
-        Card(
-            modifier = Modifier.size(120.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        ) { Icon(Icons.Default.Person, "Profile picture", Modifier.fillMaxSize()) }
+        if(user == null){
+            Text("Profile not found")
+        } else{
 
-        // Profile info (PLACEHOLDER)
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("Name", style = MaterialTheme.typography.labelLarge)
-            EmptyValue(0.6f)
-            Text("Email", style = MaterialTheme.typography.labelLarge)
-            EmptyValue(0.8f)
-        }
+            // Profile picture (PLACEHOLDER)
+            Card(
+                modifier = Modifier.size(120.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            ) { Icon(Icons.Default.Person, "Profile picture", Modifier.fillMaxSize()) }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            // Profile info
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("Name", style = MaterialTheme.typography.labelLarge)
+                Text(user.displayName())
+                Text("Email", style = MaterialTheme.typography.labelLarge)
+                Text(user.email)
+                Text("Phone", style = MaterialTheme.typography.labelLarge)
+                Text(user.phoneNumber.ifBlank{"N/A"})
+            }
 
-        // Both profile types: delete profile picture
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = rememberConfirmClick(
-                message = "Remove this profile picture? This can't be undone.",
-                onConfirm =  {navController.navigate(AdminRoutes.PROFILE_LIST
-                ) }
-            )  /*todo: implement delete*/
-        ) { Text("Delete Profile Picture") }
+            Spacer(modifier = Modifier.height(16.dp))
 
-        if (profileType == ProfileType.ENTRANT) {
-            // Entrant only -> delete profile
+            // Both profile types: delete profile picture
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                colors = destructiveButtonColors(),
                 onClick = rememberConfirmClick(
-                    message = "Remove this profile? This can't be undone.",
-                    onConfirm =  {navController.navigate(AdminRoutes.PROFILE_LIST) }
-                ) /*todo: implement delete*/
-            ) { Text("Delete Profile") }
-        } else {
-            // Owner only -> view messages with entrants (same message list as from a campsite)
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
-            ) { Text("View Messages with Entrants") }
+                    message = "Remove this profile picture? This can't be undone.",
+                    onConfirm =  {navController.navigate(AdminRoutes.PROFILE_LIST
+                    ) }
+                )  /*todo: implement delete*/
+            ) { Text("Delete Profile Picture") }
 
-            // Owner only -> remove campsite owner
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                colors = destructiveButtonColors(),
-                onClick = rememberConfirmClick(
-                    message = "Remove this campsite owner? This can't be undone.",
-                    onConfirm =  {navController.navigate(AdminRoutes.CAMPSITE_LIST) }
-                ) /*todo: implement delete*/
-            ) { Text("Remove Campsite Owner") }
+            if (profileType == ProfileType.ENTRANT) {
+                // Entrant only -> delete profile
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = destructiveButtonColors(),
+                    onClick = rememberConfirmClick(
+                        message = "Remove this profile? This can't be undone.",
+                        onConfirm = {
+                            campStore.deleteUser(user)
+                            navController.navigate(AdminRoutes.PROFILE_LIST)
+                        }
+                    )
+                ) { Text("Delete Profile") }
+            } else {
+                // Owner only -> view messages with entrants (same message list as from a campsite)
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+                ) { Text("View Messages with Entrants") }
+
+                // Owner only -> remove campsite owner
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = destructiveButtonColors(),
+                    onClick = rememberConfirmClick(
+                        message = "Remove this campsite owner? This can't be undone.",
+                        onConfirm = { navController.navigate(AdminRoutes.CAMPSITE_LIST) }
+                    ) /*todo: implement delete*/
+                ) { Text("Remove Campsite Owner") }
+            }
         }
     }
 }
@@ -314,22 +357,6 @@ private fun destructiveButtonColors() = ButtonDefaults.buttonColors(
     containerColor = MaterialTheme.colorScheme.error,
     contentColor = MaterialTheme.colorScheme.onError
 )
-
-@Preview
-@Composable
-fun AdminViewEntrantProfilePreview() {
-    DasCampTheme {
-        AdminViewProfile(rememberNavController(), ProfileType.ENTRANT)
-    }
-}
-
-@Preview
-@Composable
-fun AdminViewOwnerProfilePreview() {
-    DasCampTheme {
-        AdminViewProfile(rememberNavController(), ProfileType.OWNER)
-    }
-}
 
 /**
  * Notification log hub, with buttons leading to the campsite request log,
@@ -759,7 +786,7 @@ fun AdminViewCampsite(
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
-                    navController.navigate(AdminRoutes.profile( ProfileType.OWNER))
+                    navController.navigate(AdminRoutes.profile( ProfileType.OWNER, ""))
                 }
             ) { Text("View Owner Profile") }
 
@@ -773,14 +800,6 @@ fun AdminViewCampsite(
                 )
             ) { Text("Remove Campsite") }
 
-    }
-}
-
-@Preview
-@Composable
-fun AdminViewCampsitePreview() {
-    DasCampTheme {
-        AdminViewProfile(rememberNavController(), ProfileType.ENTRANT)
     }
 }
 
