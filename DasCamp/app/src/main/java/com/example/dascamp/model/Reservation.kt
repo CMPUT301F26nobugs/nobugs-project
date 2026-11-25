@@ -41,6 +41,7 @@ fun ReservationStatus.label(): String = when (this) {
  * it hasn't been cancelled
  * @property guestCount number of guests in the party; defaults to 1
  * @property rulesAccepted whether the entrant accepted the campsite rules
+ * @property rating the stars (1 to 5) the entrant gave after the stay, or 0 if not rated yet
  */
 data class Reservation(
     val id: String = "",
@@ -54,5 +55,7 @@ data class Reservation(
     val lotteryId: String? = null,
     val cancelReason: String? = null,
     val guestCount: Int = 1,
-    val rulesAccepted: Boolean = false
+    val rulesAccepted: Boolean = false,
+    val rating: Int = 0
+
 )

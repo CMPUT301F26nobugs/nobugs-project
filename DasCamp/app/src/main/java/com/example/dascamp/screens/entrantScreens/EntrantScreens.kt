@@ -380,7 +380,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Summary
-            val ratingText = campsite.rating.toString() + " (" + campsite.ratingCount.toString() + " ratings)"
+            val ratingText = "%.1f".format(campsite.rating) + " (" + campsite.ratingCount.toString() + " ratings)"
             val guestsText = "Up to " + campsite.maxOccupancy.toString() + " guests"
             Text(
                 text = campsite.location + " | " + ratingText + " | " + guestsText,
@@ -712,6 +712,7 @@ fun EntrantReservationList(
     reservationController: ReservationController? = null
 ) {
     var showPast by rememberSaveable { mutableStateOf(false) }
+    var rateMessage by remember {mutableStateOf("")}
     val shown = if (showPast) reservationController?.past().orEmpty()
                 else reservationController?.active().orEmpty()
 
@@ -761,10 +762,31 @@ fun EntrantReservationList(
                         Button(onClick = { reservationController?.cancel(reservation) }) {
                             Text("Cancel reservation")
                         }
+                    } else{
+                        if(reservation.rating == 0){
+                            Text("Rate your stay:")
+                            Row{
+                                for (stars in 1..5){
+                                    TextButton(onClick = {
+                                        if(reservationController != null){
+                                            val error = reservationController.rate(reservation, stars)
+                                            if (error == null){
+                                                rateMessage = "Thanks. You rated " + reservation.campsiteName + " " + stars + "★"
+                                            } else{
+                                                rateMessage = error
+                                            }
+                                        }
+                                    }) {Text(stars.toString() + "★")}
+                                }
+                            }
+                        }else {
+                            Text("You rated this stay " + reservation.rating + "★")
+                        }
                     }
                 }
             }
         }
+        Text(rateMessage)
     }
 }
 
