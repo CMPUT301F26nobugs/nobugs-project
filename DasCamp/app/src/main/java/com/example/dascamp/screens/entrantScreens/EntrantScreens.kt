@@ -649,6 +649,28 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                 if (winningLottery != null) {
                     Text("You can reserve now", style = MaterialTheme.typography.titleMedium)
                     Text(
+                        "Choose a campsite for this reservation",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    repository?.campsites
+                        ?.filter { it.id in winningLottery.campsiteIds }
+                        .orEmpty()
+                        .forEach { option ->
+                            if (option.id == campsite.id) {
+                                Text("Selected: ${option.name} · ${option.location}")
+                            } else {
+                                OutlinedButton(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = {
+                                        repository?.openCampsiteId = option.id
+                                        navController.navigate(EntrantRoutes.CAMPSITE)
+                                    }
+                                ) {
+                                    Text("Choose ${option.name}")
+                                }
+                            }
+                        }
+                    Text(
                         "You were selected. Choose dates from ${winningLottery.bookingStart} to ${winningLottery.bookingEnd}, accept the rules, then book. A saved reservation lets you post a review and message the owner.",
                         style = MaterialTheme.typography.bodyMedium
                     )
