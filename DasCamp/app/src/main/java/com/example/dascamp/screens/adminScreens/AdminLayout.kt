@@ -51,6 +51,7 @@ object AdminRoutes {
     const val REQUEST_LOG = "adminRequestLog"
     const val APPROVED_LOG = "adminApprovedLog"
     const val OTHER_LOG = "adminOtherLog"
+    const val OWNER_APPLICATIONS = "adminOwnerApplications"
 
     /**
      * Builds the route for a profile screen, e.g. `"adminProfile/OWNER"`.

@@ -3,9 +3,12 @@ package com.example.dascamp.screens.ownerScreens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -31,19 +34,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.controllers.LotteryNotificationAudience
+import com.example.dascamp.controllers.NotificationsController
+import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
-import com.example.dascamp.screens.BigButton
-import com.example.dascamp.screens.EmptyCard
-import com.example.dascamp.screens.EmptyValue
 import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.CampsiteFormState
 import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.DateRange
 import com.example.dascamp.model.LotteryFormState
 import com.example.dascamp.model.LotteryStatus
+import com.example.dascamp.model.NotificationType
 import com.example.dascamp.model.label
 import com.example.dascamp.model.Notification
 import java.util.UUID
@@ -51,13 +56,15 @@ import com.example.dascamp.controllers.MessageController
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.formatPrice
+import com.example.dascamp.model.label
 import com.example.dascamp.views.MessageView
 import androidx.compose.runtime.DisposableEffect
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.CampsiteMap
-import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
+import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
 import com.example.dascamp.views.ReservationView
+import java.util.UUID
 
 /**
  * Owner home. The two large buttons open the campsite list and the lottery list.
@@ -110,9 +117,12 @@ fun OwnerCampsitesList(
     repository: DasCampRepository? = null
 ) {
     var query by remember { mutableStateOf("") }
-    val shown = repository?.campsites
-        ?.filter { it.name.contains(query, ignoreCase = true) }
-        .orEmpty()
+    val shown = repository?.let { repo ->
+        repo.campsites.filter { campsite ->
+            campsite.ownerId == repo.uid &&
+                campsite.name.contains(query, ignoreCase = true)
+        }
+    }.orEmpty()
     OwnerPage(navController, showBack = false) {
         Text("My Campsites", style = MaterialTheme.typography.titleLarge)
         OutlinedTextField(
@@ -359,7 +369,17 @@ fun OwnerBookedDates(navController: NavController, repository: DasCampRepository
     OwnerPage(navController, showBack = true){
         Text("Booked dates", style = MaterialTheme.typography.titleLarge)
         Text(campsite?.name?: "Campsite")
-        CalendarGrid()
+        EntrantCalendarGrid(campsite, scheduleController)
+        Row(verticalAlignment = Alignment.CenterVertically){
+            Text("Open = ")
+            Box(modifier = Modifier.size(20.dp).background(Color.Green))
+            Spacer(modifier = Modifier.padding(8.dp))
+            Text("Booked = ")
+            Box(modifier = Modifier.size(20.dp).background(Color.Red))
+            Spacer(modifier = Modifier.padding(8.dp))
+            Text("Closed = ")
+            Box(modifier = Modifier.size(20.dp).background(Color.LightGray))
+        }
         Text("Stays", style = MaterialTheme.typography.titleMedium)
         if(booked.isEmpty()){
             Text("No booked dates")
@@ -647,6 +667,12 @@ fun OwnerReservations(navController: NavController, repository: DasCampRepositor
             OutlinedButton(onClick = {
                 repository?.openReservationId = reservation.id
                 navController.navigate(OwnerRoutes.RESERVATION)
+            },
+            modifier = Modifier.fillMaxWidth()  )
+            {Text("${reservation.campsiteName} · ${reservation.entrantName} · ${reservation.startDate} to ${reservation.endDate}")
+            OutlinedButton(onClick = {
+                repository?.openReservationId = reservation.id
+                navController.navigate(OwnerRoutes.RESERVATION)
             }, modifier = Modifier.fillMaxWidth()) {
                 Text("${reservation.campsiteName} · ${reservation.entrantName} · ${reservation.startDate} to ${reservation.endDate}")
             }
@@ -654,79 +680,161 @@ fun OwnerReservations(navController: NavController, repository: DasCampRepositor
     }
 }
 
-/** One reservation. Reject is present for the layout. Message opens the thread. */
+/**
+ * One reservation at the owner's campsite (US 02.08.01).
+ * Shows the booking details and whether the rules were confirmed.
+ * The owner can reject an active reservation by giving a reason.
+ *
+ * @param navController used to go back, open messages, or view booked dates
+ * @param repository source of the reservation the owner tapped
+ */
 @Composable
-fun OwnerReservationDetails(navController: NavController) {
-    OwnerPage(navController, showBack = true) {
-        EmptyValue(0.8f)
-        EmptyValue(0.3f)
-        EmptyValue(0.5f)
-        EmptyValue(0.6f)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = true, onCheckedChange = null)
+fun OwnerReservationDetails(navController: NavController, repository: DasCampRepository? = null) {
+    var reservation: Reservation? = null
+    if(repository != null){
+        for (item in repository.reservations){
+            if(item.id == repository.openReservationId){
+                reservation = item
+            }
+        }
+    }
+    val controller = remember(repository){ repository?.let { ReservationController(it) }}
+    var reason by remember {mutableStateOf("")}
+    var message by remember {mutableStateOf("")}
+
+    if (reservation == null){
+        OwnerPage(navController, showBack = true){
+            Text("Reservation not found")
+        }
+        return
+    }
+    OwnerPage(navController, showBack = true){
+        Text("Reservation", style = MaterialTheme.typography.titleLarge)
+        Text("Campsite: " + reservation.campsiteName)
+        Text("Entrant: " + reservation.entrantName)
+        Text("Dates: " + reservation.startDate + " to " + reservation.endDate)
+        Text("Guests: " + reservation.guestCount)
+        Text("Status: " + reservation.status)
+        if(reservation.cancelReason != null){
+            Text("Reason: " + reservation.cancelReason)
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically){
+            Checkbox(checked = reservation.rulesAccepted, onCheckedChange = null)
             Text("Rules & Policies Confirmed")
         }
-        FormField("Reason for rejection")
+
+        if(reservation.status == ReservationStatus.ACTIVE){
+            FormField("Reason for rejection", reason, onValueChange = {
+                typed -> reason = typed
+            })
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    if(controller != null){
+                        val error = controller.reject(reservation, reason)
+                        if(error == null){
+                            navController.popBackStack()
+                        } else{
+                            message = error
+                        }
+                    }
+                }
+            ) {Text("Reject Reservation")}
+            Text(message)
+        }
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.popBackStack() }) { Text("Reject reservation") }
+            onClick = {navController.navigate(OwnerRoutes.MESSAGE)}){Text("Message")}
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate(OwnerRoutes.MESSAGE) }) { Text("Message") }
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate(OwnerRoutes.BOOKED) }) { Text("View Dates") }
+            onClick = {
+                repository?.openCampsiteId = reservation.campsiteId
+                navController.navigate(OwnerRoutes.BOOKED)
+            }
+        ) {Text("View Dates")}
     }
+
 }
 
 /** Alerts tab. The blank card is one sent notification. */
 @Composable
 fun OwnerNotifications(navController: NavController, repository: DasCampRepository? = null) {
+    val sentGroups = repository?.let { repo ->
+        repo.notifications
+            .filter {
+                it.senderId == repo.uid && it.type == NotificationType.OWNER_MESSAGE
+            }
+            .groupBy { it.batchId.ifBlank { it.id } }
+            .values
+            .sortedByDescending { group ->
+                group.firstOrNull()?.sentAt?.toLongOrNull() ?: 0L
+            }
+    }.orEmpty()
+
     OwnerPage(navController, showBack = false) {
         Text("Sent notifications", style = MaterialTheme.typography.titleLarge)
-        repository?.notifications?.forEach { note ->
-            Text("${note.recipientName}: ${note.message}")
+        if (sentGroups.isEmpty()) {
+            Text("No sent notifications")
+        } else {
+            sentGroups.forEach { group ->
+                val first = group.first()
+                Text(first.message)
+                Text("Sent to ${group.size} entrant(s): ${group.joinToString { it.recipientName }}")
+            }
         }
     }
 }
 
 /** Send page opened from a lottery. The message field is empty. */
 @Composable
-fun OwnerSendNotification(navController: NavController, repository: DasCampRepository? = null) {
-    var send by remember { mutableStateOf("All Waitlist") }
+fun OwnerSendNotification(
+    navController: NavController,
+    notificationsController: NotificationsController,
+    repository: DasCampRepository? = null
+) {
+    var send by remember {
+        mutableStateOf(LotteryNotificationAudience.ALL_WAITLIST)
+    }
     var message by remember { mutableStateOf("") }
+    var sendError by remember { mutableStateOf<String?>(null) }
     OwnerPage(navController, showBack = true) {
         Text("Send notification", style = MaterialTheme.typography.titleLarge)
         Text("Send to", style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("All Waitlist", "Winners", "Not Selected").forEach { label ->
-                if (label == send)
-                    Button(onClick = { send = label }) {
-                        Text(label)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            LotteryNotificationAudience.values().forEach { audience ->
+                if (audience == send)
+                    Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { send = audience }
+                    ) {
+                        Text(audience.label)
                     } else OutlinedButton(
-                    onClick = {
-                        send = label
-                    }
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { send = audience }
                 ) {
-                    Text(label)
+                    Text(audience.label)
                 }
             }
         }
         FormField("Message", message, onValueChange = { typed -> message = typed })
+        sendError?.let { Text(it) }
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
-                if (message.isNotBlank()) {
-                    repository?.addNotification(
-                        Notification(
-                            id = UUID.randomUUID().toString(),
-                            recipientName = send,
-                            message = message.trim(),
-                            sentAt = System.currentTimeMillis().toString()
-                        )
-                    )
+                val result = notificationsController.sendLotteryMessage(
+                    lotteryId = repository?.openLotteryId.orEmpty(),
+                    audience = send,
+                    message = message
+                )
+                if (result.error != null) {
+                    sendError = result.error
+                } else {
+                    navController.openOwnerTab(OwnerRoutes.ALERTS)
                 }
-                navController.openOwnerTab(OwnerRoutes.ALERTS)
             }
         ) { Text("Send") }
     }

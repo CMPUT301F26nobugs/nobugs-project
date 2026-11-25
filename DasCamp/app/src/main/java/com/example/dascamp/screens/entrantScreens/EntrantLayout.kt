@@ -1,5 +1,6 @@
 package com.example.dascamp.screens.entrantScreens
 
+import android.icu.util.Calendar
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -35,13 +36,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.controllers.ScheduleController
+import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.Role
 import com.example.dascamp.screens.AppScaffold
 import com.example.dascamp.screens.RoleMenu
@@ -268,30 +277,113 @@ fun FilterField(
 }
 
 /**
- * Placeholder month calendar: a weekday header (S M T W T F S) above five rows
- * of seven empty circles.
+ * Month calendar for one campsite (US 01.04.01, 01.01.05).
+ * Red = booked, green = open (inside the owner's availability), grey = closed.
+ * The arrows change the month. It starts on the campsite's first open month.
  *
- * It isn't tied to a real month or any availability data yet. It emits its rows
- * directly into the caller's layout, so call it from inside a [Column].
+ * @param campsite the campsite to show, or null for an empty calendar
+ * @param scheduleController decides if each day is booked or open
  */
 @Composable
-fun EntrantCalendarGrid() {
+fun EntrantCalendarGrid(
+    campsite: Campsite? = null,
+    scheduleController: ScheduleController? = null
+) {
+    val today = Calendar.getInstance()
+    var startYear = today.get(Calendar.YEAR)
+    var startMonth = today.get(Calendar.MONTH) + 1
+    if (campsite != null && campsite.availability.isNotEmpty()) {
+        val firstOpen = campsite.availability[0].start
+        if (firstOpen.length == 10) {
+            val y = firstOpen.substring(0, 4).toIntOrNull()
+            val x = firstOpen.substring(5, 7).toIntOrNull()
+            if (y != null && x != null) {
+                startYear = y
+                startMonth = x
+            }
+        }
+    }
+    var year by remember(campsite?.id) { mutableStateOf(startYear) }
+    var month by remember(campsite?.id) { mutableStateOf(startMonth) }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        TextButton(
+            onClick = {
+                month = month - 1
+                if (month < 1) {
+                    month = 12
+                    year = year - 1
+                }
+            }
+        ) { Text("◀") }
+
+        Text(year.toString() + "-" + twoDigits(month), style = MaterialTheme.typography.titleMedium)
+
+        TextButton(
+            onClick = {
+                month = month + 1
+                if (month > 12) {
+                    month = 1
+                    year = year + 1
+                }
+            }
+        ) { Text("▶") }
+    }
+
     Row(Modifier.fillMaxWidth()) {
         listOf("S", "M", "T", "W", "T", "F", "S").forEach {
             Text(it, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
         }
     }
-    repeat(5) {
-        Row(Modifier.fillMaxWidth().height(36.dp), verticalAlignment = Alignment.CenterVertically) {
+
+    val calendar = Calendar.getInstance()
+    calendar.set(year, month - 1, 1)
+    val daysinMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+    val firstWeekday = calendar.get(Calendar.DAY_OF_WEEK) - 1
+
+    var cell = 0
+    repeat(6) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(36.dp), verticalAlignment = Alignment.CenterVertically
+        ) {
             repeat(7) {
+                val day = cell - firstWeekday + 1
+                cell = cell + 1
                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Box(
-                        Modifier
-                            .size(28.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                    )
+                    if (day in 1..daysinMonth) {
+                        val date = year.toString() + "-" + twoDigits(month) + "-" + twoDigits(day)
+                        var color = Color.LightGray
+                        if (campsite != null && scheduleController != null) {
+                            if (scheduleController.isDateBooked(campsite.id, date)) {
+                                color = Color.Red
+                            } else if (scheduleController.isInAvailability(campsite, date)) {
+                                color = Color.Green
+                            }
+
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .background(color, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(day.toString(), style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
                 }
             }
         }
     }
+}
+fun twoDigits(number: Int): String {
+    if (number < 10) {
+        return "0" + number
+    }
+    return number.toString()
 }

@@ -12,6 +12,21 @@ import com.google.firebase.firestore.Exclude
 enum class Role { ENTRANT, OWNER, ADMIN }
 
 /**
+ * The status of a users application to become an owner
+ *
+ * - [EMPTY]: has not applied to become an owner
+ * - [PENDING]: has applied to become an owner, has yet to be approved
+ * - [APPROVED]: has been approved to become an owner
+ * - [DENIED]: has been denied to become an owner (can still re-apply)
+ */
+object OwnerApplicationStatus {
+    const val EMPTY = "EMPTY"
+    const val PENDING = "PENDING"
+    const val APPROVED = "APPROVED"
+    const val DENIED = "DENIED"
+}
+
+/**
  * One person using the app, identified by their device id.
  *
  * Shared details live here once. A user's roles are stored as the boolean flags
@@ -39,8 +54,10 @@ data class User(
     val email: String = "",
     val phoneNumber: String = "",
     val notificationsOn: Boolean = true,
-    val entrant: Boolean = false,
+    val entrant: Boolean = true, // by default users are entered as an entrant
     val owner: Boolean = false,
+    val admin: Boolean = false,
+    val ownerApplication: String = OwnerApplicationStatus.EMPTY,
     val admin: Boolean = false,
     val profileImageUri: String? = null
 ) {

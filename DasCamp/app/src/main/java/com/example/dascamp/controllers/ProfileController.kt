@@ -1,6 +1,10 @@
 package com.example.dascamp.controllers
 
 import com.example.dascamp.model.CampStore
+import com.example.dascamp.model.OwnerApplicationStatus
+import com.example.dascamp.model.User
+import com.example.dascamp.model.ReservationStatus
+import com.example.dascamp.model.WaitlistEntrant
 
 /**
  * PROFILE CONTROLLER
@@ -16,9 +20,29 @@ import com.example.dascamp.model.CampStore
  * - CampStore (current user)
  *
  * Used by screens: EntrantProfileScreen
+ * - DasCampstore (current user)
+ *
+ * Stories:
+ * US 01.08.01
  */
 class ProfileController(private val store: CampStore) {
 
+    /** Entrant side: can they apply to be an owner */
+    fun canApply(user: User? = store.currentUser): Boolean =
+        user != null && !user.owner &&
+                (user.ownerApplication == OwnerApplicationStatus.EMPTY ||
+                 user.ownerApplication == OwnerApplicationStatus.DENIED)
+
+    /** Entrant side: submit an application to become an owner */
+    fun applyToBeOwner() {
+        val user = store.currentUser ?: return
+        if (!canApply(user)) return
+        store.updateUser(
+            user.copy(ownerApplication = OwnerApplicationStatus.PENDING)
+        )
+    }
+
+    // Lets the signed-in user act as an owner (admins included). Entrant stays on
     fun becomeOwner() {
         val user = store.currentUser ?: return
         if (!user.owner) store.updateUser(user.copy(owner = true))
@@ -31,6 +55,24 @@ class ProfileController(private val store: CampStore) {
 
     fun deleteProfile() {
         val user = store.currentUser ?: return
+        for (reservation in store.reservations.toList()){
+            if(reservation.entrantId == user.id && reservation.status == ReservationStatus.ACTIVE){
+                store.updateReservation(reservation.copy(status = ReservationStatus.CANCELLED))
+            }
+        }
+
+        for (lottery in store.lotteries.toList()){
+            val keep = mutableListOf<WaitlistEntrant>()
+            for (entrant in lottery.entrants){
+                if (entrant.entrantId != user.id){
+                    keep.add(entrant)
+                }
+            }
+            if (keep.size < lottery.entrants.size){
+                store.updateLottery(lottery.copy(entrants = keep))
+            }
+        }
+
         store.deleteUser(user)
     }
 

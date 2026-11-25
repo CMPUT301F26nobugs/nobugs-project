@@ -5,6 +5,7 @@ import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.Lottery
 import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.Notification
+import com.example.dascamp.model.NotificationType
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.WaitlistStatus
@@ -117,6 +118,81 @@ class ReservationController(private val store: CampStore) {
                 "${reservation.startDate} to ${reservation.endDate}")
     }
 
+    fun reject(reservation: Reservation, reason: String): String?{
+        if(reason.isBlank()){
+            return "Enter a reason for rejecting"
+        }
+        if (reservation.status != ReservationStatus.ACTIVE){
+            return "Only active reservations can be rejected"
+        }
+
+        var campsite: Campsite? = null
+        for (site in store.campsites){
+            if(site.id == reservation.campsiteId){
+                campsite = site
+            }
+        }
+
+        if(campsite == null || campsite.ownerId != store.uid){
+            return "You can only reject reservations at your own campsites"
+        }
+
+        store.updateReservation(
+            reservation.copy(status = ReservationStatus.CANCELLED, cancelReason = reason.trim())
+        )
+
+        store.addNotification(
+                Notification(
+                    id = UUID.randomUUID().toString(),
+                    lotteryId = reservation.lotteryId,
+                    recipientName = reservation.entrantName,
+                    recipientId = reservation.entrantId,
+                    senderId = store.uid,
+                    message = "Your reservation at " + reservation.campsiteName + " (" +
+                            reservation.startDate + " to " + reservation.endDate +
+                            ") was rejected by the owner. Reason: " + reason.trim(),
+                    sentAt = System.currentTimeMillis().toString(),
+                    type = NotificationType.CANCELLATION
+                )
+                )
+            return null
+    }
+
+    fun rate(reservation: Reservation, stars: Int): String?{
+        if (stars < 1 || stars > 5){
+            return "Choose 1 to 5 stars"
+        }
+        if (reservation.entrantId != store.uid){
+            return "You can only rate your own stays"
+        }
+        if(reservation.status == ReservationStatus.CANCELLED){
+            return "Cancelled stays cant be rated"
+        }
+        if (reservation.rating != 0){
+            return "You already rated this stay"
+        }
+
+        if(reservation.endDate >= today()){
+            return "You can rate after your stay ends"
+        }
+
+        var campsite: Campsite? = null
+        for (site in store.campsites){
+            if(site.id == reservation.campsiteId){
+                campsite = site
+            }
+        }
+        if (campsite == null){
+            return "This campsite no longer exists"
+        }
+
+        val newCount = campsite.ratingCount + 1
+        val newRating = (campsite.rating * campsite.ratingCount + stars) / newCount
+
+        store.updateCampsite(campsite.copy(rating = newRating, ratingCount = newCount))
+        store.updateReservation(reservation.copy(rating = stars))
+        return null
+    }
     private fun setEntryStatus(lottery: Lottery, status: WaitlistStatus) {
         store.updateLottery(
             lottery.copy(entrants = lottery.entrants.map {

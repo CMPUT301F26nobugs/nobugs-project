@@ -61,6 +61,7 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
     // TODO: this is screen state, not data. Move it into the route arguments later.
     var openCampsiteId: String = ""
     var openLotteryId: String = ""
+    var openReservationId: String = ""
     /** Reservation whose owner/entrant thread is open. US 01.14.01 */
     var openReservationId: String = ""
 
@@ -132,6 +133,7 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
      * On every change, clear the local list and fill it from the documents
      * Clearing first keeps the screen from showing duplicates
      * A failed listen is logged and the old list is left as it was
+     * Bad documents are logged and skipped
      */
     private fun <T : Any> listen(
         ref: CollectionReference,
@@ -147,11 +149,15 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
 
             list.clear()
             for (document in snapshot.documents) {
-                val item = document.toObject(type)
+                val item = try {
+                    document.toObject(type)
+                } catch (e: Exception) {
+                    Log.e("Firestore", "Skipping bad document ${document.id} in ${ref.path}", e)
+                    null
+                }
                 if (item != null) list.add(item)
             }
 
-            // 
             onLoaded()
             notifyViews()
         }

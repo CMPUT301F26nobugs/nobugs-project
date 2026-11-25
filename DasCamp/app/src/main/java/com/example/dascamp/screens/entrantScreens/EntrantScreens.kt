@@ -91,8 +91,10 @@ import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.views.ProfileView
 import com.example.dascamp.model.Lottery
 import com.example.dascamp.model.LotteryStatus
+import com.example.dascamp.model.OwnerApplicationStatus
 import com.example.dascamp.model.WaitlistStatus
 import com.example.dascamp.model.label
+import com.example.dascamp.screens.LocalCurrentUser
 import com.example.dascamp.views.ReservationView
 import com.example.dascamp.views.NotificationView
 
@@ -388,7 +390,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Summary
-            val ratingText = campsite.rating.toString() + " (" + campsite.ratingCount.toString() + " ratings)"
+            val ratingText = "%.1f".format(campsite.rating) + " (" + campsite.ratingCount.toString() + " ratings)"
             val guestsText = "Up to " + campsite.maxOccupancy.toString() + " guests"
             Text(
                 text = campsite.location + " | " + ratingText + " | " + guestsText,
@@ -486,7 +488,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
             }
 
             // Entrant Calendar Grid
-            EntrantCalendarGrid()
+            EntrantCalendarGrid(campsite, scheduleController)
 
             // Legend
             Row() {
@@ -585,7 +587,10 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                         Text(if (currentEntry == null) "Join waiting list" else "Leave waiting list")
                     }
                     Spacer(modifier = Modifier.padding(8.dp))
-                    Text("${activeLottery.entrants.size}/${activeLottery.waitlistCapacity ?: "∞"} · booking ends ${activeLottery.bookingEnd}")
+                    val waitingCount = activeLottery.entrants.count {
+                        it.status == WaitlistStatus.WAITING
+                    }
+                    Text("$waitingCount/${activeLottery.waitlistCapacity ?: "∞"} · booking ends ${activeLottery.bookingEnd}")
                 }
                 Text("Joining adds you to the waiting list. You are not guaranteed selection; replacements may be drawn if needed.")
             } else {
@@ -667,6 +672,8 @@ fun EntrantNotificationList(
     notificationsController: NotificationsController? = null,
     onLotterySelected: (String) -> Unit = {}
 ) {
+    val user = LocalCurrentUser.current
+    val notificationsOff = user?.notificationsOn == false
     val notifications = notificationsController?.inbox(notificationView?.notifications.orEmpty()).orEmpty()
 
     EntrantPage(
@@ -684,9 +691,12 @@ fun EntrantNotificationList(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Display the signed-in entrant's win/loss messages and other alerts.
-        if (notifications.isEmpty()) {
+        if (notificationsOff) {
+            Text("Notifications are turned off. Turn them on in your profile settings to see them.")
+        } else if (notifications.isEmpty()) {
             Text("No notifications yet")
         }
+
         LazyColumn(
             modifier = Modifier.fillMaxSize().weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -774,6 +784,7 @@ fun EntrantReservationList(
     repository: DasCampRepository? = null
 ) {
     var showPast by rememberSaveable { mutableStateOf(false) }
+    var rateMessage by remember {mutableStateOf("")}
     val shown = if (showPast) reservationController?.past().orEmpty()
                 else reservationController?.active().orEmpty()
 
@@ -823,6 +834,26 @@ fun EntrantReservationList(
                         Button(onClick = { reservationController?.cancel(reservation) }) {
                             Text("Cancel reservation")
                         }
+                    } else{
+                        if(reservation.rating == 0){
+                            Text("Rate your stay:")
+                            Row{
+                                for (stars in 1..5){
+                                    TextButton(onClick = {
+                                        if(reservationController != null){
+                                            val error = reservationController.rate(reservation, stars)
+                                            if (error == null){
+                                                rateMessage = "Thanks. You rated " + reservation.campsiteName + " " + stars + "★"
+                                            } else{
+                                                rateMessage = error
+                                            }
+                                        }
+                                    }) {Text(stars.toString() + "★")}
+                                }
+                            }
+                        }else {
+                            Text("You rated this stay " + reservation.rating + "★")
+                        }
                     }
                     Button(onClick = {
                         repository?.openReservationId = reservation.id
@@ -831,6 +862,7 @@ fun EntrantReservationList(
                 }
             }
         }
+        Text(rateMessage)
     }
 }
 
@@ -1011,23 +1043,27 @@ fun EntrantMessageScreen(
  * Campsite Owner" card, and a "Delete Profile" card.
  *
  * All of the profile data is hardcoded, and the edit, picture, policy, apply, and
- * delete cards don't do anything yet. Only the notifications toggle changes its
+ * delete cards asks for confirmation then deletes profile. Only the notifications toggle changes its
  * own label.
  *
  * @param navController used for the scaffold's navigation
  */
 @Composable
-fun EntrantProfileScreen(navController: NavController, repository: DasCampRepository) {
+fun EntrantProfileScreen(
+    navController: NavController,
+    repository: DasCampRepository,
+    profileController: ProfileController,
+) {
     val entrantId = repository.uid
 
-    // Dummy data
-    var notifications by remember { mutableStateOf(false) }
     var showRules by rememberSaveable { mutableStateOf(false) } //app rules
+    var showDelete by rememberSaveable {mutableStateOf(false) }
     val view = remember(entrantId) { ProfileView(repository, entrantId) }
     val controller = remember { ProfileController(repository) }
     DisposableEffect(view) { onDispose { view.remove() } }
 
     val profile = view.profile
+    val notificationsOn = profile?.notificationsOn ?: true
     var showEdit by rememberSaveable { mutableStateOf(false) }
     var imageMessage by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
@@ -1218,7 +1254,7 @@ fun EntrantProfileScreen(navController: NavController, repository: DasCampReposi
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { notifications = !notifications },
+                    .clickable { controller.setNotifications(!notificationsOn) },
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -1241,7 +1277,7 @@ fun EntrantProfileScreen(navController: NavController, repository: DasCampReposi
                             .weight(1f),
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center,
-                        text = "Turn ${if (notifications) "off" else "on"} notifications",
+                        text = "Turn ${if (notificationsOn) "off" else "on"} notifications",
                         fontWeight = FontWeight.Bold
 
                     )
@@ -1303,12 +1339,12 @@ fun EntrantProfileScreen(navController: NavController, repository: DasCampReposi
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {},
+                    .clickable(enabled = profileController.canApply(profile)) { profileController.applyToBeOwner() },
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color(0xFFF3E8FF)
                 ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             ) {
                 Row(
                     modifier = Modifier
@@ -1334,7 +1370,7 @@ fun EntrantProfileScreen(navController: NavController, repository: DasCampReposi
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {},
+                    .clickable {showDelete = true},
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color(0xFFFEE2E2)
@@ -1358,6 +1394,29 @@ fun EntrantProfileScreen(navController: NavController, repository: DasCampReposi
                         color = Color(0xFF991B1B)
                     )
                 }
+            }
+
+            if (showDelete){
+                AlertDialog(
+                    onDismissRequest = {showDelete = false},
+                    title = {Text("Delete Profile?")},
+                    text = {
+                        Text("This removes your profile and cancels your active reservations. This cant be undone")
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                controller.deleteProfile()
+                                showDelete = false
+                            }
+                        ) { Text("Delete", color = Color(0xFF991B1B))}
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {showDelete = false}) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
 
 
