@@ -3,10 +3,15 @@ package com.example.dascamp
 import android.os.Build
 import android.provider.Settings
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -20,10 +25,10 @@ import com.example.dascamp.controllers.AdminController
 import com.example.dascamp.controllers.CampsiteController
 import com.example.dascamp.controllers.LotteryDrawWorker
 import com.example.dascamp.controllers.NotificationsController
-import com.example.dascamp.controllers.ProfileController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.DasCampRepository
+import com.example.dascamp.model.DeviceSession
 import com.example.dascamp.screens.LocalCurrentUser
 import com.example.dascamp.screens.SignUpScreen
 import com.example.dascamp.screens.adminScreens.AdminCampsiteList
@@ -81,8 +86,8 @@ import java.util.concurrent.TimeUnit
  * three roles (entrant, owner, admin).
  *
  * **Identity.** The user id is the device's `ANDROID_ID`, read once and passed to
- * [DasCampRepository]. There is no password or login screen: a device whose id has no
- * matching user document is treated as new and sent to sign-up.
+ * [DasCampRepository]. There is no password. The device id identifies the phone, and
+ * the person can sign out so another profile on that phone can sign in or sign up.
  *
  * **Sign-in routing.** A single `LaunchedEffect` is the only navigation rule for sign-in
  * state. Once the repository has loaded its first users snapshot:
@@ -110,23 +115,32 @@ fun DasCampApp() {
     val startDestination = "signUpScreen"
     val context = LocalContext.current
 
-    // The device id is the user id
-    val repository = remember {
-        val uid = Settings.Secure.getString(
-            context.contentResolver, Settings.Secure.ANDROID_ID
-        ) ?: ""
-        DasCampRepository(uid)
+    // The device id never changes. The active profile can, after sign out.
+    val deviceId = remember {
+        Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: ""
+    }
+    var activeUserId by remember { mutableStateOf(DeviceSession.activeUserId(context, deviceId)) }
+    val signedIn = activeUserId != null
+    val repository = remember(activeUserId ?: deviceId) {
+        DasCampRepository(activeUserId ?: deviceId)
+    }
+    val signIn: (String, Boolean) -> Unit = { userId, remember ->
+        DeviceSession.signIn(context, userId, remember)
+        activeUserId = userId
+    }
+    val signOut: () -> Unit = {
+        DeviceSession.signOut(context)
+        activeUserId = null
     }
 
-    // Controllers
-    val scheduleController = remember{ ScheduleController(repository) }
-    val campsiteController = remember { CampsiteController(repository) }
-    val profileController = remember { ProfileController(repository) }
-    val reservationController = remember { ReservationController(repository) }   // next to the other controllers
-    val reservationView = remember{ ReservationView(repository) }
-    val notificationView = remember { NotificationView(repository) }
-    val notificationsController = remember { NotificationsController(repository) }
-    val adminController = remember { AdminController(repository) }
+    // Controllers follow the active profile
+    val scheduleController = remember(repository) { ScheduleController(repository) }
+    val campsiteController = remember(repository) { CampsiteController(repository) }
+    val reservationController = remember(repository) { ReservationController(repository) }
+    val reservationView = remember(repository) { ReservationView(repository) }
+    val notificationView = remember(repository) { NotificationView(repository) }
+    val notificationsController = remember(repository) { NotificationsController(repository) }
+    val adminController = remember(repository) { AdminController(repository) }
 
     // Persist the draw check across app closes and device restarts. The one-time
     // request handles lotteries that are already due; periodic work catches
@@ -146,12 +160,12 @@ fun DasCampApp() {
     }
 
     // The only navigation rule for sign-in state
-    LaunchedEffect(repository.usersLoaded, repository.currentUser) {
+    LaunchedEffect(repository.usersLoaded, repository.currentUser, signedIn) {
         if (!repository.usersLoaded) return@LaunchedEffect
         val user = repository.currentUser
         val route = navController.currentDestination?.route
-        if (user == null) {
-            // New device, or the profile was deleted
+        if (!signedIn || user == null) {
+            // Signed out, new device, or the profile was deleted
             if (route != "signUpScreen") {
                 navController.navigate("signUpScreen") { popUpTo(0) }
             }
@@ -170,9 +184,15 @@ fun DasCampApp() {
 
     // Provide the local user to the navhost
     CompositionLocalProvider(LocalCurrentUser provides repository.currentUser) {
-        NavHost(navController = navController, startDestination = startDestination) {
+        NavHost(
+            navController = navController,
+            startDestination = startDestination,
+            modifier = Modifier.fillMaxSize()
+        ) {
             // First-time download landing page (i.e. devices not in FireBase)
-            composable("signUpScreen") { SignUpScreen(navController, repository) }
+            composable("signUpScreen") {
+                SignUpScreen(navController, repository, deviceId, onSignedIn = signIn)
+            }
 
             // ENTRANT NAVIGATION
             composable(EntrantRoutes.DASHBOARD) { EntrantDashboard(navController) }
@@ -191,10 +211,14 @@ fun DasCampApp() {
                     onLotterySelected = { repository.openLotteryId = it }
                 )
             }
-            composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController) }
-            composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController) }
-            composable(EntrantRoutes.RESERVATION_LIST) { EntrantReservationList(navController, reservationController) }
-            composable(EntrantRoutes.PROFILE) { EntrantProfileScreen(navController, repository, profileController) }
+            composable(EntrantRoutes.MESSAGE_LIST) { EntrantMessageList(navController, repository) }
+            composable(EntrantRoutes.MESSAGE) { EntrantMessageScreen(navController, repository) }
+            composable(EntrantRoutes.RESERVATION_LIST) {
+                EntrantReservationList(navController, reservationController, repository)
+            }
+            composable(EntrantRoutes.PROFILE) {
+                EntrantProfileScreen(navController, repository, onSignOut = signOut)
+            }
 
             composable(EntrantRoutes.RESERVATION) { EntrantCampsiteScreen(navController) } // redirects back to campsite screen
 
@@ -234,12 +258,12 @@ fun DasCampApp() {
             }
             composable(OwnerRoutes.RESERVATIONS) { OwnerReservations(navController, repository) }
             composable(OwnerRoutes.RESERVATION) { OwnerReservationDetails(navController, repository) }
-            composable(OwnerRoutes.PROFILE) { OwnerProfile(navController, repository) }
+            composable(OwnerRoutes.PROFILE) { OwnerProfile(navController, repository, onSignOut = signOut) }
             composable(OwnerRoutes.MESSAGE_LIST) { OwnerMessageList(navController, repository) }
             composable(OwnerRoutes.MESSAGE) { OwnerMessages(navController, repository) }
 
             // ADMIN NAVIGATION
-            composable(AdminRoutes.DASHBOARD) { AdminDashboard(navController) }
+            composable(AdminRoutes.DASHBOARD) { AdminDashboard(navController, onSignOut = signOut) }
             composable(AdminRoutes.PROFILE_LIST) { AdminProfileList(navController) }
             composable(AdminRoutes.PROFILE) { entry ->
                 val type = ProfileType.valueOf(           // turn text into enum
@@ -253,10 +277,10 @@ fun DasCampApp() {
             composable(AdminRoutes.REQUEST_LOG) { RequestLog(navController) }
             composable(AdminRoutes.APPROVED_LOG) { ApprovedLog(navController) }
             composable(AdminRoutes.OTHER_LOG) { OtherLog(navController) }
-            composable(AdminRoutes.CAMPSITE_LIST) { AdminCampsiteList(navController) }
+            composable(AdminRoutes.CAMPSITE_LIST) { AdminCampsiteList(navController, repository) }
             composable(AdminRoutes.CAMPSITE) { entry ->
                 val campsiteId = entry.arguments?.getString("campsiteId") ?: "default_id"
-                AdminViewCampsite(navController)
+                AdminViewCampsite(navController, repository, campsiteId)
             }
             composable(AdminRoutes.IMAGE_GALLERY) { ImageGallery(navController) }
             composable(AdminRoutes.MESSAGE_LIST) { AdminMessageList(navController) }

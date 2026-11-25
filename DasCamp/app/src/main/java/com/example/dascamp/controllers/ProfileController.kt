@@ -10,11 +10,16 @@ import com.example.dascamp.model.WaitlistEntrant
  * PROFILE CONTROLLER
  *
  * Responsibilities:
+ * - Handle profile actions from the screens (edit profile, toggle notifications)
+ * - Pass the changes to the model
  * - Change what roles the signed-in user holds
  * - Update notification preference
  * - Delete the signed-in user's profile
  *
  * Collaborators:
+ * - CampStore (current user)
+ *
+ * Used by screens: EntrantProfileScreen
  * - DasCampstore (current user)
  *
  * Stories:
@@ -43,13 +48,11 @@ class ProfileController(private val store: CampStore) {
         if (!user.owner) store.updateUser(user.copy(owner = true))
     }
 
-    // Opt in or out of notifications
     fun setNotifications(on: Boolean) {
         val user = store.currentUser ?: return
         store.updateUser(user.copy(notificationsOn = on))
     }
 
-    // Removes the profile. DasCampApp sends the user to sign-up once it is gone
     fun deleteProfile() {
         val user = store.currentUser ?: return
         for (reservation in store.reservations.toList()){
@@ -88,5 +91,17 @@ class ProfileController(private val store: CampStore) {
                 phoneNumber = phone.trim()
             )
         )
+    }
+
+    /**
+     * Saves or replaces the signed-in user's profile picture.
+     *
+     * [path] is a file this app already copied into its private storage.
+     * Pass null to clear the picture. US 01.08.02
+     */
+    fun setProfileImage(path: String?) {
+        val user = store.currentUser ?: return
+        val stored = path?.trim()?.ifBlank { null }
+        store.updateUser(user.copy(profileImageUri = stored))
     }
 }

@@ -16,9 +16,8 @@ import com.google.firebase.firestore.ListenerRegistration
  *
  * Collaborators: DasCampRepository(ObservableModel), the data class
  *
- * Used by screens: EntrantProfileScreens add what screens use this
- * Stories: US 01.07.03
- * add your user story here
+ * Used by screens: EntrantProfileScreen
+ * Stories: US 01.07.03, US 01.08.02
  */
 class ProfileView(private val repository: DasCampRepository,
                   private val entrantId: String

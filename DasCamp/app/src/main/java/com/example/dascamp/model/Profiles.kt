@@ -44,6 +44,8 @@ object OwnerApplicationStatus {
  * @property entrant whether the user holds the [Role.ENTRANT] role
  * @property owner whether the user holds the [Role.OWNER] role
  * @property admin whether the user holds the [Role.ADMIN] role
+ * @property profileImageUri path of the entrant's profile picture on this device,
+ * or null when they have not added one. US 01.08.02
  */
 data class User(
     val id: String = "",
@@ -56,6 +58,9 @@ data class User(
     val owner: Boolean = false,
     val admin: Boolean = false,
     val ownerApplication: String = OwnerApplicationStatus.EMPTY,
+    val profileImageUri: String? = null,
+    /** Device that created this profile. Empty on older accounts, whose id is the device id. */
+    val deviceId: String = ""
 ) {
     /**
      * The set of roles this user currently holds.
