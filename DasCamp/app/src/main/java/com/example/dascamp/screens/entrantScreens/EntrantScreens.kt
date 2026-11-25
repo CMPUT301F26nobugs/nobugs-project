@@ -89,6 +89,7 @@ import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.OwnerApplicationStatus
 import com.example.dascamp.model.WaitlistStatus
 import com.example.dascamp.model.label
+import com.example.dascamp.screens.LocalCurrentUser
 import com.example.dascamp.views.ReservationView
 import com.example.dascamp.views.NotificationView
 
@@ -606,6 +607,8 @@ fun EntrantNotificationList(
     notificationsController: NotificationsController? = null,
     onLotterySelected: (String) -> Unit = {}
 ) {
+    val user = LocalCurrentUser.current
+    val notificationsOff = user?.notificationsOn == false
     val notifications = notificationsController?.inbox(notificationView?.notifications.orEmpty()).orEmpty()
 
     EntrantPage(
@@ -623,9 +626,12 @@ fun EntrantNotificationList(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Display the signed-in entrant's win/loss messages and other alerts.
-        if (notifications.isEmpty()) {
+        if (notificationsOff) {
+            Text("Notifications are turned off. Turn them on in your profile settings to see them.")
+        } else if (notifications.isEmpty()) {
             Text("No notifications yet")
         }
+
         LazyColumn(
             modifier = Modifier.fillMaxSize().weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
