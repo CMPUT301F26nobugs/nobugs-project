@@ -129,7 +129,7 @@ fun SignUpScreen(
             value = phoneNumber,
             onValueChange = { phoneNumber = it },
             showError = phoneNumberMissing,
-            errorText = "",
+            errorText = "Enter your phone number",
             keyboardType = KeyboardType.Phone
         )
 
