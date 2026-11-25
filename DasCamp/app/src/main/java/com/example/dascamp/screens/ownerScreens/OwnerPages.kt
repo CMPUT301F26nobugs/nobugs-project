@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
+import com.example.dascamp.controllers.LotteryNotificationAudience
+import com.example.dascamp.controllers.NotificationsController
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
@@ -49,8 +51,8 @@ import com.example.dascamp.model.DateRange
 import com.example.dascamp.model.LotteryFormState
 import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.label
-import com.example.dascamp.model.Notification
 import com.example.dascamp.model.OwnerMessage
+import com.example.dascamp.model.NotificationType
 import java.util.UUID
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
@@ -710,51 +712,70 @@ fun OwnerReservationDetails(navController: NavController, repository: DasCampRep
 /** Alerts tab. The blank card is one sent notification. */
 @Composable
 fun OwnerNotifications(navController: NavController, repository: DasCampRepository? = null) {
+    val sentGroups = repository?.let { repo ->
+        repo.notifications
+            .filter {
+                it.senderId == repo.uid && it.type == NotificationType.OWNER_MESSAGE
+            }
+            .groupBy { it.batchId.ifBlank { it.id } }
+            .values
+            .sortedByDescending { group ->
+                group.firstOrNull()?.sentAt?.toLongOrNull() ?: 0L
+            }
+    }.orEmpty()
+
     OwnerPage(navController, showBack = false) {
         Text("Sent notifications", style = MaterialTheme.typography.titleLarge)
-        repository?.notifications?.forEach { note ->
-            Text("${note.recipientName}: ${note.message}")
+        sentGroups.forEach { group ->
+            val first = group.first()
+            Text(first.message)
+            Text("Sent to ${group.size} entrant(s): ${group.joinToString { it.recipientName }}")
         }
     }
 }
 
 /** Send page opened from a lottery. The message field is empty. */
 @Composable
-fun OwnerSendNotification(navController: NavController, repository: DasCampRepository? = null) {
-    var send by remember { mutableStateOf("All Waitlist") }
+fun OwnerSendNotification(
+    navController: NavController,
+    notificationsController: NotificationsController,
+    repository: DasCampRepository? = null
+) {
+    var send by remember {
+        mutableStateOf(LotteryNotificationAudience.ALL_WAITLIST)
+    }
     var message by remember { mutableStateOf("") }
+    var sendError by remember { mutableStateOf<String?>(null) }
     OwnerPage(navController, showBack = true) {
         Text("Send notification", style = MaterialTheme.typography.titleLarge)
         Text("Send to", style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("All Waitlist", "Winners", "Not Selected").forEach { label ->
-                if (label == send)
-                    Button(onClick = { send = label }) {
-                        Text(label)
+            LotteryNotificationAudience.values().forEach { audience ->
+                if (audience == send)
+                    Button(onClick = { send = audience }) {
+                        Text(audience.label)
                     } else OutlinedButton(
-                    onClick = {
-                        send = label
-                    }
+                    onClick = { send = audience }
                 ) {
-                    Text(label)
+                    Text(audience.label)
                 }
             }
         }
         FormField("Message", message, onValueChange = { typed -> message = typed })
+        sendError?.let { Text(it) }
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
-                if (message.isNotBlank()) {
-                    repository?.addNotification(
-                        Notification(
-                            id = UUID.randomUUID().toString(),
-                            recipientName = send,
-                            message = message.trim(),
-                            sentAt = System.currentTimeMillis().toString()
-                        )
-                    )
+                val result = notificationsController.sendLotteryMessage(
+                    lotteryId = repository?.openLotteryId.orEmpty(),
+                    audience = send,
+                    message = message
+                )
+                if (result.error != null) {
+                    sendError = result.error
+                } else {
+                    navController.openOwnerTab(OwnerRoutes.ALERTS)
                 }
-                navController.openOwnerTab(OwnerRoutes.ALERTS)
             }
         ) { Text("Send") }
     }

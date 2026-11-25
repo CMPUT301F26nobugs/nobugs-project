@@ -562,7 +562,10 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                         Text(if (currentEntry == null) "Join waiting list" else "Leave waiting list")
                     }
                     Spacer(modifier = Modifier.padding(8.dp))
-                    Text("${activeLottery.entrants.size}/${activeLottery.waitlistCapacity ?: "∞"} · booking ends ${activeLottery.bookingEnd}")
+                    val waitingCount = activeLottery.entrants.count {
+                        it.status == WaitlistStatus.WAITING
+                    }
+                    Text("$waitingCount/${activeLottery.waitlistCapacity ?: "∞"} · booking ends ${activeLottery.bookingEnd}")
                 }
                 Text("Joining adds you to the waiting list. You are not guaranteed selection; replacements may be drawn if needed.")
             } else {
