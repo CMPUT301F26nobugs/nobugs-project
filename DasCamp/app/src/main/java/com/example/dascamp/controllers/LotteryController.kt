@@ -58,7 +58,8 @@ class LotteryController(private val store: CampStore) {
             return "Already on the waiting list"
         }
         val cap = lottery.waitlistCapacity
-        if (cap != null && lottery.entrants.size >= cap) return "Waiting list is full"
+        val waitingCount = lottery.entrants.count { it.status == WaitlistStatus.WAITING }
+        if (cap != null && waitingCount >= cap) return "Waiting list is full"
 
         store.updateLottery(
             lottery.copy(

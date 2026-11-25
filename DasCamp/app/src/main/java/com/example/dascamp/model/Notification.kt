@@ -29,6 +29,8 @@ enum class NotificationType { OWNER_MESSAGE, WIN, LOSE, CONFIRMATION, CANCELLATI
  */
 data class Notification(
     val id: String = "",
+    /** Shared by the individual recipient records created by one owner send. */
+    val batchId: String = "",
     val lotteryId: String? = null,
     val recipientName: String = "",
     val message: String = "",

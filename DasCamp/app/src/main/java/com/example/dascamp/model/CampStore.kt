@@ -10,6 +10,8 @@ interface CampStore {
     val reservations: List<Reservation>
     val notifications: List<Notification>
     val users: List<User>
+    val messages: List<OwnerMessage>
+    val reviews: List<CampsiteReview>
     val currentUser: User?
 
     fun addCampsite(campsite: Campsite)
@@ -27,4 +29,10 @@ interface CampStore {
     fun addUser(user: User)
     fun updateUser(user: User)
     fun deleteUser(user: User)
+    fun addMessage(message: OwnerMessage)
+    fun updateMessage(message: OwnerMessage)
+    fun deleteMessage(message: OwnerMessage)
+    fun addReview(review: CampsiteReview)
+    fun updateReview(review: CampsiteReview)
+    fun deleteReview(review: CampsiteReview)
 }

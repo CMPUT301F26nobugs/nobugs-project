@@ -88,7 +88,8 @@ data class LotteryFormState(
         id: String,
         status: LotteryStatus,
         entrants: List<WaitlistEntrant>,
-        validCampsiteIds: Set<String>
+        validCampsiteIds: Set<String>,
+        organizerCampsiteIds: Set<String>? = null
     ): LotteryBuild {
         val trimmedName = name.trim()
         if (trimmedName.isEmpty()) return LotteryBuild(null, "Enter a name for this lottery")
@@ -97,6 +98,14 @@ data class LotteryFormState(
         }
         if (campsiteIds.any { it !in validCampsiteIds }) {
             return LotteryBuild(null, "One of the selected campsites no longer exists")
+        }
+        // US 02.04.08: a lottery can include other owners' campsites, but the
+        // organizer still has to put at least one of their own sites in it.
+        if (organizerCampsiteIds != null && campsiteIds.none { it in organizerCampsiteIds }) {
+            return LotteryBuild(
+                null,
+                "Include at least one of your own campsites. Other owners' campsites can be added as well."
+            )
         }
         if (invalidDate(registrationStart) || invalidDate(registrationEnd)) {
             return LotteryBuild(null, "Enter the registration period")
@@ -126,10 +135,11 @@ data class LotteryFormState(
         if (capText.isNotEmpty() && (capacity == null || capacity < 1)) {
             return LotteryBuild(null, "Waitlist capacity has to be at least 1, or blank for no limit")
         }
-        if (capacity != null && capacity < entrants.size) {
+        val waitingCount = entrants.count { it.status == WaitlistStatus.WAITING }
+        if (capacity != null && capacity < waitingCount) {
             return LotteryBuild(
                 null,
-                "Capacity cannot be lower than ${entrants.size}"
+                "Capacity cannot be lower than ${waitingCount}"
             )
         }
         return LotteryBuild(

@@ -114,8 +114,12 @@ class ReservationController(private val store: CampStore) {
     fun cancel(reservation: Reservation) {
         if (reservation.entrantId != store.uid) return
         store.updateReservation(reservation.copy(status = ReservationStatus.CANCELLED))
-        notify(reservation.lotteryId, "Reservation cancelled: ${reservation.campsiteName}, " +
-                "${reservation.startDate} to ${reservation.endDate}")
+        notify(
+            reservation.lotteryId,
+            "Reservation cancelled: ${reservation.campsiteName}, " +
+                "${reservation.startDate} to ${reservation.endDate}",
+            NotificationType.CANCELLATION
+        )
     }
 
     fun reject(reservation: Reservation, reason: String): String?{
@@ -157,6 +161,42 @@ class ReservationController(private val store: CampStore) {
                 )
             return null
     }
+
+    fun rate(reservation: Reservation, stars: Int): String?{
+        if (stars < 1 || stars > 5){
+            return "Choose 1 to 5 stars"
+        }
+        if (reservation.entrantId != store.uid){
+            return "You can only rate your own stays"
+        }
+        if(reservation.status == ReservationStatus.CANCELLED){
+            return "Cancelled stays cant be rated"
+        }
+        if (reservation.rating != 0){
+            return "You already rated this stay"
+        }
+
+        if(reservation.endDate >= today()){
+            return "You can rate after your stay ends"
+        }
+
+        var campsite: Campsite? = null
+        for (site in store.campsites){
+            if(site.id == reservation.campsiteId){
+                campsite = site
+            }
+        }
+        if (campsite == null){
+            return "This campsite no longer exists"
+        }
+
+        val newCount = campsite.ratingCount + 1
+        val newRating = (campsite.rating * campsite.ratingCount + stars) / newCount
+
+        store.updateCampsite(campsite.copy(rating = newRating, ratingCount = newCount))
+        store.updateReservation(reservation.copy(rating = stars))
+        return null
+    }
     private fun setEntryStatus(lottery: Lottery, status: WaitlistStatus) {
         store.updateLottery(
             lottery.copy(entrants = lottery.entrants.map {
@@ -167,7 +207,11 @@ class ReservationController(private val store: CampStore) {
         )
     }
 
-    private fun notify(lotteryId: String?, message: String) {
+    private fun notify(
+        lotteryId: String?,
+        message: String,
+        type: NotificationType? = null
+    ) {
         val user = store.currentUser ?: return
         store.addNotification(
             Notification(
@@ -176,7 +220,8 @@ class ReservationController(private val store: CampStore) {
                 recipientName = user.displayName(),
                 recipientId = user.id,
                 message = message,
-                sentAt = System.currentTimeMillis().toString()
+                sentAt = System.currentTimeMillis().toString(),
+                type = type ?: Notification().type
             )
         )
     }
