@@ -126,10 +126,11 @@ data class LotteryFormState(
         if (capText.isNotEmpty() && (capacity == null || capacity < 1)) {
             return LotteryBuild(null, "Waitlist capacity has to be at least 1, or blank for no limit")
         }
-        if (capacity != null && capacity < entrants.size) {
+        val waitingCount = entrants.count { it.status == WaitlistStatus.WAITING }
+        if (capacity != null && capacity < waitingCount) {
             return LotteryBuild(
                 null,
-                "Capacity cannot be lower than ${entrants.size}"
+                "Capacity cannot be lower than ${waitingCount}"
             )
         }
         return LotteryBuild(

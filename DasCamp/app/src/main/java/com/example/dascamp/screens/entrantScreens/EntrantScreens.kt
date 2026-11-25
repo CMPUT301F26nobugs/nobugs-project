@@ -395,7 +395,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Summary
-            val ratingText = campsite.rating.toString() + " (" + campsite.ratingCount.toString() + " ratings)"
+            val ratingText = "%.1f".format(campsite.rating) + " (" + campsite.ratingCount.toString() + " ratings)"
             val guestsText = "Up to " + campsite.maxOccupancy.toString() + " guests"
             Text(
                 text = campsite.location + " | " + ratingText + " | " + guestsText,
@@ -582,7 +582,10 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                         Text(if (currentEntry == null) "Join waiting list" else "Leave waiting list")
                     }
                     Spacer(modifier = Modifier.padding(8.dp))
-                    Text("${activeLottery.entrants.size}/${activeLottery.waitlistCapacity ?: "∞"} · booking ends ${activeLottery.bookingEnd}")
+                    val waitingCount = activeLottery.entrants.count {
+                        it.status == WaitlistStatus.WAITING
+                    }
+                    Text("$waitingCount/${activeLottery.waitlistCapacity ?: "∞"} · booking ends ${activeLottery.bookingEnd}")
                 }
                 Text("Joining adds you to the waiting list. You are not guaranteed selection; replacements may be drawn if needed.")
             } else {
@@ -757,6 +760,7 @@ fun EntrantReservationList(
     reservationController: ReservationController? = null
 ) {
     var showPast by rememberSaveable { mutableStateOf(false) }
+    var rateMessage by remember {mutableStateOf("")}
     val shown = if (showPast) reservationController?.past().orEmpty()
                 else reservationController?.active().orEmpty()
     val context = LocalContext.current
@@ -816,13 +820,35 @@ fun EntrantReservationList(
                     Text(reservation.campsiteName, style = MaterialTheme.typography.titleMedium)
                     Text("${reservation.startDate} to ${reservation.endDate}")
                     if (!showPast) {
-                        Button(onClick = {
+Button(onClick = {
                             reservationController?.cancel(reservation)
                             cancelled = reservation to System.currentTimeMillis()
-                        }) { Text("Cancel reservation") }                    }
+                        }) { Text("Cancel reservation") }
+                    } else{
+                        if(reservation.rating == 0){
+                            Text("Rate your stay:")
+                            Row{
+                                for (stars in 1..5){
+                                    TextButton(onClick = {
+                                        if(reservationController != null){
+                                            val error = reservationController.rate(reservation, stars)
+                                            if (error == null){
+                                                rateMessage = "Thanks. You rated " + reservation.campsiteName + " " + stars + "★"
+                                            } else{
+                                                rateMessage = error
+                                            }
+                                        }
+                                    }) {Text(stars.toString() + "★")}
+                                }
+                            }
+                        }else {
+                            Text("You rated this stay " + reservation.rating + "★")
+                        }
+                    }
                 }
             }
         }
+        Text(rateMessage)
         cancelled?.let { (r, _) ->
             val off = LocalCurrentUser.current?.notificationsOn == false
             AlertDialog(
@@ -840,8 +866,7 @@ fun EntrantReservationList(
                 },
                 dismissButton = { TextButton(onClick = { cancelled = null }) { Text("Close") } }
             )
-        }
-    }
+        }    }
 }
 
 /**
