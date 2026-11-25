@@ -6,10 +6,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -38,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.controllers.NotificationsController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.controllers.LotteryNotificationAudience
@@ -63,7 +67,10 @@ import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
+import com.example.dascamp.screens.entrantScreens.EntrantNotificationRow
+import com.example.dascamp.views.NotificationView
 import com.example.dascamp.views.ReservationView
+import kotlin.collections.orEmpty
 
 /**
  * Owner home. The two large buttons open the campsite list and the lottery list.
@@ -727,10 +734,14 @@ fun OwnerNotifications(navController: NavController, repository: DasCampReposito
 
     OwnerPage(navController, showBack = false) {
         Text("Sent notifications", style = MaterialTheme.typography.titleLarge)
-        sentGroups.forEach { group ->
-            val first = group.first()
-            Text(first.message)
-            Text("Sent to ${group.size} entrant(s): ${group.joinToString { it.recipientName }}")
+        if (sentGroups.isEmpty()) {
+            Text("No sent notifications")
+        } else {
+            sentGroups.forEach { group ->
+                val first = group.first()
+                Text(first.message)
+                Text("Sent to ${group.size} entrant(s): ${group.joinToString { it.recipientName }}")
+            }
         }
     }
 }
