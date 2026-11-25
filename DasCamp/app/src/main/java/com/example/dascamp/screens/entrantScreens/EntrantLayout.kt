@@ -93,6 +93,7 @@ fun EntrantPage(
     navController: NavController,
     showBack: Boolean,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+    bottomBar: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     AppScaffold(
@@ -102,22 +103,52 @@ fun EntrantPage(
         navBar = { EntrantNavBar(navController) },
         roleMenu = { RoleMenu(navController, Role.ENTRANT) }
     ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-        ) {
+        if (bottomBar == null) {
+            Box(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .widthIn(max = contentMaxWidth)
+                        .verticalScroll(rememberScrollState())
+                        .padding(screenPadding()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = horizontalAlignment,
+                    content = content
+                )
+            }
+        } else {
             Column(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .widthIn(max = contentMaxWidth)
-                    .verticalScroll(rememberScrollState())
-                    .padding(screenPadding()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = horizontalAlignment,
-                content = content
-            )
+                    .padding(innerPadding)
+                    .fillMaxSize()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .align(Alignment.CenterHorizontally)
+                        .fillMaxWidth()
+                        .widthIn(max = contentMaxWidth)
+                        .verticalScroll(rememberScrollState())
+                        .padding(screenPadding()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = horizontalAlignment,
+                    content = content
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .fillMaxWidth()
+                        .widthIn(max = contentMaxWidth)
+                        .padding(horizontal = screenPadding(), vertical = 8.dp)
+                ) {
+                    bottomBar()
+                }
+            }
         }
     }
 }
