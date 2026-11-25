@@ -113,9 +113,12 @@ fun OwnerCampsitesList(
     repository: DasCampRepository? = null
 ) {
     var query by remember { mutableStateOf("") }
-    val shown = repository?.campsites
-        ?.filter { it.name.contains(query, ignoreCase = true) }
-        .orEmpty()
+    val shown = repository?.let { repo ->
+        repo.campsites.filter { campsite ->
+            campsite.ownerId == repo.uid &&
+                campsite.name.contains(query, ignoreCase = true)
+        }
+    }.orEmpty()
     OwnerPage(navController, showBack = false) {
         Text("My Campsites", style = MaterialTheme.typography.titleLarge)
         OutlinedTextField(
