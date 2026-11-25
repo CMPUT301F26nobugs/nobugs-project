@@ -47,6 +47,7 @@ import com.example.dascamp.ui.theme.DasCampTheme
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.unit.dp
 import com.example.dascamp.controllers.AdminController
@@ -155,9 +156,26 @@ fun AdminDashboardPreview() {
  * @param navController used to navigate to a profile
  */
 @Composable
-fun AdminProfileList(navController: NavController) {
+fun AdminProfileList(navController: NavController, campStore: CampStore) {
     var query by rememberSaveable { mutableStateOf("") }                        // profile search
     var selectedType by rememberSaveable { mutableStateOf<ProfileType?>(null) } // null = show all
+
+    //filter by entrant or owner toggles
+    val filteredUsers = campStore.users.filter {u ->
+        val userType = if(selectedType == ProfileType.ENTRANT){
+            u.entrant
+        }else if(selectedType == ProfileType.OWNER){
+            u.owner
+        }else{
+            u.entrant || u.owner  //no filter appiled, only show entrants and owners, no admins
+        }
+
+        val searchQuery = query.isBlank() ||
+                u.displayName().contains(query, ignoreCase = true) ||
+                u.email.contains(query, ignoreCase = true)
+
+        userType && searchQuery  //what the filter returns
+    }
 
     AdminPage(
         navController = navController,
@@ -195,19 +213,31 @@ fun AdminProfileList(navController: NavController) {
                 )
             }
         }
-
-        // Display Profiles (PLACEHOLDER)
-        EmptyCard {
-            navController.navigate(AdminRoutes.profile(selectedType ?: ProfileType.ENTRANT))
+        if(filteredUsers.isEmpty()){
+            Text("No profiles found")
         }
-    }
-}
-
-@Preview
-@Composable
-fun AdminProfileListPreview() {
-    DasCampTheme {
-        AdminProfileList(rememberNavController())
+        filteredUsers.forEach{user ->
+            Card(
+                modifier = Modifier.fillMaxWidth()
+                    .clickable {
+                        val type = if(user.owner){  //determine the user type of the clicked profile
+                            ProfileType.OWNER
+                        } else{
+                            ProfileType.ENTRANT
+                        }
+                        navController.navigate(AdminRoutes.profile(type))
+                    },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ){
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(user.displayName(), style = MaterialTheme.typography.titleMedium)
+                    Text(user.email, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
     }
 }
 

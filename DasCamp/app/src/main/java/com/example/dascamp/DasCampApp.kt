@@ -107,7 +107,7 @@ fun DasCampApp() {
 
     // Page Navigation
     val navController = rememberNavController()
-    val startDestination = "signUpScreen"
+    val startDestination = AdminRoutes.DASHBOARD
     val context = LocalContext.current
 
     // The device id is the user id
@@ -117,6 +117,7 @@ fun DasCampApp() {
         ) ?: ""
         DasCampRepository(uid)
     }
+
 
     // Controllers
     val scheduleController = remember{ ScheduleController(repository) }
@@ -238,7 +239,7 @@ fun DasCampApp() {
 
             // ADMIN NAVIGATION
             composable(AdminRoutes.DASHBOARD) { AdminDashboard(navController) }
-            composable(AdminRoutes.PROFILE_LIST) { AdminProfileList(navController) }
+            composable(AdminRoutes.PROFILE_LIST) { AdminProfileList(navController, repository) }
             composable(AdminRoutes.PROFILE) { entry ->
                 val type = ProfileType.valueOf(           // turn text into enum
                     entry.arguments
