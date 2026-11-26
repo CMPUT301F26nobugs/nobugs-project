@@ -111,6 +111,9 @@ class ScheduleController (private val store: CampStore){
         if (lottery == null || lottery.status != LotteryStatus.DRAWN) {
             return "You can book only after being selected in an active lottery"
         }
+        if (campsite.id !in lottery.campsiteIds) {
+            return "Choose a campsite included in this lottery"
+        }
         val entry = lottery.entrants.firstOrNull { it.entrantId == entrantId }
             ?: return "You are not on this lottery waitlist"
         if (entry.status != WaitlistStatus.SELECTED) {

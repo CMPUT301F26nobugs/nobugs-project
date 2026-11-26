@@ -2,6 +2,7 @@ package com.example.dascamp.controllers
 
 import com.example.dascamp.model.CampStore
 import com.example.dascamp.model.Campsite
+import com.example.dascamp.model.CampsiteReview
 import com.example.dascamp.model.Lottery
 import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.Notification
@@ -161,6 +162,7 @@ class ReservationController(private val store: CampStore) {
             return null
     }
 
+    /** Entrant rates a finished stay 1 to 5 stars, saved as a review (US 01.13.01). Returns null if saved, or an error message. */
     fun rate(reservation: Reservation, stars: Int): String?{
         if (stars < 1 || stars > 5){
             return "Choose 1 to 5 stars"
@@ -189,10 +191,28 @@ class ReservationController(private val store: CampStore) {
             return "This campsite no longer exists"
         }
 
-        val newCount = campsite.ratingCount + 1
-        val newRating = (campsite.rating * campsite.ratingCount + stars) / newCount
+        var existing: CampsiteReview? = null
+        for (review in store.reviews){
+            if(review.campsiteId == campsite.id && review.entrantId == store.uid){
+                existing = review
+            }
+        }
+        if(existing == null){
+            store.addReview(
+                    CampsiteReview(
+                        id = UUID.randomUUID().toString(),
+                        campsiteId = campsite.id,
+                        entrantId = store.uid,
+                        entrantName = reservation.entrantName,
+                        rating = stars,
+                        createdAt = System.currentTimeMillis().toString()
+                    )
+                    )
+        } else{
+            store.updateReview((existing.copy(rating = stars, ratingRemoved = false)))
+        }
 
-        store.updateCampsite(campsite.copy(rating = newRating, ratingCount = newCount))
+        ReviewController(store).refreshCampsiteRating(campsite.id)
         store.updateReservation(reservation.copy(rating = stars))
         return null
     }

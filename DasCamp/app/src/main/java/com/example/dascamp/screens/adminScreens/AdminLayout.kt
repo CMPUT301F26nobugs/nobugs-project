@@ -1,12 +1,14 @@
 package com.example.dascamp.screens.adminScreens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -29,6 +31,8 @@ import androidx.navigation.NavController
 import com.example.dascamp.model.Role
 import com.example.dascamp.screens.AppScaffold
 import com.example.dascamp.screens.RoleMenu
+import com.example.dascamp.screens.contentMaxWidth
+import com.example.dascamp.screens.screenPadding
 import com.example.dascamp.ui.theme.AdminTheme
 
 /**
@@ -46,7 +50,7 @@ object AdminRoutes {
     const val MESSAGE_LIST = "adminMessageList"
     const val MESSAGE = "adminViewMessage/{messageId}"
     const val PROFILE_LIST = "adminProfileList"
-    const val PROFILE = "adminProfile/{profileType}" // route pattern, registed in NavHost
+    const val PROFILE = "adminProfile/{profileType}/{uid}" // route pattern, registed in NavHost
     const val NOTIFICATION_LOG = "adminNotificationLog"
     const val REQUEST_LOG = "adminRequestLog"
     const val APPROVED_LOG = "adminApprovedLog"
@@ -58,14 +62,14 @@ object AdminRoutes {
      *
      * @param type the kind of profile to show
      */
-    fun profile(type: ProfileType) = "adminProfile/${type.name}"
+    fun profile(type: ProfileType, uid: String) = "adminProfile/${type.name}/$uid"
 
     /**
      * Builds the route for viewing a single campsite.
      *
      * @param id the campsite id; defaults to `"default_id"`
      */
-    fun campsite(id: String = "default_id") = "AdminViewCampsite/$id"
+    fun campsite(id: String = "default_id") = "adminViewCampsite/$id"
 
     /**
      * Builds the route for viewing a single message.
@@ -98,16 +102,23 @@ fun AdminPage(
             navBar = { AdminNavBar(navController) },
             roleMenu = { RoleMenu(navController, Role.ADMIN) }
         ) { innerPadding ->
-            Column(
+            Box(
                 modifier = Modifier
                     .padding(innerPadding)
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = horizontalAlignment,
-                content = content
-            )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .widthIn(max = contentMaxWidth)
+                        .verticalScroll(rememberScrollState())
+                        .padding(screenPadding()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = horizontalAlignment,
+                    content = content
+                )
+            }
         }
     }
 }

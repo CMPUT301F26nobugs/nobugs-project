@@ -1,6 +1,11 @@
 package com.example.dascamp.screens.ownerScreens
 
+import android.content.Intent
+import android.graphics.Bitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,18 +15,33 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,6 +50,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,16 +70,28 @@ import com.example.dascamp.model.DateRange
 import com.example.dascamp.model.LotteryFormState
 import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.NotificationType
+import com.example.dascamp.model.label
+import com.example.dascamp.model.Notification
+import com.example.dascamp.controllers.MessageController
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.formatPrice
-import com.example.dascamp.model.label
+import com.example.dascamp.views.MessageView
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import com.example.dascamp.controllers.QrCodeController
 import com.example.dascamp.screens.BigButton
+import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.screens.EmptyValue
+import com.example.dascamp.screens.DatePickerField
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
 import com.example.dascamp.views.ReservationView
+import com.google.zxing.common.BitMatrix
 import java.util.UUID
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+
 
 /**
  * Owner home. The two large buttons open the campsite list and the lottery list.
@@ -308,23 +341,27 @@ private fun CampsiteForm(
         FormField("Rules", form.rules, onValueChange = { typed -> form = form.copy(rules = typed) })
         FormField("Cancellation policy", form.cancellationPolicy, onValueChange = { typed -> form = form.copy(cancellationPolicy = typed) })
         FormField("Tags", form.tags, onValueChange = { typed -> form = form.copy(tags = typed) })
-        FormField(
-            "Available from (yyyy-MM-dd)",
-            form.availability[0].start,
-            onValueChange = {typed ->
+        DatePickerField(
+            value = form.availability[0].start,
+            modifier = Modifier.fillMaxWidth(),
+            onDateSelected = { selected ->
                 val oldRange = form.availability[0]
-                val newRange = DateRange(typed, oldRange.end)
-                form = form.copy(availability = listOf(newRange))
-            }
+                form = form.copy(
+                    availability = listOf(DateRange(selected, oldRange.end))
+                )
+            },
+            label = { Text("Available from") }
         )
-        FormField(
-            "Available to (yyyy-MM-dd)",
-            form.availability[0].end,
-            onValueChange = {typed ->
+        DatePickerField(
+            value = form.availability[0].end,
+            modifier = Modifier.fillMaxWidth(),
+            onDateSelected = { selected ->
                 val oldRange = form.availability[0]
-                val newRange = DateRange(oldRange.start, typed)
-                form = form.copy(availability = listOf(newRange))
-            }
+                form = form.copy(
+                    availability = listOf(DateRange(oldRange.start, selected))
+                )
+            },
+            label = { Text("Available to") }
         )
         error?.let { Text(it) }
         Button(onClick = {}) { Text("Upload photo") }
@@ -420,28 +457,98 @@ fun OwnerMapLocation(navController: NavController, repository: DasCampRepository
 }
 
 /**
- * QR layout. The square is the space for the code.
- * Jess replaces this box with the generated code. The route stays ownerQrCode.
- */
+* QR code for one campsite (the one the owner opened).
+* Entrants scan it to open the campsite. The owner can save it as a picture or share it.
+*
+* @param navController used to go back
+* @param repository source of the campsite the owner opened
+*/
 @Composable
-fun OwnerQrCode(navController: NavController) {
-    OwnerPage(navController, showBack = true, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("QR code", style = MaterialTheme.typography.titleLarge)
-        Box(Modifier.size(220.dp)) { BlockBox(220) }
-        Text("ID: CAMP-HTN")
-        Text("Entrants can scan this code to view details and join the lottery")
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {}) {
-            Text("Download QR Code")
+fun OwnerQrCode(navController: NavController, repository: DasCampRepository? = null) {
+    val context = LocalContext.current
+    val qrController = remember { QrCodeController() }
+
+    var campsite: Campsite? = null
+    if (repository != null){
+        for (site in repository.campsites){
+            if(site.id == repository.openCampsiteId){
+                campsite = site
+            }
         }
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {}) {
-            Text("Share link")
+    }
+
+    if(campsite == null){
+        OwnerPage(navController, showBack = true){
+            Text("Campsite not found")
+        }
+        return
+    }
+
+    val text = qrController.qrText(campsite)
+    val bitmap = remember(text){qrBitmap(qrController.makeQr(text, 600))}
+
+    val savePng = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("image/png")
+    ) { uri ->
+        if (uri != null){
+            context.contentResolver.openOutputStream(uri)?.use { stream ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
         }
     }
 }
+    OwnerPage(navController, showBack = true, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("QR Code", style = MaterialTheme.typography.titleLarge)
+        Text(campsite.name, style = MaterialTheme.typography.titleMedium)
+
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = "QR Code for " + campsite.name,
+            modifier = Modifier.size(240.dp)
+        )
+        Text("ID: " + campsite.id)
+        Text("Entrants can scan this code to view details and join the lottery")
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { savePng.launch("dascamp-qr-" + campsite.id + ".png") }
+        ) { Text("Download QR Code") }
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                val share = Intent(Intent.ACTION_SEND)
+                share.type = "text/plain"
+                share.putExtra(
+                    Intent.EXTRA_TEXT,
+                    "Check out " + campsite.name + " on DasCamp: " + text
+                )
+                context.startActivity(Intent.createChooser(share, "Share Campsite"))
+            }
+        ) { Text("Share Link") }
+
+    }
+
+    }
+
+    /** Turns the QR grid into a picture: true = black square, false = white square */
+    fun qrBitmap(matrix: BitMatrix): Bitmap{
+    val width = matrix.width
+    val height = matrix.height
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+    for ( x in 0 until width){
+        for (y in 0 until height) {
+            if (matrix[x, y]) {
+                bitmap.setPixel(x, y, android.graphics.Color.BLACK)
+            } else {
+                bitmap.setPixel(x, y, android.graphics.Color.WHITE)
+            }
+        }
+    }
+        return bitmap
+    }
+
+
+
 
 
 /** Lottery list, opened from My Lotteries. The blank card opens one lottery's layout. */
@@ -479,7 +586,13 @@ fun OwnerLotteryList(navController: NavController, repository: DasCampRepository
 /** Empty lottery form. Publish opens the blank lottery details page. */
 @Composable
 fun OwnerCreateLottery(navController: NavController, repository: DasCampRepository? = null) {
-    LotteryForm(navController, repository, existingId = null, "Create lottery", "Publish lottery")
+    LotteryForm(
+        navController,
+        repository,
+        existingId = null,
+        title = "Create lottery",
+        action = "Publish lottery"
+    )
 }
 
 /** Same form as Create. Save returns to lottery details. */
@@ -504,9 +617,18 @@ fun OwnerLotteryDetails(navController: NavController, repository: DasCampReposit
         Text("Registration: ${lottery.registrationStart} to ${lottery.registrationEnd}")
         Text("Booking: ${lottery.bookingStart} to ${lottery.bookingEnd}")
         Text("Winner count: ${lottery.winnerCount} · ${lottery.status.label()}")
-        Text("Campsites", style = MaterialTheme.typography.titleMedium)
+        Text("Campsites in this period", style = MaterialTheme.typography.titleMedium)
         lottery.campsiteIds.forEach { siteId ->
-            Text(repository?.campsites?.find { it.id == siteId }?.name ?: siteId)
+            val site = repository?.campsites?.find { it.id == siteId }
+            val ownerName = repository?.users?.find { it.id == site?.ownerId }?.displayName().orEmpty()
+            val label = site?.name ?: siteId
+            Text(if (ownerName.isBlank()) label else "$label · $ownerName")
+        }
+        val ownerCount = lottery.campsiteIds.mapNotNull { siteId ->
+            repository?.campsites?.find { it.id == siteId }?.ownerId
+        }.distinct().size
+        if (ownerCount > 1) {
+            Text("Shared lottery: campsites from $ownerCount owners")
         }
         Button(
             modifier = Modifier.fillMaxWidth(),
@@ -517,8 +639,41 @@ fun OwnerLotteryDetails(navController: NavController, repository: DasCampReposit
         Text("Waitlist (${lottery.entrants.size})", style = MaterialTheme.typography.titleMedium)
         if (lottery.entrants.isEmpty()) Text("No entrants yet")
         lottery.entrants.forEach { entrant ->
-            Text("${entrant.name} · ${entrant.status.label()}")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "${entrant.name} · ${entrant.status.label()}",
+                    modifier = Modifier.weight(1f)
+                )
+                if (entrant.entrantId.isNotBlank()) {
+                    OutlinedButton(onClick = {
+                        repository?.let { repo ->
+                            repo.openMessageOwnerId = repo.uid
+                            repo.openMessageEntrantId = entrant.entrantId
+                            repo.openMessageLotteryId = lottery.id
+                            repo.openReservationId = ""
+                        }
+                        navController.navigate(OwnerRoutes.MESSAGE)
+                    }) { Text("Message") }
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun LotteryCampsiteRow(
+    name: String,
+    ownerLabel: String,
+    checked: Boolean,
+    onChecked: (Boolean) -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(checked = checked, onCheckedChange = onChecked)
+        Text("$name · $ownerLabel")
     }
 }
 
@@ -547,25 +702,59 @@ private fun LotteryForm(
     OwnerPage(navController, showBack = true) {
         Text(title, style = MaterialTheme.typography.titleLarge)
         FormField("Lottery name", form.name, onValueChange = { typed -> form = form.copy(name = typed) })
-        Text("Campsites", style = MaterialTheme.typography.titleMedium)
-        repository?.let { repo -> repo.campsites.filter { it.ownerId == repo.uid } }?.forEach { campsite ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                    checked = campsite.id in form.campsiteIds,
-                    onCheckedChange = { checked ->
-                        form = form.copy(
-                            campsiteIds = if (checked) form.campsiteIds + campsite.id
-                            else form.campsiteIds - campsite.id
-                        )
-                    }
+        Text("Lottery period", style = MaterialTheme.typography.titleMedium)
+        Text("The lottery only runs between these dates. You can list several of your campsites together with campsites that belong to other owners.")
+        Text("Your campsites", style = MaterialTheme.typography.titleMedium)
+        val mine = repository?.campsites?.filter { it.ownerId == repository.uid }.orEmpty()
+        val others = repository?.campsites?.filter { it.ownerId != repository.uid }.orEmpty()
+        if (mine.isEmpty()) Text("Add one of your campsites before publishing a lottery.")
+        mine.forEach { campsite ->
+            LotteryCampsiteRow(campsite.name, "You", campsite.id in form.campsiteIds) { checked ->
+                form = form.copy(
+                    campsiteIds = if (checked) form.campsiteIds + campsite.id
+                    else form.campsiteIds - campsite.id
                 )
-                Text(campsite.name)
             }
         }
-        FormField("Registration start", form.registrationStart, onValueChange = { typed -> form = form.copy(registrationStart = typed) })
-        FormField("Registration end", form.registrationEnd, onValueChange = { typed -> form = form.copy(registrationEnd = typed) })
-        FormField("Booking start", form.bookingStart, onValueChange = { typed -> form = form.copy(bookingStart = typed) })
-        FormField("Booking end", form.bookingEnd, onValueChange = { typed -> form = form.copy(bookingEnd = typed) })
+        Text("Other owners' campsites", style = MaterialTheme.typography.titleMedium)
+        if (others.isEmpty()) Text("No other campsites are listed yet.")
+        others.forEach { campsite ->
+            val ownerName = repository?.users
+                ?.find { it.id == campsite.ownerId }
+                ?.displayName()
+                ?.ifBlank { null }
+                ?: "Another owner"
+            LotteryCampsiteRow(campsite.name, ownerName, campsite.id in form.campsiteIds) { checked ->
+                form = form.copy(
+                    campsiteIds = if (checked) form.campsiteIds + campsite.id
+                    else form.campsiteIds - campsite.id
+                )
+            }
+        }
+        DatePickerField(
+            value = form.registrationStart,
+            modifier = Modifier.fillMaxWidth(),
+            onDateSelected = { form = form.copy(registrationStart = it) },
+            label = { Text("Registration start") }
+        )
+        DatePickerField(
+            value = form.registrationEnd,
+            modifier = Modifier.fillMaxWidth(),
+            onDateSelected = { form = form.copy(registrationEnd = it) },
+            label = { Text("Registration end") }
+        )
+        DatePickerField(
+            value = form.bookingStart,
+            modifier = Modifier.fillMaxWidth(),
+            onDateSelected = { form = form.copy(bookingStart = it) },
+            label = { Text("Booking start") }
+        )
+        DatePickerField(
+            value = form.bookingEnd,
+            modifier = Modifier.fillMaxWidth(),
+            onDateSelected = { form = form.copy(bookingEnd = it) },
+            label = { Text("Booking end") }
+        )
         FormField("Number of winners", form.winnerCount, onValueChange = { typed -> form = form.copy(winnerCount = typed) })
         FormField("Response window (hours)", form.responseWindowHours, onValueChange = { typed -> form = form.copy(responseWindowHours = typed) })
         FormField("Waitlist capacity, optional", form.waitlistCapacity, onValueChange = { typed -> form = form.copy(waitlistCapacity = typed) })
@@ -577,7 +766,12 @@ private fun LotteryForm(
                     id = existing?.id ?: UUID.randomUUID().toString(),
                     status = existing?.status ?: LotteryStatus.OPEN,
                     entrants = existing?.entrants ?: emptyList(),
-                    validCampsiteIds = repository?.let { repo -> repo.campsites.filter { it.ownerId == repo.uid }.map { it.id }.toSet() } ?: emptySet()
+                    validCampsiteIds = repository?.campsites?.map { it.id }?.toSet() ?: emptySet(),
+                    organizerCampsiteIds = repository?.campsites
+                        ?.filter { it.ownerId == repository.uid }
+                        ?.map { it.id }
+                        ?.toSet()
+                        ?: emptySet()
                 )
                 val lottery = built.lottery
                 if (lottery == null) {
@@ -617,12 +811,14 @@ fun OwnerReservations(navController: NavController, repository: DasCampRepositor
         }
         if (reservations.isEmpty()) Text("No ${selected.lowercase()} reservations")
         reservations.forEach { reservation ->
-            OutlinedButton(onClick = {
-                repository?.openReservationId = reservation.id
-                navController.navigate(OwnerRoutes.RESERVATION)
-            },
-            modifier = Modifier.fillMaxWidth()  )
-            {Text("${reservation.campsiteName} · ${reservation.entrantName} · ${reservation.startDate} to ${reservation.endDate}")
+            OutlinedButton(
+                onClick = {
+                    repository?.openReservationId = reservation.id
+                    navController.navigate(OwnerRoutes.RESERVATION)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("${reservation.campsiteName} · ${reservation.entrantName} · ${reservation.startDate} to ${reservation.endDate}")
             }
         }
     }
@@ -693,7 +889,15 @@ fun OwnerReservationDetails(navController: NavController, repository: DasCampRep
         }
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = {navController.navigate(OwnerRoutes.MESSAGE)}){Text("Message")}
+            onClick = {
+                repository?.let { repo ->
+                    repo.openMessageOwnerId = repo.uid
+                    repo.openMessageEntrantId = reservation.entrantId
+                    repo.openMessageLotteryId = null
+                    repo.openReservationId = reservation.id
+                }
+                navController.navigate(OwnerRoutes.MESSAGE)
+            }) { Text("Message") }
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
@@ -788,27 +992,174 @@ fun OwnerSendNotification(
     }
 }
 
-/** Message logs, opened from the home screen. The blank card opens a thread. */
+/** Shared conversations with entrants who contacted this owner. */
 @Composable
 fun OwnerMessageList(navController: NavController, repository: DasCampRepository? = null) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val controller = remember(repository) { repository?.let { MessageController(it) } }
+    val threads = controller?.ownerConversations().orEmpty().filter { thread ->
+        query.isBlank() ||
+            thread.otherName.contains(query, ignoreCase = true) ||
+            thread.latestMessage.body.contains(query, ignoreCase = true)
+    }
     OwnerPage(navController, showBack = true) {
-        Text("Message logs", style = MaterialTheme.typography.titleLarge)
+        Text("Messages", style = MaterialTheme.typography.titleLarge)
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Search Messages") },
+            leadingIcon = {
+                Icon(imageVector = Icons.Default.Search, contentDescription = "Search")
+            },
+            singleLine = true
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        if (threads.isEmpty()) Text("No conversations yet")
+        threads.forEach { thread ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        repository?.openMessageOwnerId = thread.ownerId
+                        repository?.openMessageEntrantId = thread.entrantId
+                        repository?.openMessageLotteryId = null
+                        repository?.openReservationId = ""
+                        navController.navigate(OwnerRoutes.MESSAGE)
+                    },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.padding(start = 16.dp).weight(1f)
+                    ) {
+                        Text(thread.otherName, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            thread.latestMessage.body,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = "Go to conversation",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
     }
 }
 
-/** One message thread. The list area and the write box are empty. */
+/** Shared owner/entrant conversation. The owner can reply to the entrant. */
 @Composable
 fun OwnerMessages(navController: NavController, repository: DasCampRepository? = null) {
     var body by remember { mutableStateOf("") }
-    OwnerPage(navController, showBack = true) {
-        Text("Message", style = MaterialTheme.typography.titleLarge)
-        EmptyValue(0.5f)
-        BlockBox(80)
-        FormField("Write a message", body, onValueChange = { typed -> body = typed })
-        Button(onClick = {
-            // TODO implement messaging w/ firestore
+    var error by remember { mutableStateOf<String?>(null) }
+    val controller = remember(repository) { repository?.let { MessageController(it) } }
+    val view = remember(
+        repository,
+        repository?.openReservationId,
+        repository?.openMessageOwnerId,
+        repository?.openMessageEntrantId
+    ) {
+        repository?.let { MessageView(it) }
+    }
+    DisposableEffect(view) { onDispose { view?.remove() } }
+    val reservation = repository?.reservations?.find { it.id == repository.openReservationId }
+    val ownerId = repository?.openMessageOwnerId?.ifBlank {
+        reservation?.let { selected ->
+            repository?.campsites?.find { it.id == selected.campsiteId }?.ownerId
+        }.orEmpty()
+    }.orEmpty()
+    val entrantId = repository?.openMessageEntrantId
+        ?.ifBlank { reservation?.entrantId.orEmpty() }
+        .orEmpty()
+    val profileName = repository?.users?.find { it.id == entrantId }
+        ?.displayName().orEmpty()
+    val storedName = view?.messages?.lastOrNull { it.entrantName.isNotBlank() }
+        ?.entrantName.orEmpty()
+    val entrantName = profileName.ifBlank { storedName }
+        .ifBlank { reservation?.entrantName.orEmpty() }
+        .ifBlank { "Entrant" }
+    val sendMessage = {
+        val result = controller?.send(
+            ownerId = ownerId,
+            entrantId = entrantId,
+            body = body,
+            lotteryId = repository?.openMessageLotteryId,
+            reservationId = repository?.openReservationId
+                ?.takeIf { it.isNotBlank() }
+        )
+        error = result
+        if (result == null) body = ""
+    }
+    OwnerPage(
+        navController,
+        showBack = true,
+        bottomBar = if (ownerId == repository?.uid && entrantId.isNotBlank()) {{
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                error?.let { Text(it) }
+                OutlinedTextField(
+                    value = body,
+                    onValueChange = { body = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Message") },
+                    trailingIcon = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            modifier = Modifier.clickable(onClick = sendMessage)
+                        )
+                    },
+                    singleLine = true
+                )
             }
-        ) { Text("Send") }
+        }} else null
+    ) {
+        Text(entrantName, style = MaterialTheme.typography.titleLarge)
+        if (ownerId != repository?.uid || entrantId.isBlank()) {
+            Text("Open a participant conversation from a lottery or reservation.")
+        } else {
+            if (view == null || view.messages.isEmpty()) Text("No messages yet")
+            view?.messages?.forEach { message ->
+                val mine = message.senderId == repository?.uid
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(
+                            topStart = 16.dp,
+                            topEnd = 16.dp,
+                            bottomStart = if (mine) 16.dp else 4.dp,
+                            bottomEnd = if (mine) 4.dp else 16.dp
+                        ),
+                        color = if (mine) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.widthIn(max = 280.dp)
+                    ) {
+                        Text(
+                            text = message.body,
+                            modifier = Modifier.padding(12.dp),
+                            color = if (mine) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -819,6 +1170,7 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
 fun OwnerProfile(
     navController: NavController,
     repository: DasCampRepository? = null,
+    onSignOut: () -> Unit = {}
 ) {
     val saved = repository?.currentUser
     var firstName by remember { mutableStateOf("") }
@@ -840,39 +1192,98 @@ fun OwnerProfile(
         }
     }
 
-    OwnerPage(navController, showBack = false) {
+    OwnerPage(navController, showBack = false, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Profile", style = MaterialTheme.typography.titleLarge)
-        FormField("First name", firstName, { firstName = it }, editing)
-        FormField("Last name", lastName, { lastName = it }, editing)
-        FormField("Email", email, { email = it }, editing)
-        FormField("Phone", phoneNumber, { phoneNumber = it }, editing)
-        Button(onClick = {
-            if (editing && repository != null && saved != null) {
-                repository.updateUser(
-                    saved.copy(
-                        firstName = firstName.trim(),
-                        lastName = lastName.trim(),
-                        email = email.trim(),
-                        phoneNumber = phoneNumber.trim(),
-                        notificationsOn = notificationsOn
+        Icon(
+            Icons.Default.Person,
+            contentDescription = null,
+            modifier = Modifier
+                .size(96.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                .padding(18.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            saved?.displayName()?.ifBlank { "Owner" } ?: "Owner",
+            style = MaterialTheme.typography.headlineSmall
+        )
+        Text(
+            "Signed in on this device",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (!editing) {
+            OwnerDetail(Icons.Default.Email, email.ifBlank { "No email" })
+            OwnerDetail(Icons.Default.Phone, phoneNumber.ifBlank { "No phone number" })
+        } else {
+            FormField("First name", firstName, { firstName = it }, true)
+            FormField("Last name", lastName, { lastName = it }, true)
+            FormField("Email", email, { email = it }, true)
+            FormField("Phone", phoneNumber, { phoneNumber = it }, true)
+        }
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                if (editing && repository != null && saved != null) {
+                    repository.updateUser(
+                        saved.copy(
+                            firstName = firstName.trim(),
+                            lastName = lastName.trim(),
+                            email = email.trim(),
+                            phoneNumber = phoneNumber.trim(),
+                            notificationsOn = notificationsOn
+                        )
                     )
+                }
+                editing = !editing
+            }
+        ) {
+            Icon(
+                if (editing) Icons.Default.Edit else Icons.Default.Edit,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(if (editing) "Save" else "Edit details")
+        }
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Notifications, contentDescription = null, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(12.dp))
+                Text("Notifications", modifier = Modifier.weight(1f))
+                Switch(
+                    checked = notificationsOn,
+                    onCheckedChange = { notificationsOn = it },
+                    enabled = editing
                 )
             }
-            editing = !editing
-        }) { Text(if (editing) "Done" else "Edit") }
-        Button(onClick = {}) { Text("Change profile picture") }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Turn on notifications", modifier = Modifier.weight(1f))
-            Switch(
-                checked = notificationsOn,
-                onCheckedChange = { notificationsOn = it },
-                enabled = editing
-            )
         }
-        Button(onClick = {}) { Text("App policy and guidelines") }
-        Button(onClick = {
-            if (repository != null && saved != null) { repository.deleteUser(saved) }
-        }) { Text("Delete profile") }
+        ProfileAction(Icons.AutoMirrored.Filled.Logout, "Sign out", onSignOut)
+        ProfileAction(
+            icon = Icons.Default.Delete,
+            label = "Delete profile",
+            destructive = true,
+            onClick = {
+                if (repository != null && saved != null) repository.deleteUser(saved)
+                onSignOut()
+            }
+        )
+    }
+}
+
+@Composable
+private fun OwnerDetail(icon: androidx.compose.ui.graphics.vector.ImageVector, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(8.dp))
+        Text(value, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
