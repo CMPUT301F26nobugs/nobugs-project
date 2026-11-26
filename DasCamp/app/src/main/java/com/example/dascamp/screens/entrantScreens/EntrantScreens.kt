@@ -91,8 +91,10 @@ import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.formatPrice
+import com.example.dascamp.model.invalidDate
 import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.StoredImage
+import com.example.dascamp.screens.DatePickerField
 import com.example.dascamp.views.MessageView
 import java.io.File
 import com.example.dascamp.screens.BigButton
@@ -197,11 +199,10 @@ fun EntrantDashboardPreview() {
 
 /**
  * Screen listing campsites, with a search field and a collapsible filter section
- * (location, date, and max occupancy).
+ * (location, availability window, minimum stay, and max occupancy).
  *
- * Results come from [CampsiteController.searchCampsites]. The date filter is only
- * applied once it is a full `yyyy-MM-dd` date, and is used as both the start and
- * end date of the search. Tapping a result stores its id in
+ * Results come from [CampsiteController.searchCampsites]. The availability filter
+ * is applied once both date endpoints are valid and ordered. Tapping a result stores its id in
  * [DasCampRepository.openCampsiteId] and navigates to [EntrantRoutes.CAMPSITE].
  *
  * @param navController used to navigate to a campsite
@@ -218,21 +219,26 @@ fun EntrantCampsiteList(
     var query by rememberSaveable { mutableStateOf("") }                // campsite search
     var isToggled by rememberSaveable { mutableStateOf(false) }         // bool for showing filters
     var locationFilter by rememberSaveable { mutableStateOf("") }       // location filter
-    var dateFilter by rememberSaveable { mutableStateOf("") }           // date filter
+    var dateFromFilter by rememberSaveable { mutableStateOf("") }
+    var dateToFilter by rememberSaveable { mutableStateOf("") }
+    var minimumStayFilter by rememberSaveable { mutableStateOf("1") }
     var occupancyFilter by rememberSaveable { mutableStateOf("") }      // occupancy filter
 
-    // Only apply the date filter once it is a full yyyy-MM-dd date
-    val date = dateFilter.trim()
-        .takeIf { Regex("\\d{4}-\\d{2}-\\d{2}").matches(it) }
-        .orEmpty()
+    val dateRangeValid =
+        dateFromFilter.isNotBlank() &&
+            dateToFilter.isNotBlank() &&
+            !invalidDate(dateFromFilter) &&
+            !invalidDate(dateToFilter) &&
+            dateFromFilter <= dateToFilter
 
     // Searching results
     val results = campsiteController?.searchCampsites(
         query = query,
         location = locationFilter,
         guests = occupancyFilter.toIntOrNull(),
-        startDate = date,
-        endDate = date,
+        startDate = if (dateRangeValid) dateFromFilter else "",
+        endDate = if (dateRangeValid) dateToFilter else "",
+        minimumStayDays = minimumStayFilter.toIntOrNull() ?: 0,
     ) ?: repository?.campsites.orEmpty()
 
     EntrantPage(
@@ -261,8 +267,14 @@ fun EntrantCampsiteList(
             onToggle = { isToggled = !isToggled },
             location = locationFilter,
             onLocationChange = { locationFilter = it },
-            date = dateFilter,
-            onDateChange = { dateFilter = it },
+            dateFrom = dateFromFilter,
+            onDateFromChange = { dateFromFilter = it },
+            dateTo = dateToFilter,
+            onDateToChange = { dateToFilter = it },
+            minimumStay = minimumStayFilter,
+            onMinimumStayChange = { typed ->
+                minimumStayFilter = typed.filter(Char::isDigit)
+            },
             occupancy = occupancyFilter,
             onOccupancyChange = { occupancyFilter = it }
         )
@@ -629,7 +641,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            LegendDot(Color(0xFF2E7D32), "Open")
+            LegendDot(Color(0xFF66BB6A), "Open")
             LegendDot(Color(0xFFC62828), "Booked")
             LegendDot(Color(0xFF9E9E9E), "Closed")
         }
@@ -681,16 +693,16 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                                 style = MaterialTheme.typography.labelLarge
                             )
                         }
-                    OutlinedTextField(
+                    DatePickerField(
                         value = startDate,
-                        onValueChange = { typed -> startDate = typed },
-                        label = { Text("Start date (yyyy-mm-dd)") },
+                        onDateSelected = { startDate = it },
+                        label = { Text("Start date") },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    OutlinedTextField(
+                    DatePickerField(
                         value = endDate,
-                        onValueChange = { typed -> endDate = typed },
-                        label = { Text("End date (yyyy-mm-dd)") },
+                        onDateSelected = { endDate = it },
+                        label = { Text("End date") },
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(

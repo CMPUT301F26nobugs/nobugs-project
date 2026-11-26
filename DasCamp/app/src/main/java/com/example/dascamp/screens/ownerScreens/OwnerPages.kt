@@ -78,6 +78,7 @@ import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.screens.EmptyValue
+import com.example.dascamp.screens.DatePickerField
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
 import com.example.dascamp.views.ReservationView
 import java.util.UUID
@@ -330,23 +331,27 @@ private fun CampsiteForm(
         FormField("Rules", form.rules, onValueChange = { typed -> form = form.copy(rules = typed) })
         FormField("Cancellation policy", form.cancellationPolicy, onValueChange = { typed -> form = form.copy(cancellationPolicy = typed) })
         FormField("Tags", form.tags, onValueChange = { typed -> form = form.copy(tags = typed) })
-        FormField(
-            "Available from (yyyy-MM-dd)",
-            form.availability[0].start,
-            onValueChange = {typed ->
+        DatePickerField(
+            value = form.availability[0].start,
+            modifier = Modifier.fillMaxWidth(),
+            onDateSelected = { selected ->
                 val oldRange = form.availability[0]
-                val newRange = DateRange(typed, oldRange.end)
-                form = form.copy(availability = listOf(newRange))
-            }
+                form = form.copy(
+                    availability = listOf(DateRange(selected, oldRange.end))
+                )
+            },
+            label = { Text("Available from") }
         )
-        FormField(
-            "Available to (yyyy-MM-dd)",
-            form.availability[0].end,
-            onValueChange = {typed ->
+        DatePickerField(
+            value = form.availability[0].end,
+            modifier = Modifier.fillMaxWidth(),
+            onDateSelected = { selected ->
                 val oldRange = form.availability[0]
-                val newRange = DateRange(oldRange.start, typed)
-                form = form.copy(availability = listOf(newRange))
-            }
+                form = form.copy(
+                    availability = listOf(DateRange(oldRange.start, selected))
+                )
+            },
+            label = { Text("Available to") }
         )
         error?.let { Text(it) }
         Button(onClick = {}) { Text("Upload photo") }
@@ -501,7 +506,13 @@ fun OwnerLotteryList(navController: NavController, repository: DasCampRepository
 /** Empty lottery form. Publish opens the blank lottery details page. */
 @Composable
 fun OwnerCreateLottery(navController: NavController, repository: DasCampRepository? = null) {
-    LotteryForm(navController, repository, existingId = null, "Create lottery", "Publish lottery")
+    LotteryForm(
+        navController,
+        repository,
+        existingId = null,
+        title = "Create lottery",
+        action = "Publish lottery"
+    )
 }
 
 /** Same form as Create. Save returns to lottery details. */
@@ -640,10 +651,30 @@ private fun LotteryForm(
                 )
             }
         }
-        FormField("Registration start", form.registrationStart, onValueChange = { typed -> form = form.copy(registrationStart = typed) })
-        FormField("Registration end", form.registrationEnd, onValueChange = { typed -> form = form.copy(registrationEnd = typed) })
-        FormField("Booking start", form.bookingStart, onValueChange = { typed -> form = form.copy(bookingStart = typed) })
-        FormField("Booking end", form.bookingEnd, onValueChange = { typed -> form = form.copy(bookingEnd = typed) })
+        DatePickerField(
+            value = form.registrationStart,
+            modifier = Modifier.fillMaxWidth(),
+            onDateSelected = { form = form.copy(registrationStart = it) },
+            label = { Text("Registration start") }
+        )
+        DatePickerField(
+            value = form.registrationEnd,
+            modifier = Modifier.fillMaxWidth(),
+            onDateSelected = { form = form.copy(registrationEnd = it) },
+            label = { Text("Registration end") }
+        )
+        DatePickerField(
+            value = form.bookingStart,
+            modifier = Modifier.fillMaxWidth(),
+            onDateSelected = { form = form.copy(bookingStart = it) },
+            label = { Text("Booking start") }
+        )
+        DatePickerField(
+            value = form.bookingEnd,
+            modifier = Modifier.fillMaxWidth(),
+            onDateSelected = { form = form.copy(bookingEnd = it) },
+            label = { Text("Booking end") }
+        )
         FormField("Number of winners", form.winnerCount, onValueChange = { typed -> form = form.copy(winnerCount = typed) })
         FormField("Response window (hours)", form.responseWindowHours, onValueChange = { typed -> form = form.copy(responseWindowHours = typed) })
         FormField("Waitlist capacity, optional", form.waitlistCapacity, onValueChange = { typed -> form = form.copy(waitlistCapacity = typed) })

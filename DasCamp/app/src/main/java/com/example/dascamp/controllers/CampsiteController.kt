@@ -2,7 +2,12 @@ package com.example.dascamp.controllers
 
 import com.example.dascamp.model.CampStore
 import com.example.dascamp.model.Campsite
+import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 /**
  * CAMPSITE CONTROLLER
@@ -25,7 +30,8 @@ class CampsiteController(private val store: CampStore) {
         location: String = "",
         guests: Int? = null,
         startDate: String = "",
-        endDate: String = ""
+        endDate: String = "",
+        minimumStayDays: Int = 1
     ): List<Campsite> {
         val reservations = store.reservations
         val q = query.trim()
@@ -45,17 +51,70 @@ class CampsiteController(private val store: CampStore) {
             // The campsite must fit the number of guests
             val matchesGuests = guests == null || campsite.maxOccupancy >= guests
 
-            // Dates are yyyy-MM-dd, so comparing them as strings orders them correctly
-            // The range must sit inside an availability range and not overlap an active reservation
-            val matchesDates = startDate.isBlank() || endDate.isBlank() ||
-                    (campsite.availability.any { it.start <= startDate && endDate <= it.end } &&
-                            reservations.none {
-                                it.campsiteId == campsite.id &&
-                                        it.status == ReservationStatus.ACTIVE &&
-                                        it.startDate <= endDate && startDate <= it.endDate
-                            })
+            // Match if the search window contains a continuous, bookable run
+            // at least as long as the requested inclusive minimum stay.
+            val hasDateWindow = startDate.isNotBlank() && endDate.isNotBlank()
+            val matchesDates = !hasDateWindow || (
+                    minimumStayDays >= 1 &&
+                            startDate <= endDate &&
+                            hasBookableRun(
+                                campsite = campsite,
+                                windowStart = startDate,
+                                windowEnd = endDate,
+                                minimumStayDays = minimumStayDays,
+                                reservations = reservations
+                            )
+                    )
 
             matchesQuery && matchesLocation && matchesGuests && matchesDates
         }
+    }
+
+    private fun hasBookableRun(
+        campsite: Campsite,
+        windowStart: String,
+        windowEnd: String,
+        minimumStayDays: Int,
+        reservations: List<Reservation>
+    ): Boolean {
+        val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+            isLenient = false
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
+
+        fun toEpochDay(value: String): Long? =
+            runCatching {
+                formatter.parse(value)?.time?.div(MILLIS_PER_DAY)
+            }.getOrNull()
+
+        val firstDay = toEpochDay(windowStart) ?: return false
+        val lastDay = toEpochDay(windowEnd) ?: return false
+        if (lastDay < firstDay) return false
+
+        var consecutiveAvailableDays = 0
+        for (epochDay in firstDay..lastDay) {
+            val date = formatter.format(Date(epochDay * MILLIS_PER_DAY))
+            val ownerAllowsDate = campsite.availability.any {
+                it.start <= date && date <= it.end
+            }
+            val dateIsBooked = reservations.any {
+                it.campsiteId == campsite.id &&
+                    it.status == ReservationStatus.ACTIVE &&
+                    it.startDate <= date &&
+                    date <= it.endDate
+            }
+
+            if (ownerAllowsDate && !dateIsBooked) {
+                consecutiveAvailableDays++
+                if (consecutiveAvailableDays >= minimumStayDays) return true
+            } else {
+                consecutiveAvailableDays = 0
+            }
+        }
+        return false
+    }
+
+    private companion object {
+        const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
     }
 }
