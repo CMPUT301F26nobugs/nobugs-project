@@ -276,9 +276,9 @@ fun DasCampApp() {
                 AdminViewProfile(navController, type, repository, uid)     // show the screen
             }
             composable(AdminRoutes.NOTIFICATION_LOG) { NotificationLog(navController) }
-            composable(AdminRoutes.REQUEST_LOG) { RequestLog(navController) }
-            composable(AdminRoutes.APPROVED_LOG) { ApprovedLog(navController) }
-            composable(AdminRoutes.OTHER_LOG) { OtherLog(navController) }
+            composable(AdminRoutes.REQUEST_LOG) { RequestLog(navController, repository) }
+            composable(AdminRoutes.APPROVED_LOG) { ApprovedLog(navController, repository) }
+            composable(AdminRoutes.OTHER_LOG) { OtherLog(navController, repository) }
             composable(AdminRoutes.CAMPSITE_LIST) { AdminCampsiteList(navController, repository) }
             composable(AdminRoutes.CAMPSITE) { entry ->
                 val campsiteId = entry.arguments?.getString("campsiteId") ?: "default_id"

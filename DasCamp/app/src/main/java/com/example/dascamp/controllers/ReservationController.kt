@@ -100,7 +100,7 @@ class ReservationController(private val store: CampStore) {
             )
         )
         setEntryStatus(lottery, WaitlistStatus.BOOKED)
-        notify(lottery.id, "Reservation confirmed: ${campsite.name}, $start to $end")
+        notify(lottery.id, "Reservation confirmed: ${campsite.name}, $start to $end", NotificationType.CONFIRMATION)
         return null
     }
 
@@ -117,8 +117,7 @@ class ReservationController(private val store: CampStore) {
         store.updateReservation(reservation.copy(status = ReservationStatus.CANCELLED))
         notify(
             reservation.lotteryId,
-            "Reservation cancelled: ${reservation.campsiteName}, " +
-                "${reservation.startDate} to ${reservation.endDate}",
+            "Reservation cancelled: ${reservation.campsiteName}, ${reservation.startDate} to ${reservation.endDate}",
             NotificationType.CANCELLATION
         )
     }
@@ -227,11 +226,7 @@ class ReservationController(private val store: CampStore) {
         )
     }
 
-    private fun notify(
-        lotteryId: String?,
-        message: String,
-        type: NotificationType? = null
-    ) {
+    private fun notify(lotteryId: String?, message: String, type: NotificationType) {
         val user = store.currentUser ?: return
         store.addNotification(
             Notification(
@@ -241,10 +236,11 @@ class ReservationController(private val store: CampStore) {
                 recipientId = user.id,
                 message = message,
                 sentAt = System.currentTimeMillis().toString(),
-                type = type ?: Notification().type
+                type = type
             )
         )
     }
+
     /**
      * Active reservations for campsites owned by the signed-in owner.
      *
