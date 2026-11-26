@@ -45,7 +45,7 @@ class MessageController(private val store: CampStore) {
                 if (!belongsToUser) return@mapNotNull null
 
                 val latest = messages.maxByOrNull {
-                    it.sentAt.toLongOrNull() ?: 0L
+                    it.orderingTimeMillis()
                 } ?: return@mapNotNull null
                 val otherName = if (isEntrant) {
                     store.userById(ownerId)?.displayName()
@@ -58,7 +58,7 @@ class MessageController(private val store: CampStore) {
 
                 MessageConversationSummary(ownerId, entrantId, otherName, latest)
             }
-            .sortedByDescending { it.latestMessage.sentAt.toLongOrNull() ?: 0L }
+            .sortedByDescending { it.latestMessage.orderingTimeMillis() }
     }
 
     /**

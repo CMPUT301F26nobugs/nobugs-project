@@ -52,7 +52,7 @@ class MessageView(private val repository: DasCampRepository) : ModelView {
                         message.entrantId.isBlank() &&
                         message.reservationId in legacyReservationIds)
             }
-            .sortedBy { it.sentAt.toLongOrNull() ?: 0L }
+            .sortedBy { it.orderingTimeMillis() }
     }
 
     fun remove() {
