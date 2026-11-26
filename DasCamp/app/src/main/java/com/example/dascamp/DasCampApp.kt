@@ -248,7 +248,7 @@ fun DasCampApp() {
                 )
             }
             composable(OwnerRoutes.MAP) { OwnerMapLocation(navController, repository) }
-            composable(OwnerRoutes.QR) { OwnerQrCode(navController) }
+            composable(OwnerRoutes.QR) { OwnerQrCode(navController, repository) }
             composable(OwnerRoutes.LOTTERIES) { OwnerLotteryList(navController, repository) }
             composable(OwnerRoutes.CREATE) { OwnerCreateLottery(navController, repository) }
             composable(OwnerRoutes.LOTTERY) { OwnerLotteryDetails(navController, repository) }
