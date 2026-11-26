@@ -1,5 +1,9 @@
 package com.example.dascamp.screens.ownerScreens
 
+import android.content.Intent
+import android.graphics.Bitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +78,8 @@ import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.formatPrice
 import com.example.dascamp.views.MessageView
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import com.example.dascamp.controllers.QrCodeController
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.CampsiteMap
@@ -81,7 +87,11 @@ import com.example.dascamp.screens.EmptyValue
 import com.example.dascamp.screens.DatePickerField
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
 import com.example.dascamp.views.ReservationView
+import com.google.zxing.common.BitMatrix
 import java.util.UUID
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+
 
 /**
  * Owner home. The two large buttons open the campsite list and the lottery list.
@@ -447,28 +457,98 @@ fun OwnerMapLocation(navController: NavController, repository: DasCampRepository
 }
 
 /**
- * QR layout. The square is the space for the code.
- * Jess replaces this box with the generated code. The route stays ownerQrCode.
- */
+* QR code for one campsite (the one the owner opened).
+* Entrants scan it to open the campsite. The owner can save it as a picture or share it.
+*
+* @param navController used to go back
+* @param repository source of the campsite the owner opened
+*/
 @Composable
-fun OwnerQrCode(navController: NavController) {
-    OwnerPage(navController, showBack = true, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("QR code", style = MaterialTheme.typography.titleLarge)
-        Box(Modifier.size(220.dp)) { BlockBox(220) }
-        Text("ID: CAMP-HTN")
-        Text("Entrants can scan this code to view details and join the lottery")
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {}) {
-            Text("Download QR Code")
+fun OwnerQrCode(navController: NavController, repository: DasCampRepository? = null) {
+    val context = LocalContext.current
+    val qrController = remember { QrCodeController() }
+
+    var campsite: Campsite? = null
+    if (repository != null){
+        for (site in repository.campsites){
+            if(site.id == repository.openCampsiteId){
+                campsite = site
+            }
         }
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {}) {
-            Text("Share link")
+    }
+
+    if(campsite == null){
+        OwnerPage(navController, showBack = true){
+            Text("Campsite not found")
+        }
+        return
+    }
+
+    val text = qrController.qrText(campsite)
+    val bitmap = remember(text){qrBitmap(qrController.makeQr(text, 600))}
+
+    val savePng = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("image/png")
+    ) { uri ->
+        if (uri != null){
+            context.contentResolver.openOutputStream(uri)?.use { stream ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
         }
     }
 }
+    OwnerPage(navController, showBack = true, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("QR Code", style = MaterialTheme.typography.titleLarge)
+        Text(campsite.name, style = MaterialTheme.typography.titleMedium)
+
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = "QR Code for " + campsite.name,
+            modifier = Modifier.size(240.dp)
+        )
+        Text("ID: " + campsite.id)
+        Text("Entrants can scan this code to view details and join the lottery")
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { savePng.launch("dascamp-qr-" + campsite.id + ".png") }
+        ) { Text("Download QR Code") }
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                val share = Intent(Intent.ACTION_SEND)
+                share.type = "text/plain"
+                share.putExtra(
+                    Intent.EXTRA_TEXT,
+                    "Check out " + campsite.name + " on DasCamp: " + text
+                )
+                context.startActivity(Intent.createChooser(share, "Share Campsite"))
+            }
+        ) { Text("Share Link") }
+
+    }
+
+    }
+
+    /** Turns the QR grid into a picture: true = black square, false = white square */
+    fun qrBitmap(matrix: BitMatrix): Bitmap{
+    val width = matrix.width
+    val height = matrix.height
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+    for ( x in 0 until width){
+        for (y in 0 until height) {
+            if (matrix[x, y]) {
+                bitmap.setPixel(x, y, android.graphics.Color.BLACK)
+            } else {
+                bitmap.setPixel(x, y, android.graphics.Color.WHITE)
+            }
+        }
+    }
+        return bitmap
+    }
+
+
+
 
 
 /** Lottery list, opened from My Lotteries. The blank card opens one lottery's layout. */
