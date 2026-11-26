@@ -51,6 +51,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.ui.unit.dp
 import com.example.dascamp.controllers.AdminController
 import com.example.dascamp.model.CampStore
+import com.example.dascamp.model.Notification
+import com.example.dascamp.model.NotificationType
 import com.example.dascamp.model.OwnerApplicationStatus
 import com.example.dascamp.model.User
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
@@ -440,8 +442,11 @@ private fun OwnerApplicationCard(user: User, onApprove: () -> Unit, onDeny: () -
  * @param navController used for navigation
  */
 @Composable
-fun RequestLog(navController: NavController) {
-    LogScreen(navController, "Campsite Requests")
+fun RequestLog(
+    navController: NavController,
+    store: CampStore? = null
+) {
+    LogScreen(navController, "Campsite Requests", store) { it.type == NotificationType.WIN }
 }
 
 /**
@@ -450,8 +455,11 @@ fun RequestLog(navController: NavController) {
  * @param navController used for navigation
  */
 @Composable
-fun ApprovedLog(navController: NavController) {
-    LogScreen(navController, "Approved Requests")
+fun ApprovedLog(
+    navController: NavController,
+    store: CampStore? = null
+) {
+    LogScreen(navController, "Approved Requests", store) { it.type == NotificationType.CANCELLATION }
 }
 
 /**
@@ -460,8 +468,11 @@ fun ApprovedLog(navController: NavController) {
  * @param navController used for navigation
  */
 @Composable
-fun OtherLog(navController: NavController) {
-    LogScreen(navController, "Other")
+fun OtherLog(
+    navController: NavController,
+    store: CampStore? = null
+) {
+    LogScreen(navController, "Other", store) { true }
 }
 
 /**
@@ -472,7 +483,18 @@ fun OtherLog(navController: NavController) {
  * @param title the heading shown at the top of the screen
  */
 @Composable
-private fun LogScreen(navController: NavController, title: String) {
+private fun LogScreen(
+    navController: NavController,
+    title: String,
+    store: CampStore?,
+    include: (Notification) -> Boolean = { true }
+) {
+
+    val notes = store?.notifications.orEmpty()
+        .filter(include) // filter by notification types
+        .distinctBy { if (it.batchId.isBlank()) it.id else it.batchId } // Groups messages sent together
+        .sortedByDescending { it.sentAt.toLongOrNull() ?: 0L }
+
     AdminPage(
         navController = navController,
         showBack = true,
@@ -481,10 +503,42 @@ private fun LogScreen(navController: NavController, title: String) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
-        ) { Text(text = title, style = MaterialTheme.typography.titleLarge) }
+        ) {
+            Text(text = title, style = MaterialTheme.typography.titleLarge)
+        }
 
-        // Display log entries (to be implemented)
-        EmptyCard { /*TODO("Open log entry")*/ }
+        // Display notifications if the list is not empty
+        if (notes.isEmpty())
+            Text("No notifications found.")
+        notes.forEach { note ->
+
+            // Time sent
+            val time = note.sentAt.toLongOrNull()?.let {
+                // Format the time to display as "yyyy-MM-dd HH:mm"
+                java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.US)
+                    .format(java.util.Date(it))
+            } ?: "Unknown Time" // display "Unknown Time" if it cannot be formatted.
+
+            val sender = if (note.senderId.isBlank()) "System"
+                else store?.userById(note.senderId)?.displayName() ?: note.senderId
+
+            // Notification Container
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(note.message, style = MaterialTheme.typography.bodyLarge)
+                    Text("To: ${note.recipientName}", style = MaterialTheme.typography.bodyMedium)
+                    Text("From: $sender", style = MaterialTheme.typography.bodyMedium)   // new line
+                    Text("$time · ${note.type}", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
     }
 }
 
