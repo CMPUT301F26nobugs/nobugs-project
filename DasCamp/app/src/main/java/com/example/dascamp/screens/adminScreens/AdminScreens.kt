@@ -170,19 +170,21 @@ fun AdminProfileList(navController: NavController, campStore: CampStore) {
 
     //filter by entrant or owner toggles
     val filteredUsers = campStore.users.filter {u ->
-        val userType = if(selectedType == ProfileType.ENTRANT){
-            u.entrant
+        val matchedTypeFilter = if(u.admin){
+            false  //do not display admin
+        }else if(selectedType == ProfileType.ENTRANT){
+            u.entrant && !u.owner  //entrant role only, no owners
         }else if(selectedType == ProfileType.OWNER){
             u.owner
         }else{
             u.entrant || u.owner  //no filter appiled, only show entrants and owners, no admins
         }
 
-        val searchQuery = query.isBlank() ||
+        val matchedSearchResults = query.isBlank() ||
                 u.displayName().contains(query, ignoreCase = true) ||
                 u.email.contains(query, ignoreCase = true)
 
-        userType && searchQuery  //what the filter returns
+        matchedTypeFilter && matchedSearchResults  //what the filter returns
     }
 
     AdminPage(
@@ -254,7 +256,7 @@ fun AdminProfileList(navController: NavController, campStore: CampStore) {
  *
  * Both types can have their profile picture deleted. Entrants can additionally be
  * deleted, while owners offer a link to their messages with entrants and a
- * "Remove Campsite Owner" action. Destructive actions ask for confirmation first.
+ * "Revoke Campsite Owner Role" action. Destructive actions ask for confirmation first.
  * The profile data and the delete actions are still placeholders.
  *
  * @param navController used for back navigation and for following actions
@@ -270,16 +272,6 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
         showBack = true,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Title
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = if (profileType == ProfileType.ENTRANT) "Entrant Profile" else "Owner Profile",
-                style = MaterialTheme.typography.titleLarge
-            )
-        }
 
         if(user == null){
             Text("Profile not found")
@@ -339,7 +331,7 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
                     onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
                 ) { Text("View Messages with Entrants") }
 
-                // Owner only -> remove campsite owner
+                // Owner only -> remove campsite owner role
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     colors = destructiveButtonColors(),
@@ -347,7 +339,7 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
                         message = "Remove this campsite owner? This can't be undone.",
                         onConfirm = { navController.navigate(AdminRoutes.CAMPSITE_LIST) }
                     ) /*todo: implement delete*/
-                ) { Text("Remove Campsite Owner") }
+                ) { Text("Revoke Campsite Owner Role") }
             }
         }
     }
