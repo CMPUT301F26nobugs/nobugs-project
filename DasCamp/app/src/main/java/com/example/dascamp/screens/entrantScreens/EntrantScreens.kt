@@ -1756,53 +1756,6 @@ fun AppRules(onDismiss: () -> Unit) {
 }
 
 
-//campsite rules
-@Composable
-fun CampsiteRules(rulesText: String,
-                         onDismiss: () -> Unit,
-                         onConfirm: () -> Unit
-    ) {
-    var hasRead by rememberSaveable { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("App Guide & Policy") },
-        text = {
-            Column(
-                modifier = Modifier
-                    .heightIn(max = 400.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = 300.dp)
-                ) {
-                    Text(rulesText, style = MaterialTheme.typography.bodyMedium)
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { hasRead = !hasRead },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(checked = hasRead, onCheckedChange = { hasRead = it })
-                    Text("I have read and agree to the campsite rules and policies")
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = onConfirm, enabled = hasRead) {
-                Text("Confirm reservation")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
-}
-
-
 /**
  * QR code scanner screen for entrants.
  *
