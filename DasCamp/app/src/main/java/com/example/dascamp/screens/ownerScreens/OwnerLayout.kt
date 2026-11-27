@@ -1,5 +1,6 @@
 package com.example.dascamp.screens.ownerScreens
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -111,8 +113,12 @@ fun OwnerPage(
     showBack: Boolean,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     bottomBar: (@Composable () -> Unit)? = null,
+    topBar: (@Composable () -> Unit)? = null,
+    scrollState: ScrollState? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val pageScrollState = scrollState ?: rememberScrollState()
+
     OwnerTheme {
         AppScaffold(
             onBackClick = if (showBack) {
@@ -132,7 +138,7 @@ fun OwnerPage(
                             .align(Alignment.TopCenter)
                             .fillMaxWidth()
                             .widthIn(max = contentMaxWidth)
-                            .verticalScroll(rememberScrollState())
+                            .verticalScroll(pageScrollState)
                             .padding(screenPadding()),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         horizontalAlignment = horizontalAlignment,
@@ -145,13 +151,36 @@ fun OwnerPage(
                         .padding(innerPadding)
                         .fillMaxSize()
                 ) {
+                    topBar?.let {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .fillMaxWidth()
+                                .widthIn(max = contentMaxWidth)
+                                .padding(horizontal = screenPadding(), vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            it()
+                        }
+                    }
+                    if (topBar != null) {
+                        HorizontalDivider(
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .fillMaxWidth()
+                                .widthIn(max = contentMaxWidth)
+                                .padding(horizontal = screenPadding()),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                    }
                     Column(
                         modifier = Modifier
                             .weight(1f)
                             .align(Alignment.CenterHorizontally)
                             .fillMaxWidth()
                             .widthIn(max = contentMaxWidth)
-                            .verticalScroll(rememberScrollState())
+                            .verticalScroll(pageScrollState)
                             .padding(screenPadding()),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         horizontalAlignment = horizontalAlignment,
