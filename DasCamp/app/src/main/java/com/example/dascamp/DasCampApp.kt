@@ -231,7 +231,7 @@ fun DasCampApp() {
                     reservationView
                 )
             }
-            //composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController) }
+            composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController) }
 
             // OWNER NAVIGATION
             composable(OwnerRoutes.DASHBOARD) { OwnerDashboard(navController) }
