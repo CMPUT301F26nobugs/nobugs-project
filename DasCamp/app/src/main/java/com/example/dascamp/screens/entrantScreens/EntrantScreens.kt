@@ -109,6 +109,8 @@ import com.example.dascamp.model.label
 import com.example.dascamp.screens.LocalCurrentUser
 import com.example.dascamp.views.ReservationView
 import com.example.dascamp.views.NotificationView
+import com.example.dascamp.controllers.QrCameraPreview
+import com.example.dascamp.controllers.QrCodeController
 
 /**
  * Entrant home screen, with shortcuts to the campsite list, reservations,
@@ -1804,6 +1806,7 @@ fun CampsiteRules(rulesText: String,
 @Composable
 fun EntrantQrCodeScreen(navController: NavController) {
     val context = LocalContext.current
+    val qrController =  remember { QrCodeController() }
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
@@ -1839,7 +1842,8 @@ fun EntrantQrCodeScreen(navController: NavController) {
                     QrCameraPreview(
                         modifier = Modifier.fillMaxSize()
                     ) { scannedValue ->
-                        navController.navigate(EntrantRoutes.CAMPSITE)
+                        val campsiteID = qrController.campsiteIdFrom(scannedValue)
+                        navController.navigate("${EntrantRoutes.CAMPSITE}/$campsiteID")
                     }
                 } else {
                 Column(
@@ -1860,14 +1864,6 @@ fun EntrantQrCodeScreen(navController: NavController) {
             }
         }
     }
-}
-
-//camera for qr code scanning
-@Composable
-fun QrCameraPreview(
-    modifier: Modifier = Modifier,
-    onQrScanned: (String) -> Unit
-) {
 }
 
 //Rules and policies
