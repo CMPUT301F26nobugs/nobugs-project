@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -46,6 +47,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,11 +58,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.dascamp.controllers.LotteryNotificationAudience
+import com.example.dascamp.controllers.MessageController
 import com.example.dascamp.controllers.NotificationsController
+import com.example.dascamp.controllers.QrCodeController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.Campsite
@@ -70,27 +76,19 @@ import com.example.dascamp.model.DateRange
 import com.example.dascamp.model.LotteryFormState
 import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.NotificationType
-import com.example.dascamp.model.label
-import com.example.dascamp.model.Notification
-import com.example.dascamp.controllers.MessageController
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.formatPrice
-import com.example.dascamp.views.MessageView
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.platform.LocalContext
-import com.example.dascamp.controllers.QrCodeController
+import com.example.dascamp.model.label
 import com.example.dascamp.screens.BigButton
-import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.CampsiteMap
-import com.example.dascamp.screens.EmptyValue
 import com.example.dascamp.screens.DatePickerField
+import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
+import com.example.dascamp.views.MessageView
 import com.example.dascamp.views.ReservationView
 import com.google.zxing.common.BitMatrix
 import java.util.UUID
-import androidx.compose.foundation.Image
-import androidx.compose.ui.graphics.asImageBitmap
 
 
 /**
@@ -324,7 +322,9 @@ private fun CampsiteForm(
         CampsiteMap(
             latitude = startLatitude,
             longitude = startLongitude,
-            modifier = Modifier.fillMaxWidth().height(180.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp),
             onLocationPicked = {
                 pickedLatitude, pickedLongitude ->
                 form = form.copy(
@@ -403,13 +403,19 @@ fun OwnerBookedDates(navController: NavController, repository: DasCampRepository
         EntrantCalendarGrid(campsite, scheduleController)
         Row(verticalAlignment = Alignment.CenterVertically){
             Text("Open = ")
-            Box(modifier = Modifier.size(20.dp).background(Color.Green))
+            Box(modifier = Modifier
+                .size(20.dp)
+                .background(Color.Green))
             Spacer(modifier = Modifier.padding(8.dp))
             Text("Booked = ")
-            Box(modifier = Modifier.size(20.dp).background(Color.Red))
+            Box(modifier = Modifier
+                .size(20.dp)
+                .background(Color.Red))
             Spacer(modifier = Modifier.padding(8.dp))
             Text("Closed = ")
-            Box(modifier = Modifier.size(20.dp).background(Color.LightGray))
+            Box(modifier = Modifier
+                .size(20.dp)
+                .background(Color.LightGray))
         }
         Text("Stays", style = MaterialTheme.typography.titleMedium)
         if(booked.isEmpty()){
@@ -437,11 +443,16 @@ fun OwnerMapLocation(navController: NavController, repository: DasCampRepository
             Text("Location Name: " + campsite.location)
 
             //geolocation box
-            Box(modifier = Modifier.fillMaxWidth().height(300.dp).clipToBounds()){
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp)
+                .clipToBounds()){
                 CampsiteMap(
                     latitude = campsite.latitude,
                     longitude = campsite.longitude,
-                    modifier = Modifier.fillMaxWidth().height(300.dp)  //onLocationPicked = null -> view only, pin cannot be moved
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)  //onLocationPicked = null -> view only, pin cannot be moved
                 )
             }
 
@@ -469,33 +480,33 @@ fun OwnerQrCode(navController: NavController, repository: DasCampRepository? = n
     val qrController = remember { QrCodeController() }
 
     var campsite: Campsite? = null
-    if (repository != null){
-        for (site in repository.campsites){
-            if(site.id == repository.openCampsiteId){
+    if (repository != null) {
+        for (site in repository.campsites) {
+            if (site.id == repository.openCampsiteId) {
                 campsite = site
             }
         }
     }
 
-    if(campsite == null){
-        OwnerPage(navController, showBack = true){
+    if (campsite == null) {
+        OwnerPage(navController, showBack = true) {
             Text("Campsite not found")
         }
         return
     }
 
     val text = qrController.qrText(campsite)
-    val bitmap = remember(text){qrBitmap(qrController.makeQr(text, 600))}
+    val bitmap = remember(text) { qrBitmap(qrController.makeQr(text, 600)) }
 
     val savePng = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("image/png")
     ) { uri ->
-        if (uri != null){
+        if (uri != null) {
             context.contentResolver.openOutputStream(uri)?.use { stream ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+            }
         }
     }
-}
     OwnerPage(navController, showBack = true, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("QR Code", style = MaterialTheme.typography.titleLarge)
         Text(campsite.name, style = MaterialTheme.typography.titleMedium)
@@ -528,7 +539,7 @@ fun OwnerQrCode(navController: NavController, repository: DasCampRepository? = n
 
     }
 
-    }
+}
 
     /** Turns the QR grid into a picture: true = black square, false = white square */
     fun qrBitmap(matrix: BitMatrix): Bitmap{
@@ -1040,7 +1051,9 @@ fun OwnerMessageList(navController: NavController, repository: DasCampRepository
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(
-                        modifier = Modifier.padding(start = 16.dp).weight(1f)
+                        modifier = Modifier
+                            .padding(start = 16.dp)
+                            .weight(1f)
                     ) {
                         Text(thread.otherName, style = MaterialTheme.typography.bodyLarge)
                         Text(
@@ -1315,26 +1328,4 @@ private fun FormField(
         enabled = enabled,
         singleLine = true
     )
-}
-
-@Composable
-private fun CalendarGrid() {
-    Row(Modifier.fillMaxWidth()) {
-        listOf("S", "M", "T", "W", "T", "F", "S").forEach {
-            Text(it, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-        }
-    }
-    repeat(5) {
-        Row(Modifier.fillMaxWidth().height(36.dp), verticalAlignment = Alignment.CenterVertically) {
-            repeat(7) {
-                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Box(
-                        Modifier
-                            .size(28.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                    )
-                }
-            }
-        }
-    }
 }

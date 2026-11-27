@@ -122,6 +122,14 @@ class ReservationController(private val store: CampStore) {
         )
     }
 
+    /**
+     * Owner rejects a reservation at one of their campsites (US 02.08.01).
+     * Marks it CANCELLED with the reason, and sends the entrant a notification.
+     *
+     * @param reservation the reservation to reject
+     * @param reason why it is rejected, shown to the entrant
+     * @return null if it was rejected, or an error message to show
+     */
     fun reject(reservation: Reservation, reason: String): String?{
         if(reason.isBlank()){
             return "Enter a reason for rejecting"
@@ -171,7 +179,7 @@ class ReservationController(private val store: CampStore) {
             return "You can only rate your own stays"
         }
         if(reservation.status == ReservationStatus.CANCELLED){
-            return "Cancelled stays cant be rated"
+            return "Cancelled stays can't be rated"
         }
         if (reservation.rating != 0){
             return "You already rated this stay"

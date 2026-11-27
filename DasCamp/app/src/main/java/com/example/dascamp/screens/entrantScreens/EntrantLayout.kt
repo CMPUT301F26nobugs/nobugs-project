@@ -1,6 +1,6 @@
 package com.example.dascamp.screens.entrantScreens
 
-import android.icu.util.Calendar
+import java.util.Calendar
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
