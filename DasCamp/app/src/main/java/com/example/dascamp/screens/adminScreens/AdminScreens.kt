@@ -83,7 +83,8 @@ import com.example.dascamp.screens.entrantScreens.readableCoordinates
  */
 enum class ProfileType(val label: String) {
     ENTRANT("Entrants"),
-    OWNER("Owners")
+    OWNER("Owners"),
+    ADMIN("Admins")
 }
 
 /**
@@ -182,8 +183,10 @@ fun AdminProfileList(navController: NavController, campStore: CampStore) {
 
     //filter by entrant or owner toggles
     val filteredUsers = campStore.users.filter {u ->
-        val matchedTypeFilter = if(u.admin){
-            false  //do not display admin
+        val matchedTypeFilter = if(selectedType == ProfileType.ADMIN){  //filter chip selected is admin
+            u.admin  //only show admins
+        }else if(u.admin){
+            false  //do not display admins in general list
         }else if(selectedType == ProfileType.ENTRANT){
             u.entrant && !u.owner  //entrant role only, no owners
         }else if(selectedType == ProfileType.OWNER){
@@ -242,9 +245,11 @@ fun AdminProfileList(navController: NavController, campStore: CampStore) {
             Card(
                 modifier = Modifier.fillMaxWidth()
                     .clickable {
-                        val type = if(user.owner){  //determine the user type of the clicked profile
+                        val type = if(user.admin){  //determine the user type of the clicked profile
+                            ProfileType.ADMIN
+                        }else if(user.owner){
                             ProfileType.OWNER
-                        } else{
+                        }else{
                             ProfileType.ENTRANT
                         }
                         navController.navigate(AdminRoutes.profile(type, user.id))
@@ -284,6 +289,23 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
         showBack = true,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+
+        //display what role the use has in their profile
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = if(profileType == ProfileType.ADMIN){
+                    "Admin"
+                }else if(profileType == ProfileType.OWNER){
+                    "Entrant/Owner"
+                }else{
+                    "Entrant"
+                },
+                style = MaterialTheme.typography.titleLarge
+            )
+        }
 
         if(user == null){
             Text("Profile not found")
@@ -344,19 +366,21 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
                     Text("Revoke Campsite Owner Role")
                 }
             }
-            //delete profile
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                colors = destructiveButtonColors(),
-                onClick = rememberConfirmClick(
-                    message = "Remove this profile? This can't be undone.",
-                    onConfirm = {
-                        campStore.deleteUser(user)
-                        navController.popBackStack()  //for owner profile, if came from campsite page to back to camp list, if come from profile list, go back to profile list
-                    }
-                )
-            ) {
-                Text("Delete Profile")
+            //delete profile option only for entrants and owners, cannot delete admins
+            if(profileType != ProfileType.ADMIN) {
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = destructiveButtonColors(),
+                    onClick = rememberConfirmClick(
+                        message = "Remove this profile? This can't be undone.",
+                        onConfirm = {
+                            campStore.deleteUser(user)
+                            navController.popBackStack()  //for owner profile, if came from campsite page to back to camp list, if come from profile list, go back to profile list
+                        }
+                    )
+                ) {
+                    Text("Delete Profile")
+                }
             }
         }
     }
@@ -757,7 +781,7 @@ fun AdminViewCampsite(
             }
         }
         //delete image option only if there is an image
-        if(!campsite.imageUri.isNullOrBlank()){
+        if (!campsite.imageUri.isNullOrBlank()) {
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 colors = destructiveButtonColors(),
@@ -767,7 +791,7 @@ fun AdminViewCampsite(
                         repository.updateCampsite(campsite.copy(imageUri = ""))
                     }
                 )
-            ){
+            ) {
                 Text("Delete Campsite Image")
             }
         }
@@ -898,7 +922,7 @@ fun AdminViewCampsite(
                             onClick = {
                                 pendingRemoval = review.id to "rating"
                             }
-                        ){
+                        ) {
                             Text("Remove Rating")
                         }
                         Button(
@@ -907,7 +931,7 @@ fun AdminViewCampsite(
                             onClick = {
                                 pendingRemoval = review.id to "review"
                             }
-                        ){
+                        ) {
                             Text("Remove Review")
                         }
                     }
@@ -971,39 +995,41 @@ fun AdminViewCampsite(
 
 
         // view messages with entrants (same message list as from a campsite)
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+        ) { Text("View Messages between Owner and Entrants") }
+
+        if (campsite.ownerId.isBlank()) {
+            Text(
+                "There is no owner for this campsite",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
-            ) { Text("View Messages between Owner and Entrants") }
-
-            if(campsite.ownerId.isBlank()){
-                Text("There is no owner for this campsite", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }else {
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = {
-                        navController.navigate(AdminRoutes.profile(ProfileType.OWNER, campsite.ownerId))
-                    }
-                ){
-                    Text("View Owner Profile")
+                onClick = {
+                    navController.navigate(AdminRoutes.profile(ProfileType.OWNER, campsite.ownerId))
                 }
+            ) {
+                Text("View Owner Profile")
             }
+        }
 
         // remove campsite
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                colors = destructiveButtonColors(),
-                onClick = rememberConfirmClick(
-                    message = "Remove this campsite? This can't be undone.",
-                    onConfirm = {
-                        repository.deleteCampsite(campsite)
-                        navController.navigate(AdminRoutes.CAMPSITE_LIST)
-                    }
-                )
-            ){
-                Text("Remove Campsite")
-            }
-
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            colors = destructiveButtonColors(),
+            onClick = rememberConfirmClick(
+                message = "Remove this campsite? This can't be undone.",
+                onConfirm = {
+                    repository.deleteCampsite(campsite)
+                    navController.navigate(AdminRoutes.CAMPSITE_LIST)
+                }
+            )
+        ) {
+            Text("Remove Campsite")
+        }
     }
 }
 
