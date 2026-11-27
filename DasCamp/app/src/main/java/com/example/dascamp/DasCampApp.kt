@@ -24,6 +24,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.controllers.AdminController
 import com.example.dascamp.controllers.CampsiteController
 import com.example.dascamp.controllers.LotteryDrawWorker
+import com.example.dascamp.controllers.LotteryProposalController
 import com.example.dascamp.controllers.NotificationsController
 import com.example.dascamp.controllers.ProfileController
 import com.example.dascamp.controllers.ReservationController
@@ -66,6 +67,7 @@ import com.example.dascamp.screens.ownerScreens.OwnerDashboard
 import com.example.dascamp.screens.ownerScreens.OwnerEditCampsite
 import com.example.dascamp.screens.ownerScreens.OwnerEditLottery
 import com.example.dascamp.screens.ownerScreens.OwnerLotteryDetails
+import com.example.dascamp.screens.ownerScreens.OwnerLotteryApprovals
 import com.example.dascamp.screens.ownerScreens.OwnerLotteryList
 import com.example.dascamp.screens.ownerScreens.OwnerMapLocation
 import com.example.dascamp.screens.ownerScreens.OwnerMessageList
@@ -141,6 +143,9 @@ fun DasCampApp() {
     val reservationView = remember(repository) { ReservationView(repository) }
     val notificationView = remember(repository) { NotificationView(repository) }
     val notificationsController = remember(repository) { NotificationsController(repository) }
+    val lotteryProposalController = remember(repository) {
+        LotteryProposalController(repository)
+    }
     val adminController = remember(repository) { AdminController(repository) }
 
     // Persist the draw check across app closes and device restarts. The one-time
@@ -234,7 +239,12 @@ fun DasCampApp() {
             composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController, repository) }
 
             // OWNER NAVIGATION
-            composable(OwnerRoutes.DASHBOARD) { OwnerDashboard(navController) }
+            composable(OwnerRoutes.DASHBOARD) {
+                OwnerDashboard(navController, repository)
+            }
+            composable(OwnerRoutes.APPROVALS) {
+                OwnerLotteryApprovals(navController, repository, lotteryProposalController)
+            }
             composable(OwnerRoutes.CAMPSITES) { OwnerCampsitesList(navController, repository) }
             composable(OwnerRoutes.ADD) { OwnerAddCampsite(navController, repository) }
             composable(OwnerRoutes.CAMPSITE) { OwnerCampsite(navController, repository) }
@@ -253,7 +263,9 @@ fun DasCampApp() {
             composable(OwnerRoutes.CREATE) { OwnerCreateLottery(navController, repository) }
             composable(OwnerRoutes.LOTTERY) { OwnerLotteryDetails(navController, repository) }
             composable(OwnerRoutes.EDIT_LOTTERY) { OwnerEditLottery(navController, repository) }
-            composable(OwnerRoutes.ALERTS) { OwnerNotifications(navController, repository) }
+            composable(OwnerRoutes.ALERTS) {
+                OwnerNotifications(navController, repository, notificationsController)
+            }
             composable(OwnerRoutes.SEND) {
                 OwnerSendNotification(navController, notificationsController, repository)
             }

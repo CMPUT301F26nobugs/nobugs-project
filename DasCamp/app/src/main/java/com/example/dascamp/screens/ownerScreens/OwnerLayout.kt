@@ -64,6 +64,7 @@ object OwnerRoutes {
     const val PROFILE = "ownerProfile"
     const val MESSAGE_LIST = "ownerMessageList"
     const val MESSAGE = "ownerMessages"
+    const val APPROVALS = "ownerLotteryApprovals"
 }
 
 /** Navbar tabs return to the dashboard first, so Back does not replay every tab */
