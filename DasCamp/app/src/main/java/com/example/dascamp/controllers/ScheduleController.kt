@@ -3,9 +3,10 @@ package com.example.dascamp.controllers
 import com.example.dascamp.model.CampStore
 import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.Lottery
+import com.example.dascamp.model.LotteryStatus
+import com.example.dascamp.model.Notification
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
-import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.WaitlistStatus
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -110,6 +111,9 @@ class ScheduleController (private val store: CampStore){
         if (lottery == null || lottery.status != LotteryStatus.DRAWN) {
             return "You can book only after being selected in an active lottery"
         }
+        if (campsite.id !in lottery.campsiteIds) {
+            return "Choose a campsite included in this lottery"
+        }
         val entry = lottery.entrants.firstOrNull { it.entrantId == entrantId }
             ?: return "You are not on this lottery waitlist"
         if (entry.status != WaitlistStatus.SELECTED) {
@@ -163,7 +167,19 @@ class ScheduleController (private val store: CampStore){
             guestCount = guestCount,
             rulesAccepted = rulesAccepted
         )
-        store.addReservation(reservation)
+        store.addReservation(reservation) // add reservation to firebase
+        store.addNotification( // add notification to firebase
+            Notification(
+                id = UUID.randomUUID().toString(),
+                lotteryId = lottery.id,
+                recipientName = entrantName,
+                recipientId = entrantId,
+                message = "Reservation confirmed: ${campsite.name}, $startDate to $endDate",
+                sentAt = System.currentTimeMillis().toString()
+                // type = ...  use an existing NotificationType, or add CONFIRMATION to the enum
+            )
+        )
+
 
         store.updateLottery(lottery.copy(entrants = lottery.entrants.map {
             if (it.entrantId == entrantId) {

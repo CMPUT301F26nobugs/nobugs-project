@@ -3,15 +3,107 @@ package com.example.dascamp.controllers
 import com.example.dascamp.model.CampStore
 import com.example.dascamp.model.Notification
 import com.example.dascamp.model.NotificationType
+import com.example.dascamp.model.WaitlistStatus
+import java.util.UUID
+
+enum class LotteryNotificationAudience(val label: String) {
+    ALL_PARTICIPANTS("All Participants"),
+    ALL_WAITLIST("Waiting Entrants"),
+    WINNERS("Winners"),
+    NOT_SELECTED("Not Selected")
+}
+
+data class NotificationSendResult(
+    val sentCount: Int = 0,
+    val error: String? = null
+)
 
 /** Coordinates notification inbox actions and lottery outcome messages. */
 class NotificationsController(private val store: CampStore) {
 
+    /** Sends one in-app notification record to each matching lottery entrant. */
+    fun sendLotteryMessage(
+        lotteryId: String,
+        audience: LotteryNotificationAudience,
+        message: String
+    ): NotificationSendResult {
+        val owner = store.currentUser
+            ?: return NotificationSendResult(error = "Sign up first")
+        if (!owner.owner) {
+            return NotificationSendResult(error = "Only campsite owners can send lottery notifications")
+        }
+
+        val lottery = store.lotteries.firstOrNull { it.id == lotteryId }
+            ?: return NotificationSendResult(error = "Lottery not found")
+
+        val ownsLottery = lottery.campsiteIds.isNotEmpty() &&
+            lottery.campsiteIds.all { campsiteId ->
+                store.campsites.any {
+                    it.id == campsiteId && it.ownerId == owner.id
+                }
+            }
+        if (!ownsLottery) {
+            return NotificationSendResult(error = "You can only message entrants for your own lottery")
+        }
+
+        val body = message.trim()
+        if (body.isEmpty()) {
+            return NotificationSendResult(error = "Enter a message")
+        }
+
+        val recipients = lottery.entrants
+            .filter { entrant ->
+                when (audience) {
+                    LotteryNotificationAudience.ALL_WAITLIST ->
+                        entrant.status == WaitlistStatus.WAITING
+                    LotteryNotificationAudience.ALL_PARTICIPANTS -> true
+                    LotteryNotificationAudience.WINNERS ->
+                        entrant.status == WaitlistStatus.SELECTED ||
+                            entrant.status == WaitlistStatus.BOOKED
+                    LotteryNotificationAudience.NOT_SELECTED ->
+                        entrant.status == WaitlistStatus.NOT_SELECTED
+                }
+            }
+            .filter { it.entrantId.isNotBlank() }
+            .distinctBy { it.entrantId }
+
+        if (recipients.isEmpty()) {
+            return NotificationSendResult(error = "No entrants match this recipient group")
+        }
+
+        val batchId = UUID.randomUUID().toString()
+        val sentAt = System.currentTimeMillis().toString()
+        recipients.forEach { entrant ->
+            store.addNotification(
+                Notification(
+                    id = UUID.randomUUID().toString(),
+                    batchId = batchId,
+                    lotteryId = lottery.id,
+                    recipientName = entrant.name,
+                    recipientId = entrant.entrantId,
+                    senderId = owner.id,
+                    message = body,
+                    sentAt = sentAt,
+                    type = NotificationType.OWNER_MESSAGE
+                )
+            )
+        }
+        return NotificationSendResult(sentCount = recipients.size)
+    }
+
     /** Notifications addressed to the signed-in entrant, newest first. */
-    fun inbox(notifications: List<Notification> = store.notifications): List<Notification> =
-        notifications
+    fun inbox(notifications: List<Notification> = store.notifications): List<Notification> {
+        val user = store.currentUser
+        android.util.Log.d("InboxDebug", "user=${user?.id} notificationsOn=${user?.notificationsOn} total=${notifications.size}")
+
+        // Return an empty list if notifications are off or user doesn't exist
+        if (user == null || !user.notificationsOn) return emptyList()
+
+        // otherwise return notifications
+        return notifications
             .filter { it.recipientId == store.uid }
             .sortedByDescending { it.sentAt.toLongOrNull() ?: 0L }
+    }
 
     /** Remove only a notification belonging to the signed-in user. */
     fun dismiss(notification: Notification) {
