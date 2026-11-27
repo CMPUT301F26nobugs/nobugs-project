@@ -3,6 +3,7 @@ package com.example.dascamp.screens.ownerScreens
 import android.content.Intent
 import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -65,6 +66,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -76,6 +78,7 @@ import com.example.dascamp.controllers.NotificationsController
 import com.example.dascamp.controllers.QrCodeController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
+import com.example.dascamp.controllers.copyPickedImage
 import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.CampsiteFormState
 import com.example.dascamp.model.DasCampRepository
@@ -97,12 +100,13 @@ import com.example.dascamp.screens.EmptyValue
 import com.example.dascamp.screens.LocalCurrentUser
 import com.example.dascamp.screens.DatePickerField
 import com.example.dascamp.screens.ProfileAction
+import com.example.dascamp.screens.StoredImage
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
 import com.example.dascamp.views.MessageView
 import com.example.dascamp.views.ReservationView
 import com.google.zxing.common.BitMatrix
 import java.util.UUID
-
+import com.example.dascamp.controllers.copyPickedImage
 
 /**
  * Owner home. The two large buttons open the campsite list and the lottery list.
@@ -255,6 +259,14 @@ fun OwnerCampsite(
     }
     OwnerPage(navController, showBack = true) {
         Text(campsite.name, style = MaterialTheme.typography.titleLarge)
+        if(!campsite.imageUri.isNullOrBlank()){
+            StoredImage(
+                path = campsite.imageUri,
+                contentDescription = campsite.name,
+                modifier = Modifier.fillMaxWidth().height(400.dp),
+                contentScale = ContentScale.Fit
+            ) {}
+        }
 
         //Location
         Text("Location", style = MaterialTheme.typography.titleMedium)
@@ -362,6 +374,19 @@ private fun CampsiteForm(
         )
     }
     var error by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) {uri ->
+        if (uri != null){
+            val path = copyPickedImage(context, uri, "campsite-" + System.currentTimeMillis() + ".jpg")
+            if (path == null){
+                error = "Could not save that picture"
+            } else{
+                form = form.copy(imageUri = path)
+            }
+        }
+    }
     OwnerPage(navController, showBack = true) {
         Text(title, style = MaterialTheme.typography.titleLarge)
         FormField("Name", form.name, onValueChange = { typed -> form = form.copy(name = typed) })
@@ -421,7 +446,27 @@ private fun CampsiteForm(
             label = { Text("Available to") }
         )
         error?.let { Text(it) }
-        Button(onClick = {}) { Text("Upload photo") }
+        Text("Photo (optional)", style = MaterialTheme.typography.titleMedium)
+        StoredImage(
+            path = form.imageUri,
+            contentDescription = "Campsite Photo",
+            modifier = Modifier.fillMaxWidth().height(400.dp),
+            contentScale = ContentScale.Fit
+                ) {
+            Text("No photo yet")
+        }
+        Button(onClick = {
+            photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        }) {
+            if (form.imageUri.isNullOrBlank()){
+                Text("Upload Photo")
+            } else{
+                Text("Change Photo")
+            }
+        }
+        if (!form.imageUri.isNullOrBlank()){
+            TextButton(onClick = { form = form.copy(imageUri = null) }) { Text("Remove photo") }
+        }
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
