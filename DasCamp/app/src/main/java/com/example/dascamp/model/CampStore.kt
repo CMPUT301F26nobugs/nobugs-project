@@ -1,5 +1,7 @@
 package com.example.dascamp.model
 
+import com.google.android.gms.tasks.Task
+
 /**
  * Data access used by controllers.
  */
@@ -7,6 +9,7 @@ interface CampStore {
     val uid: String
     val campsites: List<Campsite>
     val lotteries: List<Lottery>
+    val lotteryProposals: List<LotteryProposal>
     val reservations: List<Reservation>
     val notifications: List<Notification>
     val users: List<User>
@@ -20,6 +23,19 @@ interface CampStore {
     fun addLottery(lottery: Lottery)
     fun updateLottery(lottery: Lottery)
     fun deleteLottery(lottery: Lottery)
+    fun createLotteryProposal(
+        proposal: LotteryProposal,
+        requestNotifications: List<Notification>
+    ): Task<Void>
+    fun respondToLotteryProposal(
+        proposalId: String,
+        ownerId: String,
+        approve: Boolean
+    ): Task<LotteryProposalAction>
+    fun cancelLotteryProposal(
+        proposalId: String,
+        creatorId: String
+    ): Task<LotteryProposalAction>
     fun addReservation(reservation: Reservation)
     fun updateReservation(reservation: Reservation)
     fun deleteReservation(reservation: Reservation)

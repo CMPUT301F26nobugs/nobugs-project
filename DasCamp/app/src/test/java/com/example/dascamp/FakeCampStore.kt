@@ -1,6 +1,8 @@
 package com.example.dascamp
 
 import com.example.dascamp.model.*
+import com.google.android.gms.tasks.Task
+import com.google.android.gms.tasks.Tasks
 
 /**
  * In-memory [CampStore] for JUnit tests.
@@ -10,6 +12,7 @@ import com.example.dascamp.model.*
 class FakeCampStore(override val uid: String) : CampStore {
     private val _campsites = mutableListOf<Campsite>()
     private val _lotteries = mutableListOf<Lottery>()
+    private val _lotteryProposals = mutableListOf<LotteryProposal>()
     private val _reservations = mutableListOf<Reservation>()
     private val _notifications = mutableListOf<Notification>()
     private val _users = mutableListOf<User>()
@@ -18,6 +21,7 @@ class FakeCampStore(override val uid: String) : CampStore {
 
     override val campsites: List<Campsite> get() = _campsites
     override val lotteries: List<Lottery> get() = _lotteries
+    override val lotteryProposals: List<LotteryProposal> get() = _lotteryProposals
     override val reservations: List<Reservation> get() = _reservations
     override val notifications: List<Notification> get() = _notifications
     override val users: List<User> get() = _users
@@ -41,6 +45,93 @@ class FakeCampStore(override val uid: String) : CampStore {
     override fun updateLottery(lottery: Lottery) = addLottery(lottery)
     override fun deleteLottery(lottery: Lottery) {
         _lotteries.removeAll { it.id == lottery.id }
+    }
+
+    override fun createLotteryProposal(
+        proposal: LotteryProposal,
+        requestNotifications: List<Notification>
+    ): Task<Void> {
+        _lotteryProposals.removeAll { it.id == proposal.id }
+        _lotteryProposals.add(proposal)
+        requestNotifications.forEach(::addNotification)
+        return Tasks.forResult<Void>(null)
+    }
+
+    override fun respondToLotteryProposal(
+        proposalId: String,
+        ownerId: String,
+        approve: Boolean
+    ): Task<LotteryProposalAction> {
+        val proposal = _lotteryProposals.firstOrNull { it.id == proposalId }
+            ?: return Tasks.forResult(LotteryProposalAction.NOT_FOUND)
+        if (proposal.status != LotteryProposalStatus.PENDING) {
+            return Tasks.forResult(LotteryProposalAction.NOT_PENDING)
+        }
+        val ownApproval = proposal.ownerApprovals.firstOrNull { it.ownerId == ownerId }
+            ?: return Tasks.forResult(LotteryProposalAction.NOT_AUTHORIZED)
+        if (ownApproval.status != OwnerApprovalStatus.PENDING) {
+            return Tasks.forResult(LotteryProposalAction.ALREADY_RESPONDED)
+        }
+
+        val approvals = proposal.ownerApprovals.map { approval ->
+            if (approval.ownerId == ownerId) {
+                approval.copy(
+                    status = if (approve) OwnerApprovalStatus.APPROVED
+                    else OwnerApprovalStatus.DECLINED
+                )
+            } else approval
+        }
+        val rejected = !approve
+        val allApproved = approvals.all { it.status == OwnerApprovalStatus.APPROVED }
+        val updated = proposal.copy(
+            ownerApprovals = approvals,
+            status = when {
+                rejected -> LotteryProposalStatus.REJECTED
+                allApproved -> LotteryProposalStatus.PUBLISHED
+                else -> LotteryProposalStatus.PENDING
+            }
+        )
+        _lotteryProposals.removeAll { it.id == proposalId }
+        _lotteryProposals.add(updated)
+        when {
+            rejected -> updated.notifications(
+                NotificationType.LOTTERY_PROPOSAL_UPDATE,
+                "The shared lottery proposal \"${proposal.lotteryDraft.name}\" was rejected.",
+                proposal.creatorId
+            ).forEach(::addNotification)
+            allApproved -> {
+                addLottery(proposal.lotteryDraft.copy(status = LotteryStatus.OPEN))
+                updated.notifications(
+                    NotificationType.LOTTERY_PROPOSAL_UPDATE,
+                    "The shared lottery \"${proposal.lotteryDraft.name}\" was published.",
+                    proposal.creatorId
+                ).forEach(::addNotification)
+            }
+        }
+        return Tasks.forResult(LotteryProposalAction.UPDATED)
+    }
+
+    override fun cancelLotteryProposal(
+        proposalId: String,
+        creatorId: String
+    ): Task<LotteryProposalAction> {
+        val proposal = _lotteryProposals.firstOrNull { it.id == proposalId }
+            ?: return Tasks.forResult(LotteryProposalAction.NOT_FOUND)
+        if (proposal.creatorId != creatorId) {
+            return Tasks.forResult(LotteryProposalAction.NOT_AUTHORIZED)
+        }
+        if (proposal.status != LotteryProposalStatus.PENDING) {
+            return Tasks.forResult(LotteryProposalAction.NOT_PENDING)
+        }
+        val cancelled = proposal.copy(status = LotteryProposalStatus.CANCELLED)
+        _lotteryProposals.removeAll { it.id == proposalId }
+        _lotteryProposals.add(cancelled)
+        cancelled.notifications(
+            NotificationType.LOTTERY_PROPOSAL_UPDATE,
+            "The shared lottery proposal \"${proposal.lotteryDraft.name}\" was cancelled.",
+            creatorId
+        ).forEach(::addNotification)
+        return Tasks.forResult(LotteryProposalAction.UPDATED)
     }
 
     override fun addReservation(reservation: Reservation) {

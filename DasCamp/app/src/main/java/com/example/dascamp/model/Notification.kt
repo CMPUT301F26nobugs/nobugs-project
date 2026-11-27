@@ -9,7 +9,10 @@ package com.example.dascamp.model
  * - [CONFIRMATION]: a reservation or selection was confirmed.
  * - [CANCELLATION]: a reservation or selection was cancelled.
  */
-enum class NotificationType { OWNER_MESSAGE, WIN, LOSE, CONFIRMATION, CANCELLATION }
+enum class NotificationType {
+    OWNER_MESSAGE, WIN, LOSE, CONFIRMATION, CANCELLATION,
+    LOTTERY_USE_REQUEST, LOTTERY_PROPOSAL_UPDATE
+}
 
 /**
  * A notification sent to a user, such as a lottery result or a message from a campsite owner.
@@ -32,6 +35,7 @@ data class Notification(
     /** Shared by the individual recipient records created by one owner send. */
     val batchId: String = "",
     val lotteryId: String? = null,
+    val proposalId: String? = null,
     val recipientName: String = "",
     val message: String = "",
     val sentAt: String = "",

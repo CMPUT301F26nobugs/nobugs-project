@@ -28,9 +28,13 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -177,19 +181,31 @@ fun EntrantDashboard(navController: NavController) {
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { navController.navigate(EntrantRoutes.NOTIFICATION_LIST) }
-            ) { Text("Notifications") }
+            ) {
+                Icon(Icons.Default.Campaign, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Notifications")
+            }
 
             // Message list button
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { navController.navigate(EntrantRoutes.MESSAGE_LIST) }
-            ) { Text("Messages") }
+            ) {
+                Icon(Icons.Default.ChatBubbleOutline, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Messages")
+            }
 
             // Scan QR code button
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { navController.navigate(EntrantRoutes.QR) }
-            ) { Text("Scan QR") }
+            ) {
+                Icon(Icons.Default.QrCodeScanner, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Scan QR")
+            }
         }
     }
 }
