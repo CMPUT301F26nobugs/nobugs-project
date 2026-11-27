@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -1103,6 +1104,10 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
         repository?.let { MessageView(it) }
     }
     DisposableEffect(view) { onDispose { view?.remove() } }
+    val messageScrollState = rememberScrollState()
+    LaunchedEffect(view?.messages?.size) {
+        messageScrollState.animateScrollTo(messageScrollState.maxValue)
+    }
     val reservation = repository?.reservations?.find { it.id == repository.openReservationId }
     val ownerId = repository?.openMessageOwnerId?.ifBlank {
         reservation?.let { selected ->
@@ -1134,6 +1139,10 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
     OwnerPage(
         navController,
         showBack = true,
+        topBar = {
+            Text(entrantName, style = MaterialTheme.typography.titleLarge)
+        },
+        scrollState = messageScrollState,
         bottomBar = if (ownerId == repository?.uid && entrantId.isNotBlank()) {{
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 error?.let { Text(it) }
@@ -1154,7 +1163,6 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
             }
         }} else null
     ) {
-        Text(entrantName, style = MaterialTheme.typography.titleLarge)
         if (ownerId != repository?.uid || entrantId.isBlank()) {
             Text("Open a participant conversation from a lottery or reservation.")
         } else {

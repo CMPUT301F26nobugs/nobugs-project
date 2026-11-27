@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Image
@@ -1296,6 +1297,10 @@ fun EntrantMessageScreen(
         repository?.let { MessageView(it) }
     }
     DisposableEffect(view) { onDispose { view?.remove() } }
+    val messageScrollState = rememberScrollState()
+    LaunchedEffect(view?.messages?.size) {
+        messageScrollState.animateScrollTo(messageScrollState.maxValue)
+    }
 
     val reservation = repository?.reservations?.find { it.id == repository.openReservationId }
     val campsite = repository?.campsites?.find { it.id == reservation?.campsiteId }
@@ -1323,6 +1328,10 @@ fun EntrantMessageScreen(
     EntrantPage(
         navController,
         showBack = true,
+        topBar = {
+            Text(text = title, style = MaterialTheme.typography.titleLarge)
+        },
+        scrollState = messageScrollState,
         bottomBar = if (ownerId.isNotBlank() && entrantId.isNotBlank()) {{
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 sendError?.let { Text(it) }
@@ -1343,16 +1352,6 @@ fun EntrantMessageScreen(
             }
         }} else null
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = title, style = MaterialTheme.typography.titleLarge)
-            }
-        }
-
         if (ownerId.isBlank() || entrantId.isBlank()) {
             Text("Open a conversation from a campsite, lottery, or reservation.")
         } else {

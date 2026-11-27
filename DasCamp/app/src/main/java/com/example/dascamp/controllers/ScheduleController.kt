@@ -179,7 +179,6 @@ class ScheduleController (private val store: CampStore){
                 recipientId = entrantId,
                 message = "Reservation confirmed: ${campsite.name}, $startDate to $endDate",
                 sentAt = System.currentTimeMillis().toString()
-                // type = ...  use an existing NotificationType, or add CONFIRMATION to the enum
             )
         )
 

@@ -4,6 +4,7 @@ import java.util.Calendar
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -102,8 +104,12 @@ fun EntrantPage(
     showBack: Boolean,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     bottomBar: (@Composable () -> Unit)? = null,
+    topBar: (@Composable () -> Unit)? = null,
+    scrollState: ScrollState? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val pageScrollState = scrollState ?: rememberScrollState()
+
     AppScaffold(
         onBackClick = if (showBack) {
             { navController.popBackStack() }
@@ -122,7 +128,7 @@ fun EntrantPage(
                         .align(Alignment.TopCenter)
                         .fillMaxWidth()
                         .widthIn(max = contentMaxWidth)
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(pageScrollState)
                         .padding(screenPadding()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalAlignment = horizontalAlignment,
@@ -135,13 +141,36 @@ fun EntrantPage(
                     .padding(innerPadding)
                     .fillMaxSize()
             ) {
+                topBar?.let {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .fillMaxWidth()
+                            .widthIn(max = contentMaxWidth)
+                            .padding(horizontal = screenPadding(), vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        it()
+                    }
+                }
+                if (topBar != null) {
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .fillMaxWidth()
+                            .widthIn(max = contentMaxWidth)
+                            .padding(horizontal = screenPadding()),
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                }
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .align(Alignment.CenterHorizontally)
                         .fillMaxWidth()
                         .widthIn(max = contentMaxWidth)
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(pageScrollState)
                         .padding(screenPadding()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalAlignment = horizontalAlignment,
