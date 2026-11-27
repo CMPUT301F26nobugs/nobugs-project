@@ -26,10 +26,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -85,6 +90,7 @@ import com.example.dascamp.controllers.CampImages
 import com.example.dascamp.model.DasCampRepository
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.ContentScale
 import com.example.dascamp.controllers.CampsiteController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ReservationCsv
@@ -92,8 +98,10 @@ import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.formatPrice
+import com.example.dascamp.model.invalidDate
 import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.StoredImage
+import com.example.dascamp.screens.DatePickerField
 import com.example.dascamp.views.MessageView
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -111,17 +119,22 @@ import com.example.dascamp.model.label
 import com.example.dascamp.screens.LocalCurrentUser
 import com.example.dascamp.views.ReservationView
 import com.example.dascamp.views.NotificationView
+import com.example.dascamp.screens.QrCameraPreview
+import com.example.dascamp.controllers.QrCodeController
 
 /**
  * Entrant home screen, with shortcuts to the campsite list, reservations,
  * notifications, messages, and the QR scanner.
  *
- * The greeting is hardcoded to "User" for now.
+ * The greeting uses the signed-in user's first name.
  *
  * @param navController used to navigate to the selected section
  */
 @Composable
 fun EntrantDashboard(navController: NavController) {
+    val firstName = LocalCurrentUser.current?.firstName
+        ?.takeIf { it.isNotBlank() } ?: "User"
+
     EntrantPage(
         navController = navController,
         showBack = false,
@@ -134,8 +147,7 @@ fun EntrantDashboard(navController: NavController) {
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Welcome Back,", style = MaterialTheme.typography.titleLarge)
-            Text(text = "User", style = MaterialTheme.typography.titleLarge)
+            Text(text = "Welcome Back, $firstName", style = MaterialTheme.typography.titleLarge)
         }
 
         // Campsite button & reservations button container
@@ -174,19 +186,31 @@ fun EntrantDashboard(navController: NavController) {
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { navController.navigate(EntrantRoutes.NOTIFICATION_LIST) }
-            ) { Text("Notifications") }
+            ) {
+                Icon(Icons.Default.Campaign, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Notifications")
+            }
 
             // Message list button
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { navController.navigate(EntrantRoutes.MESSAGE_LIST) }
-            ) { Text("Messages") }
+            ) {
+                Icon(Icons.Default.ChatBubbleOutline, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Messages")
+            }
 
             // Scan QR code button
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { navController.navigate(EntrantRoutes.QR) }
-            ) { Text("Scan QR") }
+            ) {
+                Icon(Icons.Default.QrCodeScanner, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Scan QR")
+            }
         }
     }
 }
@@ -201,11 +225,10 @@ fun EntrantDashboardPreview() {
 
 /**
  * Screen listing campsites, with a search field and a collapsible filter section
- * (location, date, and max occupancy).
+ * (location, availability window, minimum stay, and max occupancy).
  *
- * Results come from [CampsiteController.searchCampsites]. The date filter is only
- * applied once it is a full `yyyy-MM-dd` date, and is used as both the start and
- * end date of the search. Tapping a result stores its id in
+ * Results come from [CampsiteController.searchCampsites]. The availability filter
+ * is applied once both date endpoints are valid and ordered. Tapping a result stores its id in
  * [DasCampRepository.openCampsiteId] and navigates to [EntrantRoutes.CAMPSITE].
  *
  * @param navController used to navigate to a campsite
@@ -222,21 +245,26 @@ fun EntrantCampsiteList(
     var query by rememberSaveable { mutableStateOf("") }                // campsite search
     var isToggled by rememberSaveable { mutableStateOf(false) }         // bool for showing filters
     var locationFilter by rememberSaveable { mutableStateOf("") }       // location filter
-    var dateFilter by rememberSaveable { mutableStateOf("") }           // date filter
+    var dateFromFilter by rememberSaveable { mutableStateOf("") }
+    var dateToFilter by rememberSaveable { mutableStateOf("") }
+    var minimumStayFilter by rememberSaveable { mutableStateOf("1") }
     var occupancyFilter by rememberSaveable { mutableStateOf("") }      // occupancy filter
 
-    // Only apply the date filter once it is a full yyyy-MM-dd date
-    val date = dateFilter.trim()
-        .takeIf { Regex("\\d{4}-\\d{2}-\\d{2}").matches(it) }
-        .orEmpty()
+    val dateRangeValid =
+        dateFromFilter.isNotBlank() &&
+            dateToFilter.isNotBlank() &&
+            !invalidDate(dateFromFilter) &&
+            !invalidDate(dateToFilter) &&
+            dateFromFilter <= dateToFilter
 
     // Searching results
     val results = campsiteController?.searchCampsites(
         query = query,
         location = locationFilter,
         guests = occupancyFilter.toIntOrNull(),
-        startDate = date,
-        endDate = date,
+        startDate = if (dateRangeValid) dateFromFilter else "",
+        endDate = if (dateRangeValid) dateToFilter else "",
+        minimumStayDays = minimumStayFilter.toIntOrNull() ?: 0,
     ) ?: repository?.campsites.orEmpty()
 
     EntrantPage(
@@ -265,8 +293,14 @@ fun EntrantCampsiteList(
             onToggle = { isToggled = !isToggled },
             location = locationFilter,
             onLocationChange = { locationFilter = it },
-            date = dateFilter,
-            onDateChange = { dateFilter = it },
+            dateFrom = dateFromFilter,
+            onDateFromChange = { dateFromFilter = it },
+            dateTo = dateToFilter,
+            onDateToChange = { dateToFilter = it },
+            minimumStay = minimumStayFilter,
+            onMinimumStayChange = { typed ->
+                minimumStayFilter = typed.filter(Char::isDigit)
+            },
             occupancy = occupancyFilter,
             onOccupancyChange = { occupancyFilter = it }
         )
@@ -461,7 +495,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp),
+                .heightIn(max = 400.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -470,9 +504,14 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
             StoredImage(
                 path = campsite.imageUri,
                 contentDescription = campsite.name,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                contentScale = ContentScale.Fit
             ) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                // No photo: grey box with an icon
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(180.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
                         imageVector = Icons.Default.Image,
                         contentDescription = "No campsite photo",
@@ -633,7 +672,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            LegendDot(Color(0xFF2E7D32), "Open")
+            LegendDot(Color(0xFF66BB6A), "Open")
             LegendDot(Color(0xFFC62828), "Booked")
             LegendDot(Color(0xFF9E9E9E), "Closed")
         }
@@ -653,6 +692,28 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                 if (winningLottery != null) {
                     Text("You can reserve now", style = MaterialTheme.typography.titleMedium)
                     Text(
+                        "Choose a campsite for this reservation",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    repository?.campsites
+                        ?.filter { it.id in winningLottery.campsiteIds }
+                        .orEmpty()
+                        .forEach { option ->
+                            if (option.id == campsite.id) {
+                                Text("Selected: ${option.name} · ${option.location}")
+                            } else {
+                                OutlinedButton(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = {
+                                        repository?.openCampsiteId = option.id
+                                        navController.navigate(EntrantRoutes.CAMPSITE)
+                                    }
+                                ) {
+                                    Text("Choose ${option.name}")
+                                }
+                            }
+                        }
+                    Text(
                         "You were selected. Choose dates from ${winningLottery.bookingStart} to ${winningLottery.bookingEnd}, accept the rules, then book. A saved reservation lets you post a review and message the owner.",
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -663,16 +724,16 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                                 style = MaterialTheme.typography.labelLarge
                             )
                         }
-                    OutlinedTextField(
+                    DatePickerField(
                         value = startDate,
-                        onValueChange = { typed -> startDate = typed },
-                        label = { Text("Start date (yyyy-mm-dd)") },
+                        onDateSelected = { startDate = it },
+                        label = { Text("Start date") },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    OutlinedTextField(
+                    DatePickerField(
                         value = endDate,
-                        onValueChange = { typed -> endDate = typed },
-                        label = { Text("End date (yyyy-mm-dd)") },
+                        onDateSelected = { endDate = it },
+                        label = { Text("End date") },
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
@@ -837,10 +898,19 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
                 }
             ) { Text("Post review") }
             if (reviewMessage.isNotBlank()) Text(reviewMessage)
+        }
+        val participantLottery = repository?.lotteries?.firstOrNull { lottery ->
+            campsite.id in lottery.campsiteIds &&
+                lottery.entrants.any { it.entrantId == entrantId }
+        }
+        if (repository != null && (myReservation != null || participantLottery != null)) {
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
-                    repository?.openReservationId = myReservation.id
+                    repository.openMessageOwnerId = campsite.ownerId
+                    repository.openMessageEntrantId = entrantId
+                    repository.openMessageLotteryId = participantLottery?.id
+                    repository.openReservationId = myReservation?.id.orEmpty()
                     navController.navigate(EntrantRoutes.MESSAGE)
                 }
             ) { Text("Message owner") }
@@ -850,7 +920,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
 
 /** One number in the campsite summary row. */
 @Composable
-private fun RowScope.CampsiteFact(label: String, value: String) {
+fun RowScope.CampsiteFact(label: String, value: String) {
     Column(
         modifier = Modifier.weight(1f),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -866,7 +936,7 @@ private fun RowScope.CampsiteFact(label: String, value: String) {
 
 /** A titled block. Blank text is skipped so empty policies do not leave a heading. */
 @Composable
-private fun CampsiteSection(title: String, body: String) {
+fun CampsiteSection(title: String, body: String) {
     if (body.isBlank()) return
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium)
@@ -880,7 +950,7 @@ private fun CampsiteSection(title: String, body: String) {
 
 /** A colored dot and a short calendar key. */
 @Composable
-private fun LegendDot(color: Color, label: String) {
+fun LegendDot(color: Color, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
@@ -893,7 +963,7 @@ private fun LegendDot(color: Color, label: String) {
 }
 
 /** Short map caption. Four decimal places is enough to find the pin. */
-private fun readableCoordinates(latitude: Double, longitude: Double): String {
+fun readableCoordinates(latitude: Double, longitude: Double): String {
     if (latitude == 0.0 && longitude == 0.0) return "The owner has not set a map pin"
     return "${"%.4f".format(latitude)}, ${"%.4f".format(longitude)}"
 }
@@ -1114,7 +1184,13 @@ Button(onClick = {
                         }
                     }
                     Button(onClick = {
-                        repository?.openReservationId = reservation.id
+                        repository?.let { repo ->
+                            repo.openReservationId = reservation.id
+                            repo.openMessageOwnerId = repo.campsites
+                                .find { it.id == reservation.campsiteId }?.ownerId.orEmpty()
+                            repo.openMessageEntrantId = reservation.entrantId
+                            repo.openMessageLotteryId = null
+                        }
                         navController.navigate(EntrantRoutes.MESSAGE)
                     }) { Text("Message owner") }
                 }
@@ -1142,8 +1218,7 @@ Button(onClick = {
 }
 
 /**
- * Conversations the signed-in entrant can open. Each row is a reservation they
- * hold, because messages are only allowed for a reservation. US 01.14.01
+ * Existing owner/entrant conversations for the signed-in entrant. US 01.14.01
  */
 @Composable
 fun EntrantMessageList(
@@ -1152,8 +1227,10 @@ fun EntrantMessageList(
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     val controller = remember(repository) { repository?.let { MessageController(it) } }
-    val threads = controller?.entrantThreads().orEmpty().filter { reservation ->
-        query.isBlank() || reservation.campsiteName.contains(query, ignoreCase = true)
+    val threads = controller?.entrantConversations().orEmpty().filter { thread ->
+        query.isBlank() ||
+            thread.otherName.contains(query, ignoreCase = true) ||
+            thread.latestMessage.body.contains(query, ignoreCase = true)
     }
 
     EntrantPage(
@@ -1177,14 +1254,17 @@ fun EntrantMessageList(
         Spacer(modifier = Modifier.height(16.dp))
 
         if (threads.isEmpty()) {
-            Text("Message an owner from a reservation you have.")
+            Text("No conversations yet. Message an owner from a reservation or lottery.")
         }
-        threads.forEach { reservation ->
+        threads.forEach { thread ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        repository?.openReservationId = reservation.id
+                        repository?.openMessageOwnerId = thread.ownerId
+                        repository?.openMessageEntrantId = thread.entrantId
+                        repository?.openMessageLotteryId = null
+                        repository?.openReservationId = ""
                         navController.navigate(EntrantRoutes.MESSAGE)
                     },
                 shape = RoundedCornerShape(12.dp),
@@ -1199,14 +1279,16 @@ fun EntrantMessageList(
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        modifier = Modifier
-                            .padding(start = 16.dp)
-                            .weight(1f),
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Start,
-                        text = "${reservation.campsiteName} · ${reservation.startDate}"
-                    )
+                    Column(
+                        modifier = Modifier.padding(start = 16.dp).weight(1f)
+                    ) {
+                        Text(thread.otherName, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            thread.latestMessage.body,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1
+                        )
+                    }
                     Icon(
                         imageVector = Icons.Default.ChevronRight,
                         contentDescription = "Go to details",
@@ -1220,8 +1302,8 @@ fun EntrantMessageList(
 }
 
 /**
- * Thread with the owner of one reservation. The entrant's messages sit on the
- * right. Send is rejected unless this reservation belongs to the signed-in user.
+ * Shared conversation with one campsite owner. The entrant's messages sit on
+ * the right. A lottery or reservation must authorize the first message.
  * US 01.14.01
  */
 @Composable
@@ -1232,33 +1314,72 @@ fun EntrantMessageScreen(
     var newMessage by rememberSaveable { mutableStateOf("") }
     var sendError by remember { mutableStateOf<String?>(null) }
     val controller = remember(repository) { repository?.let { MessageController(it) } }
-    val view = remember(repository, repository?.openReservationId) {
+    val view = remember(
+        repository,
+        repository?.openReservationId,
+        repository?.openMessageOwnerId,
+        repository?.openMessageEntrantId
+    ) {
         repository?.let { MessageView(it) }
     }
     DisposableEffect(view) { onDispose { view?.remove() } }
+    val messageScrollState = rememberScrollState()
+    LaunchedEffect(view?.messages?.size) {
+        messageScrollState.animateScrollTo(messageScrollState.maxValue)
+    }
 
     val reservation = repository?.reservations?.find { it.id == repository.openReservationId }
     val campsite = repository?.campsites?.find { it.id == reservation?.campsiteId }
-    val owner = repository?.users?.find { it.id == campsite?.ownerId }
+    val ownerId = repository?.openMessageOwnerId
+        ?.ifBlank { campsite?.ownerId.orEmpty() }
+        .orEmpty()
+    val entrantId = repository?.openMessageEntrantId
+        ?.ifBlank { repository?.uid.orEmpty() }
+        .orEmpty()
+    val owner = repository?.users?.find { it.id == ownerId }
     val title = owner?.displayName()?.ifBlank { null } ?: "Campsite owner"
+    val sendMessage = {
+        val error = controller?.send(
+            ownerId = ownerId,
+            entrantId = entrantId,
+            body = newMessage,
+            lotteryId = repository?.openMessageLotteryId,
+            reservationId = repository?.openReservationId
+                ?.takeIf { it.isNotBlank() }
+        )
+        sendError = error
+        if (error == null) newMessage = ""
+    }
 
     EntrantPage(
         navController,
-        showBack = true
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = title, style = MaterialTheme.typography.titleLarge)
-                Text(reservation?.campsiteName ?: "No reservation selected")
+        showBack = true,
+        topBar = {
+            Text(text = title, style = MaterialTheme.typography.titleLarge)
+        },
+        scrollState = messageScrollState,
+        bottomBar = if (ownerId.isNotBlank() && entrantId.isNotBlank()) {{
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                sendError?.let { Text(it) }
+                OutlinedTextField(
+                    value = newMessage,
+                    onValueChange = { newMessage = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Message") },
+                    trailingIcon = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            modifier = Modifier.clickable(onClick = sendMessage)
+                        )
+                    },
+                    singleLine = true
+                )
             }
-        }
-
-        if (reservation == null) {
-            Text("Open a reservation you have, then message that campsite's owner.")
+        }} else null
+    ) {
+        if (ownerId.isBlank() || entrantId.isBlank()) {
+            Text("Open a conversation from a campsite, lottery, or reservation.")
         } else {
             view?.messages.orEmpty().forEach { message ->
                 val isSender = message.senderId == repository?.uid
@@ -1288,25 +1409,6 @@ fun EntrantMessageScreen(
                 }
             }
 
-            sendError?.let { Text(it) }
-            OutlinedTextField(
-                value = newMessage,
-                onValueChange = { newMessage = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Message") },
-                trailingIcon = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send",
-                        modifier = Modifier.clickable {
-                            val error = controller?.send(reservation.id, newMessage)
-                            sendError = error
-                            if (error == null) newMessage = ""
-                        }
-                    )
-                },
-                singleLine = true
-            )
         }
     }
 }
@@ -1349,14 +1451,14 @@ fun EntrantProfileScreen(
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             imageMessage = "Uploading photo…"
-            val url = withContext(Dispatchers.IO) {
+            val marker = withContext(Dispatchers.IO) {
                 CampImages.upload(context, uri, CampImages.profilePath(entrantId))
             }
-            if (url == null) {
-                imageMessage = "Could not upload that picture. Try a smaller photo."
+            if (marker == null) {
+                imageMessage = "Could not save that picture"
             } else {
-                controller.setProfileImage(url)
-                imageMessage = "Photo saved"
+                controller.setProfileImage(marker)
+                imageMessage = null
             }
         }
     }
@@ -1428,10 +1530,13 @@ fun EntrantProfileScreen(
         }
         if (!profile?.profileImageUri.isNullOrBlank()) {
             TextButton(onClick = {
+                val path = profile?.profileImageUri
                 scope.launch {
-                    withContext(Dispatchers.IO) { CampImages.delete(CampImages.profilePath(entrantId)) }
-                    profile?.profileImageUri?.let { path ->
-                        if (!path.startsWith("http")) File(path).delete()
+                    withContext(Dispatchers.IO) {
+                        CampImages.delete(CampImages.profilePath(entrantId))
+                        if (path != null && !path.startsWith("firestore:") && !path.startsWith("http")) {
+                            File(path).delete()
+                        }
                     }
                     controller.setProfileImage(null)
                     imageMessage = null
@@ -1690,58 +1795,26 @@ fun AppRules(onDismiss: () -> Unit) {
 }
 
 
-//campsite rules
-@Composable
-fun CampsiteRules(rulesText: String,
-                         onDismiss: () -> Unit,
-                         onConfirm: () -> Unit
-    ) {
-    var hasRead by rememberSaveable { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("App Guide & Policy") },
-        text = {
-            Column(
-                modifier = Modifier
-                    .heightIn(max = 400.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = 300.dp)
-                ) {
-                    Text(rulesText, style = MaterialTheme.typography.bodyMedium)
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { hasRead = !hasRead },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(checked = hasRead, onCheckedChange = { hasRead = it })
-                    Text("I have read and agree to the campsite rules and policies")
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = onConfirm, enabled = hasRead) {
-                Text("Confirm reservation")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
-}
-
-
-// QR CODE SCREEN
+/**
+ * QR code scanner screen for entrants.
+ *
+ * Asks for camera permission, then shows the camera. When a DasCamp QR code is read,
+ * it opens that campsite (it sets [DasCampRepository.openCampsiteId] and goes to
+ * [EntrantRoutes.CAMPSITE], the same way the campsite list does).
+ * Any other QR code shows "Not a DasCamp QR Code".
+ *
+ * The camera reads one code per visit, so the entrant reopens the screen to scan again.
+ *
+ * @param navController used to open the scanned campsite
+ * @param repository where the scanned campsite id is stored; if null, every scan
+ * shows the "Not a DasCamp QR Code" message
+ */
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun EntrantQrCodeScreen(navController: NavController) {
+fun EntrantQrCodeScreen(navController: NavController, repository: DasCampRepository? = null) {
     val context = LocalContext.current
+    val qrController =  remember { QrCodeController() }
+    var scanMessage by remember {mutableStateOf("")}
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
@@ -1777,7 +1850,13 @@ fun EntrantQrCodeScreen(navController: NavController) {
                     QrCameraPreview(
                         modifier = Modifier.fillMaxSize()
                     ) { scannedValue ->
-                        navController.navigate(EntrantRoutes.CAMPSITE)
+                       val id = qrController.campsiteIdFrom(scannedValue)
+                        if (id != null && repository != null){
+                            repository.openCampsiteId = id
+                            navController.navigate(EntrantRoutes.CAMPSITE)
+                        } else {
+                            scanMessage = "Not a DasCamp QR Code"
+                        }
                     }
                 } else {
                 Column(
@@ -1796,16 +1875,9 @@ fun EntrantQrCodeScreen(navController: NavController) {
                 }
             }
             }
+            Text (scanMessage)
         }
     }
-}
-
-//camera for qr code scanning
-@Composable
-fun QrCameraPreview(
-    modifier: Modifier = Modifier,
-    onQrScanned: (String) -> Unit
-) {
 }
 
 //Rules and policies

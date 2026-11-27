@@ -46,6 +46,7 @@ dependencies {
     implementation("org.osmdroid:osmdroid-android:6.1.20")  //OpenStreetMap
     implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
     implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-messaging") // Firebase Messaging System
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)
@@ -73,4 +74,5 @@ dependencies {
     implementation("androidx.camera:camera-view:1.6.2")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
     implementation("androidx.camera:camera-lifecycle:1.6.2")
+    implementation("com.google.zxing:core:3.5.3")
 }

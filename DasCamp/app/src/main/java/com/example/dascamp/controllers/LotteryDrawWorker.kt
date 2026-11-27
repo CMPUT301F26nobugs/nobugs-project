@@ -4,7 +4,10 @@ import android.content.Context
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.example.dascamp.model.Lottery
+import com.example.dascamp.model.LotteryProposal
+import com.example.dascamp.model.LotteryProposalStatus
 import com.example.dascamp.model.LotteryStatus
+import com.example.dascamp.model.NotificationType
 import com.example.dascamp.model.WaitlistStatus
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
@@ -69,6 +72,39 @@ class LotteryDrawWorker(context: Context, parameters: WorkerParameters) : Worker
                         entrantName = entrant.name,
                         selected = selected
                     )
+                    transaction.set(
+                        firestore.collection("notifications").document(notification.id),
+                        notification
+                    )
+                }
+                true
+            })
+        }
+
+        val pendingProposals = Tasks.await(
+            firestore.collection("lotteryProposals")
+                .whereEqualTo("status", LotteryProposalStatus.PENDING.name)
+                .get()
+        )
+        pendingProposals.documents.forEach { document ->
+            val proposalRef = document.reference
+            Tasks.await(firestore.runTransaction { transaction ->
+                val proposal = transaction.get(proposalRef)
+                    .toObject(LotteryProposal::class.java)
+                    ?: return@runTransaction false
+                if (proposal.status != LotteryProposalStatus.PENDING ||
+                    proposal.approvalDeadlineAt > System.currentTimeMillis()
+                ) {
+                    return@runTransaction false
+                }
+
+                val expired = proposal.copy(status = LotteryProposalStatus.EXPIRED)
+                transaction.set(proposalRef, expired)
+                expired.notifications(
+                    type = NotificationType.LOTTERY_PROPOSAL_UPDATE,
+                    message = "The shared lottery proposal \"${proposal.lotteryDraft.name}\" expired before all owners responded.",
+                    senderId = ""
+                ).forEach { notification ->
                     transaction.set(
                         firestore.collection("notifications").document(notification.id),
                         notification

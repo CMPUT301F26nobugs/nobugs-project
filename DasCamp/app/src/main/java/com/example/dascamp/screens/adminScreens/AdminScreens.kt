@@ -44,22 +44,37 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.screens.BigButton
-import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
+import com.example.dascamp.screens.LocalCurrentUser
 import com.example.dascamp.ui.theme.DasCampTheme
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
 import com.example.dascamp.controllers.AdminController
+import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.Policy
 import com.example.dascamp.model.CampStore
+import com.example.dascamp.model.Campsite
+import com.example.dascamp.model.Notification
+import com.example.dascamp.model.NotificationType
 import com.example.dascamp.model.OwnerApplicationStatus
 import com.example.dascamp.model.User
+import com.example.dascamp.model.formatPrice
+import com.example.dascamp.screens.CampsiteMap
+import com.example.dascamp.screens.StoredImage
+import com.example.dascamp.screens.entrantScreens.CampsiteFact
+import com.example.dascamp.screens.entrantScreens.CampsiteSection
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
+import com.example.dascamp.screens.entrantScreens.EntrantPage
+import com.example.dascamp.screens.entrantScreens.LegendDot
+import com.example.dascamp.screens.entrantScreens.readableCoordinates
 
 /**
  * The kinds of profile an admin can browse.
@@ -68,7 +83,8 @@ import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
  */
 enum class ProfileType(val label: String) {
     ENTRANT("Entrants"),
-    OWNER("Owners")
+    OWNER("Owners"),
+    ADMIN("Admins")
 }
 
 /**
@@ -79,6 +95,9 @@ enum class ProfileType(val label: String) {
  */
 @Composable
 fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
+    val firstName = LocalCurrentUser.current?.firstName
+        ?.takeIf { it.isNotBlank() } ?: "User"
+
     AdminPage(
         navController = navController,
         showBack = false,
@@ -91,8 +110,7 @@ fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Welcome Back,", style = MaterialTheme.typography.titleLarge)
-            Text(text = "Admin", style = MaterialTheme.typography.titleLarge)
+            Text(text = "Welcome Back, $firstName", style = MaterialTheme.typography.titleLarge)
         }
 
         // Campsite button & profiles button container
@@ -119,27 +137,37 @@ fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
             )
         }
 
-        // Notification Logs
-        Text(
-            "Signed in on this device",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        ProfileAction(
-            icon = Icons.Default.Campaign,
-            label = "Notification logs",
-            onClick = { navController.navigate(AdminRoutes.NOTIFICATION_LOG) }
-        )
-        ProfileAction(
-            icon = Icons.Default.HowToReg,
-            label = "Owner applications",
-            onClick = { navController.navigate(AdminRoutes.OWNER_APPLICATIONS) }
-        )
-        ProfileAction(
-            icon = Icons.AutoMirrored.Filled.Logout,
-            label = "Sign out",
-            onClick = onSignOut
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            verticalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AdminRoutes.NOTIFICATION_LOG) }
+            ) {
+                Icon(Icons.Default.Campaign, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Notification logs")
+            }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AdminRoutes.OWNER_APPLICATIONS) }
+            ) {
+                Icon(Icons.Default.HowToReg, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Owner applications")
+            }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onSignOut
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Sign out")
+            }
+        }
     }
 }
 
@@ -161,9 +189,30 @@ fun AdminDashboardPreview() {
  * @param navController used to navigate to a profile
  */
 @Composable
-fun AdminProfileList(navController: NavController) {
+fun AdminProfileList(navController: NavController, campStore: CampStore) {
     var query by rememberSaveable { mutableStateOf("") }                        // profile search
     var selectedType by rememberSaveable { mutableStateOf<ProfileType?>(null) } // null = show all
+
+    //filter by entrant or owner toggles
+    val filteredUsers = campStore.users.filter {u ->
+        val matchedTypeFilter = if(selectedType == ProfileType.ADMIN){  //filter chip selected is admin
+            u.admin  //only show admins
+        }else if(u.admin){
+            false  //do not display admins in general list
+        }else if(selectedType == ProfileType.ENTRANT){
+            u.entrant && !u.owner  //entrant role only, no owners
+        }else if(selectedType == ProfileType.OWNER){
+            u.owner
+        }else{
+            u.entrant || u.owner  //no filter appiled, only show entrants and owners, no admins
+        }
+
+        val matchedSearchResults = query.isBlank() ||
+                u.displayName().contains(query, ignoreCase = true) ||
+                u.email.contains(query, ignoreCase = true)
+
+        matchedTypeFilter && matchedSearchResults  //what the filter returns
+    }
 
     AdminPage(
         navController = navController,
@@ -201,19 +250,33 @@ fun AdminProfileList(navController: NavController) {
                 )
             }
         }
-
-        // Display Profiles (PLACEHOLDER)
-        EmptyCard {
-            navController.navigate(AdminRoutes.profile(selectedType ?: ProfileType.ENTRANT))
+        if(filteredUsers.isEmpty()){
+            Text("No profiles found")
         }
-    }
-}
-
-@Preview
-@Composable
-fun AdminProfileListPreview() {
-    DasCampTheme {
-        AdminProfileList(rememberNavController())
+        filteredUsers.forEach{user ->
+            Card(
+                modifier = Modifier.fillMaxWidth()
+                    .clickable {
+                        val type = if(user.admin){  //determine the user type of the clicked profile
+                            ProfileType.ADMIN
+                        }else if(user.owner){
+                            ProfileType.OWNER
+                        }else{
+                            ProfileType.ENTRANT
+                        }
+                        navController.navigate(AdminRoutes.profile(type, user.id))
+                    },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ){
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(user.displayName(), style = MaterialTheme.typography.titleMedium)
+                    Text(user.email, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
     }
 }
 
@@ -222,88 +285,117 @@ fun AdminProfileListPreview() {
  *
  * Both types can have their profile picture deleted. Entrants can additionally be
  * deleted, while owners offer a link to their messages with entrants and a
- * "Remove Campsite Owner" action. Destructive actions ask for confirmation first.
+ * "Revoke Campsite Owner Role" action. Destructive actions ask for confirmation first.
  * The profile data and the delete actions are still placeholders.
  *
  * @param navController used for back navigation and for following actions
  * @param profileType whether this is an entrant or an owner profile
  */
 @Composable
-fun AdminViewProfile(navController: NavController, profileType: ProfileType) {
+fun AdminViewProfile(navController: NavController, profileType: ProfileType, campStore: CampStore, uid: String) {
+
+    val user = campStore.userById(uid)  //get the specific user by the uid
+    val adminController = remember(campStore) {AdminController(campStore)}
+
     AdminPage(
         navController = navController,
         showBack = true,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Title
+
+        //display what role the use has in their profile
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
         ) {
             Text(
-                text = if (profileType == ProfileType.ENTRANT) "Entrant Profile" else "Owner Profile",
+                text = if(profileType == ProfileType.ADMIN){
+                    "Admin"
+                }else if(profileType == ProfileType.OWNER){
+                    "Entrant/Owner"
+                }else{
+                    "Entrant"
+                },
                 style = MaterialTheme.typography.titleLarge
             )
         }
 
-        // Profile picture (PLACEHOLDER)
-        Card(
-            modifier = Modifier.size(120.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        ) { Icon(Icons.Default.Person, "Profile picture", Modifier.fillMaxSize()) }
+        if(user == null){
+            Text("Profile not found")
+        } else{
 
-        // Profile info (PLACEHOLDER)
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("Name", style = MaterialTheme.typography.labelLarge)
-            EmptyValue(0.6f)
-            Text("Email", style = MaterialTheme.typography.labelLarge)
-            EmptyValue(0.8f)
-        }
+            // Profile picture (PLACEHOLDER)
+            Card(
+                modifier = Modifier.size(120.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            ) { Icon(Icons.Default.Person, "Profile picture", Modifier.fillMaxSize()) }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            // Profile info
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("Name", style = MaterialTheme.typography.labelLarge)
+                Text(user.displayName())
+                Text("Email", style = MaterialTheme.typography.labelLarge)
+                Text(user.email)
+                Text("Phone", style = MaterialTheme.typography.labelLarge)
+                Text(user.phoneNumber.ifBlank{"N/A"})
+            }
 
-        // Both profile types: delete profile picture
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = rememberConfirmClick(
-                message = "Remove this profile picture? This can't be undone.",
-                onConfirm =  {navController.navigate(AdminRoutes.PROFILE_LIST
-                ) }
-            )  /*todo: implement delete*/
-        ) { Text("Delete Profile Picture") }
+            Spacer(modifier = Modifier.height(16.dp))
 
-        if (profileType == ProfileType.ENTRANT) {
-            // Entrant only -> delete profile
+            // Both profile types: delete profile picture
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                colors = destructiveButtonColors(),
                 onClick = rememberConfirmClick(
-                    message = "Remove this profile? This can't be undone.",
-                    onConfirm =  {navController.navigate(AdminRoutes.PROFILE_LIST) }
-                ) /*todo: implement delete*/
-            ) { Text("Delete Profile") }
-        } else {
-            // Owner only -> view messages with entrants (same message list as from a campsite)
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
-            ) { Text("View Messages with Entrants") }
+                    message = "Remove this profile picture? This can't be undone.",
+                    onConfirm =  {navController.navigate(AdminRoutes.PROFILE_LIST
+                    ) }
+                )  /*todo: implement delete*/
+            ) { Text("Delete Profile Picture") }
 
-            // Owner only -> remove campsite owner
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                colors = destructiveButtonColors(),
-                onClick = rememberConfirmClick(
-                    message = "Remove this campsite owner? This can't be undone.",
-                    onConfirm =  {navController.navigate(AdminRoutes.CAMPSITE_LIST) }
-                ) /*todo: implement delete*/
-            ) { Text("Remove Campsite Owner") }
+            if (profileType == ProfileType.OWNER){
+                // Owner only -> view messages with entrants (same message list as from a campsite)
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+                ) { Text("View Messages with Entrants") }
+
+                // Owner only -> remove campsite owner role
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = destructiveButtonColors(),
+                    onClick = rememberConfirmClick(
+                        message = "Remove owner role? This can't be undone.",
+                        onConfirm = {
+                            adminController.revokeOwnership(user)  //remove ownership from owned campsites
+                            campStore.updateUser(user.copy(owner = false))
+                        }
+                    )
+                ) {
+                    Text("Revoke Campsite Owner Role")
+                }
+            }
+            //delete profile option only for entrants and owners, cannot delete admins
+            if(profileType != ProfileType.ADMIN) {
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = destructiveButtonColors(),
+                    onClick = rememberConfirmClick(
+                        message = "Remove this profile? This can't be undone.",
+                        onConfirm = {
+                            campStore.deleteUser(user)
+                            navController.popBackStack()  //for owner profile, if came from campsite page to back to camp list, if come from profile list, go back to profile list
+                        }
+                    )
+                ) {
+                    Text("Delete Profile")
+                }
+            }
         }
     }
 }
@@ -314,22 +406,6 @@ private fun destructiveButtonColors() = ButtonDefaults.buttonColors(
     containerColor = MaterialTheme.colorScheme.error,
     contentColor = MaterialTheme.colorScheme.onError
 )
-
-@Preview
-@Composable
-fun AdminViewEntrantProfilePreview() {
-    DasCampTheme {
-        AdminViewProfile(rememberNavController(), ProfileType.ENTRANT)
-    }
-}
-
-@Preview
-@Composable
-fun AdminViewOwnerProfilePreview() {
-    DasCampTheme {
-        AdminViewProfile(rememberNavController(), ProfileType.OWNER)
-    }
-}
 
 /**
  * Notification log hub, with buttons leading to the campsite request log,
@@ -446,8 +522,11 @@ private fun OwnerApplicationCard(user: User, onApprove: () -> Unit, onDeny: () -
  * @param navController used for navigation
  */
 @Composable
-fun RequestLog(navController: NavController) {
-    LogScreen(navController, "Campsite Requests")
+fun RequestLog(
+    navController: NavController,
+    store: CampStore? = null
+) {
+    LogScreen(navController, "Campsite Requests", store) { it.type == NotificationType.WIN }
 }
 
 /**
@@ -456,8 +535,11 @@ fun RequestLog(navController: NavController) {
  * @param navController used for navigation
  */
 @Composable
-fun ApprovedLog(navController: NavController) {
-    LogScreen(navController, "Approved Requests")
+fun ApprovedLog(
+    navController: NavController,
+    store: CampStore? = null
+) {
+    LogScreen(navController, "Approved Requests", store) { it.type == NotificationType.CANCELLATION }
 }
 
 /**
@@ -466,8 +548,11 @@ fun ApprovedLog(navController: NavController) {
  * @param navController used for navigation
  */
 @Composable
-fun OtherLog(navController: NavController) {
-    LogScreen(navController, "Other")
+fun OtherLog(
+    navController: NavController,
+    store: CampStore? = null
+) {
+    LogScreen(navController, "Other", store) { true }
 }
 
 /**
@@ -478,7 +563,18 @@ fun OtherLog(navController: NavController) {
  * @param title the heading shown at the top of the screen
  */
 @Composable
-private fun LogScreen(navController: NavController, title: String) {
+private fun LogScreen(
+    navController: NavController,
+    title: String,
+    store: CampStore?,
+    include: (Notification) -> Boolean = { true }
+) {
+
+    val notes = store?.notifications.orEmpty()
+        .filter(include) // filter by notification types
+        .distinctBy { if (it.batchId.isBlank()) it.id else it.batchId } // Groups messages sent together
+        .sortedByDescending { it.sentAt.toLongOrNull() ?: 0L }
+
     AdminPage(
         navController = navController,
         showBack = true,
@@ -487,10 +583,42 @@ private fun LogScreen(navController: NavController, title: String) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
-        ) { Text(text = title, style = MaterialTheme.typography.titleLarge) }
+        ) {
+            Text(text = title, style = MaterialTheme.typography.titleLarge)
+        }
 
-        // Display log entries (to be implemented)
-        EmptyCard { /*TODO("Open log entry")*/ }
+        // Display notifications if the list is not empty
+        if (notes.isEmpty())
+            Text("No notifications found.")
+        notes.forEach { note ->
+
+            // Time sent
+            val time = note.sentAt.toLongOrNull()?.let {
+                // Format the time to display as "yyyy-MM-dd HH:mm"
+                java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.US)
+                    .format(java.util.Date(it))
+            } ?: "Unknown Time" // display "Unknown Time" if it cannot be formatted.
+
+            val sender = if (note.senderId.isBlank()) "System"
+                else store?.userById(note.senderId)?.displayName() ?: note.senderId
+
+            // Notification Container
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(note.message, style = MaterialTheme.typography.bodyLarge)
+                    Text("To: ${note.recipientName}", style = MaterialTheme.typography.bodyMedium)
+                    Text("From: $sender", style = MaterialTheme.typography.bodyMedium)   // new line
+                    Text("$time · ${note.type}", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
     }
 }
 
@@ -514,7 +642,7 @@ fun AdminCampsiteList(
     repository: DasCampRepository? = null
 ) {
     var query by rememberSaveable { mutableStateOf("") } // campsite search
-    val shown = repository?.campsites?.filter { site ->
+    val filteredCamps = repository?.campsites?.filter { site ->
         query.isBlank() ||
             site.name.contains(query, ignoreCase = true) ||
             site.location.contains(query, ignoreCase = true)
@@ -539,27 +667,70 @@ fun AdminCampsiteList(
             singleLine = true
         )
 
-        if (repository == null) {
-            EmptyCard {
-                navController.navigate(AdminRoutes.campsite("123"))
-            }
-        } else if (shown.isEmpty()) {
+        if (filteredCamps.isEmpty()) {
             Text("No campsites")
         } else {
-            shown.forEach { site ->
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { navController.navigate(AdminRoutes.campsite(site.id)) }
-                ) { Text("${site.name} · ${site.location}") }
+            filteredCamps.forEach { campsite ->
+                AdminCampsiteSummaryCard(
+                    campsite = campsite,
+                    onClick = {
+                        navController.navigate(AdminRoutes.campsite(campsite.id))
+                    }
+                )
             }
         }
     }
 }
-@Preview
+
+/**
+ * One campsite in the admin camplist. The name and place stay on the left.
+ * The rating sits in its own chip on the right. US 03.04.01
+ */
+
 @Composable
-fun AdminCampsiteListPreview() {
-    DasCampTheme {
-        RequestLog(rememberNavController())
+private fun AdminCampsiteSummaryCard(campsite: Campsite, onClick: () -> Unit){
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = campsite.name.ifBlank { "Untitled campsite" },
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "${campsite.location.ifBlank { "Location not set" }}  ·  up to ${campsite.maxOccupancy}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Text(
+                    text = "★ ${"%.1f".format(campsite.rating)}",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
     }
 }
 
@@ -577,210 +748,302 @@ fun AdminCampsiteListPreview() {
 fun AdminViewCampsite(
     navController: NavController,
     repository: DasCampRepository? = null,
-    campsiteId: String? = null
+    campsiteId: String? = null,
+    scheduleController: ScheduleController? = null
 ) {
     var pendingRemoval by remember { mutableStateOf<Pair<String, String>?>(null) }
     val admin = remember(repository) { repository?.let { AdminController(it) } }
     val campsite = repository?.campsites?.find { it.id == campsiteId }
     val reviews = repository?.reviews?.filter { it.campsiteId == campsiteId }.orEmpty()
+
+    //if no campsite, show cant be found message
+    if (campsite == null){
+        AdminPage(navController = navController, showBack = true) {
+            Text("Campsite not found")
+        }
+        return
+    }
+
+
     AdminPage(
         navController = navController,
         showBack = true,
-        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Title
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = campsite?.name ?: "Campsite",
-                style = MaterialTheme.typography.titleLarge
+        // Campsite Image
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
             )
+        ) {
+            StoredImage(
+                path = campsite.imageUri,
+                contentDescription = campsite.name,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Image,
+                        contentDescription = "No campsite photo",
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        //delete image option only if there is an image
+        if (!campsite.imageUri.isNullOrBlank()) {
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                colors = destructiveButtonColors(),
+                onClick = rememberConfirmClick(
+                    message = "Remove this image? This can't be undone.",
+                    onConfirm = {
+                        repository.updateCampsite(campsite.copy(imageUri = ""))
+                    }
+                )
+            ) {
+                Text("Delete Campsite Image")
+            }
         }
 
-        // Campsite Image (PLACEHOLDER)
-        Card(
-            modifier = Modifier.height(200.dp)
-                    .fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        ) { Icon(Icons.Default.Place, "Campsite Image", Modifier.fillMaxSize()) }
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            colors = destructiveButtonColors(),
-            onClick = rememberConfirmClick(
-                message = "Remove this image? This can't be undone.",
-                onConfirm =  {navController.navigate(AdminRoutes.campsite("123")) }
-            )/*todo: implement delete*/
-        ) { Text("Delete Campsite Image") }
+        Text(  //name
+            text = campsite.name,
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text(  //location
+            text = campsite.location.ifBlank { "Location not set" },
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
-        // Campsite Main info (PLACEHOLDER)
-        Column(
+        //campsite details
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(campsite?.location ?: "Location", style = MaterialTheme.typography.labelLarge)
-                Text(" | Max Occupancy | ", style = MaterialTheme.typography.labelLarge)
-                Text(
-                    campsite?.let { "${it.rating} (${it.ratingCount})" } ?: "Rating",
-                    style = MaterialTheme.typography.labelLarge
-                )
+                CampsiteFact("Rating", "%.1f".format(campsite.rating))
+                CampsiteFact("Reviews", campsite.ratingCount.toString())
+                CampsiteFact("Guests", "Up to ${campsite.maxOccupancy}")
+                CampsiteFact("Night", "$${formatPrice(campsite.pricePerNight)}")
             }
         }
 
-        // Campsite details and rules and policy (placeholder)
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("Here are more details of the Campsite", style = MaterialTheme.typography.bodyLarge)
-            Text("Rules and Policies ", style = MaterialTheme.typography.labelLarge)
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Campsite Geolocation placeholder
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("Geolocation", style = MaterialTheme.typography.labelLarge)
-        }
-
-        Card(
-            modifier = Modifier.height(200.dp)
-                .fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        ) { Icon(Icons.Default.Place, "Geolocation", Modifier.fillMaxSize()) }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Container for calendar
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Title
-            Text(text = "Availability", style = MaterialTheme.typography.labelLarge)
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Entrant Calendar Grid
-
-            // Legend
-            Row() {
-                // Available
-                Text("Available = ")
-                Box(modifier = Modifier.size(20.dp).background(Color.Red))
-
-                Spacer(modifier = Modifier.padding(8.dp))
-
-                // Unavailable
-                Text("Unavailable = ")
-                Box(modifier = Modifier.size(20.dp).background(Color.Green))
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Text("Ratings and reviews", style = MaterialTheme.typography.titleMedium)
-        Text(Policy.TEXT, style = MaterialTheme.typography.bodySmall)
-        if (reviews.isEmpty()) {
-            Text("No reviews on this campsite")
-        }
-        reviews.forEach { review ->
-            Text("${review.entrantName}", style = MaterialTheme.typography.labelLarge)
-            Text(
-                if (review.ratingRemoved) "Rating removed for policy" else "Rating ${review.rating}/5"
-            )
-            if (review.body.isNotBlank()) Text(review.body)
-            Button(
+        //tags
+        if (campsite.tags.isNotEmpty()) {
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !review.ratingRemoved,
-                colors = destructiveButtonColors(),
-                onClick = { pendingRemoval = review.id to "rating" }
-            ) { Text("Remove rating") }
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                colors = destructiveButtonColors(),
-                onClick = { pendingRemoval = review.id to "review" }
-            ) { Text("Remove review") }
-        }
-        pendingRemoval?.let { (reviewId, kind) ->
-            Dialog(onDismissRequest = { pendingRemoval = null }) {
-                Column(
-                    modifier = Modifier
-                        .background(Color.DarkGray, RoundedCornerShape(8.dp))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        if (kind == "rating") {
-                            "Remove this rating? It will no longer count toward the campsite average."
-                        } else {
-                            "Remove this review? This can't be undone."
-                        },
-                        color = Color.White
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                campsite.tags.forEach { tag ->
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer
                     ) {
-                        TextButton(onClick = { pendingRemoval = null }) { Text("Cancel") }
-                        TextButton(onClick = {
-                            pendingRemoval = null
-                            if (kind == "rating") admin?.removeRating(reviewId)
-                            else admin?.removeReview(reviewId)
-                        }) { Text("Remove", color = Color.Red) }
+                        Text(
+                            text = tag,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
                     }
                 }
             }
         }
 
-        // view messages with entrants (same message list as from a campsite)
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
-            ) { Text("View Messages with Entrants") }
+        Text("Map", style = MaterialTheme.typography.titleMedium)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .clipToBounds()
+                ) {
+                    CampsiteMap(
+                        latitude = campsite.latitude,
+                        longitude = campsite.longitude,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = campsite.location.ifBlank { "Campsite pin" },
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        text = readableCoordinates(campsite.latitude, campsite.longitude),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
 
+        CampsiteSection("About", campsite.description)
+        CampsiteSection("Rules and policies", campsite.rules)
+        CampsiteSection("Cancellation", campsite.cancellationPolicy)
+
+        //reviews
+        Text("Reviews", style = MaterialTheme.typography.titleMedium)
+        if (reviews.isEmpty()) {
+            Text(
+                "No reviews yet",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            reviews.forEach { review ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            review.entrantName.ifBlank { "Entrant" },
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Text(
+                            if (review.ratingRemoved) "Rating removed" else "${review.rating} / 5",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        if (review.body.isNotBlank()) {
+                            Text(review.body, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        Button(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = destructiveButtonColors(),
+                            enabled = !review.ratingRemoved,  //only enable button if rating not removed
+                            onClick = {
+                                pendingRemoval = review.id to "rating"
+                            }
+                        ) {
+                            Text("Remove Rating")
+                        }
+                        Button(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = destructiveButtonColors(),
+                            onClick = {
+                                pendingRemoval = review.id to "review"
+                            }
+                        ) {
+                            Text("Remove Review")
+                        }
+                    }
+                }
+                pendingRemoval?.let { (reviewId, kind) ->
+                    Dialog(onDismissRequest = { pendingRemoval = null }) {
+                        Column(
+                            modifier = Modifier
+                                .background(Color.DarkGray, RoundedCornerShape(8.dp))
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                if (kind == "rating") {
+                                    "Remove this rating? It will no longer count toward the campsite  and can't be undone."
+                                } else {
+                                    "Remove this review? This can't be undone."
+                                },
+                                color = Color.White
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(onClick = { pendingRemoval = null }) { Text("Cancel") }
+                                TextButton(onClick = {
+                                    pendingRemoval = null
+                                    if (kind == "rating") admin?.removeRating(reviewId)
+                                    else admin?.removeReview(reviewId)
+                                }) { Text("Remove", color = Color.Red) }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Text("Availability", style = MaterialTheme.typography.titleMedium)
+        if (campsite.availability.isEmpty()) {
+            Text(
+                "The owner has not posted open dates.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            campsite.availability.forEach { range ->
+                Text(
+                    "Open  ${range.start}  to  ${range.end}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+        EntrantCalendarGrid(campsite, scheduleController)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            LegendDot(Color(0xFF66BB6A), "Open")
+            LegendDot(Color(0xFFC62828), "Booked")
+            LegendDot(Color(0xFF9E9E9E), "Closed")
+        }
+
+
+        // view messages with entrants (same message list as from a campsite)
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+        ) { Text("View Messages between Owner and Entrants") }
+
+        if (campsite.ownerId.isBlank()) {
+            Text(
+                "There is no owner for this campsite",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
-                    navController.navigate(AdminRoutes.profile( ProfileType.OWNER))
+                    navController.navigate(AdminRoutes.profile(ProfileType.OWNER, campsite.ownerId))
                 }
-            ) { Text("View Owner Profile") }
+            ) {
+                Text("View Owner Profile")
+            }
+        }
 
         // remove campsite
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                colors = destructiveButtonColors(),
-                onClick = rememberConfirmClick(
-                    message = "Remove this campsite? This can't be undone.",
-                    onConfirm =  {navController.navigate(AdminRoutes.CAMPSITE_LIST) }
-                )
-            ) { Text("Remove Campsite") }
-
-    }
-}
-
-@Preview
-@Composable
-fun AdminViewCampsitePreview() {
-    DasCampTheme {
-        AdminViewProfile(rememberNavController(), ProfileType.ENTRANT)
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            colors = destructiveButtonColors(),
+            onClick = rememberConfirmClick(
+                message = "Remove this campsite? This can't be undone.",
+                onConfirm = {
+                    repository.deleteCampsite(campsite)
+                    navController.navigate(AdminRoutes.CAMPSITE_LIST)
+                }
+            )
+        ) {
+            Text("Remove Campsite")
+        }
     }
 }
 

@@ -91,17 +91,40 @@ class NotificationsController(private val store: CampStore) {
         return NotificationSendResult(sentCount = recipients.size)
     }
 
-    /** Notifications addressed to the signed-in entrant, newest first. */
-    fun inbox(notifications: List<Notification> = store.notifications): List<Notification> {
+    /** Entrant notifications addressed to the signed-in user, newest first. */
+    fun inbox(notifications: List<Notification> = store.notifications): List<Notification> =
+        roleInbox(
+            notifications,
+            setOf(
+                NotificationType.OWNER_MESSAGE,
+                NotificationType.WIN,
+                NotificationType.LOSE,
+                NotificationType.CONFIRMATION,
+                NotificationType.CANCELLATION
+            )
+        )
+
+    /** Owner notifications addressed to the signed-in user, newest first. */
+    fun ownerInbox(notifications: List<Notification> = store.notifications): List<Notification> =
+        roleInbox(
+            notifications,
+            setOf(
+                NotificationType.LOTTERY_USE_REQUEST,
+                NotificationType.LOTTERY_PROPOSAL_UPDATE
+            )
+        )
+
+    private fun roleInbox(
+        notifications: List<Notification>,
+        allowedTypes: Set<NotificationType>
+    ): List<Notification> {
         val user = store.currentUser
         android.util.Log.d("InboxDebug", "user=${user?.id} notificationsOn=${user?.notificationsOn} total=${notifications.size}")
 
-        // Return an empty list if notifications are off or user doesn't exist
         if (user == null || !user.notificationsOn) return emptyList()
 
-        // otherwise return notifications
         return notifications
-            .filter { it.recipientId == store.uid }
+            .filter { it.recipientId == user.id && it.type in allowedTypes }
             .sortedByDescending { it.sentAt.toLongOrNull() ?: 0L }
     }
 

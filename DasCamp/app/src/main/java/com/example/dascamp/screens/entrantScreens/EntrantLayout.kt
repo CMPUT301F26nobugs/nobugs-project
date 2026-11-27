@@ -1,11 +1,15 @@
 package com.example.dascamp.screens.entrantScreens
 
-import android.icu.util.Calendar
+import java.util.Calendar
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -21,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
@@ -31,6 +36,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,9 +50,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -55,6 +64,7 @@ import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.Role
 import com.example.dascamp.screens.AppScaffold
 import com.example.dascamp.screens.RoleMenu
+import com.example.dascamp.screens.DatePickerField
 import com.example.dascamp.screens.contentMaxWidth
 import com.example.dascamp.screens.screenPadding
 
@@ -93,8 +103,13 @@ fun EntrantPage(
     navController: NavController,
     showBack: Boolean,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+    bottomBar: (@Composable () -> Unit)? = null,
+    topBar: (@Composable () -> Unit)? = null,
+    scrollState: ScrollState? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val pageScrollState = scrollState ?: rememberScrollState()
+
     AppScaffold(
         onBackClick = if (showBack) {
             { navController.popBackStack() }
@@ -102,22 +117,75 @@ fun EntrantPage(
         navBar = { EntrantNavBar(navController) },
         roleMenu = { RoleMenu(navController, Role.ENTRANT) }
     ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-        ) {
+        if (bottomBar == null) {
+            Box(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .widthIn(max = contentMaxWidth)
+                        .verticalScroll(pageScrollState)
+                        .padding(screenPadding()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = horizontalAlignment,
+                    content = content
+                )
+            }
+        } else {
             Column(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .widthIn(max = contentMaxWidth)
-                    .verticalScroll(rememberScrollState())
-                    .padding(screenPadding()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = horizontalAlignment,
-                content = content
-            )
+                    .padding(innerPadding)
+                    .fillMaxSize()
+            ) {
+                topBar?.let {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .fillMaxWidth()
+                            .widthIn(max = contentMaxWidth)
+                            .padding(horizontal = screenPadding(), vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        it()
+                    }
+                }
+                if (topBar != null) {
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .fillMaxWidth()
+                            .widthIn(max = contentMaxWidth)
+                            .padding(horizontal = screenPadding()),
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .align(Alignment.CenterHorizontally)
+                        .fillMaxWidth()
+                        .widthIn(max = contentMaxWidth)
+                        .verticalScroll(pageScrollState)
+                        .padding(screenPadding()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = horizontalAlignment,
+                    content = content
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .fillMaxWidth()
+                        .widthIn(max = contentMaxWidth)
+                        .padding(horizontal = screenPadding(), vertical = 8.dp)
+                ) {
+                    bottomBar()
+                }
+            }
         }
     }
 }
@@ -183,8 +251,9 @@ fun EntrantNavBar(navController: NavController) {
  * @param onToggle called when the toggle row is clicked
  * @param location current location filter text
  * @param onLocationChange called with the new location text
- * @param date current date filter text
- * @param onDateChange called with the new date text
+ * @param dateFrom start of the availability search window
+ * @param dateTo end of the availability search window
+ * @param minimumStay minimum number of consecutive inclusive dates required
  * @param occupancy current max occupancy filter text
  * @param onOccupancyChange called with the new occupancy text
  */
@@ -194,8 +263,12 @@ fun FilterSection(
     onToggle: () -> Unit,
     location: String,
     onLocationChange: (String) -> Unit,
-    date: String,
-    onDateChange: (String) -> Unit,
+    dateFrom: String,
+    onDateFromChange: (String) -> Unit,
+    dateTo: String,
+    onDateToChange: (String) -> Unit,
+    minimumStay: String,
+    onMinimumStayChange: (String) -> Unit,
     occupancy: String,
     onOccupancyChange: (String) -> Unit
 ) {
@@ -242,7 +315,40 @@ fun FilterSection(
 
                     // Fields
                     FilterField("Location:", location, onLocationChange)
-                    FilterField("Date:", date, onDateChange)
+                    Text("Availability window (optional)", style = MaterialTheme.typography.labelLarge)
+                    DatePickerField(
+                        value = dateFrom,
+                        onDateSelected = onDateFromChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("From") },
+                        clearable = true
+                    )
+                    DatePickerField(
+                        value = dateTo,
+                        onDateSelected = onDateToChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("To") },
+                        clearable = true
+                    )
+                    if (dateFrom.isBlank() != dateTo.isBlank()) {
+                        Text("Choose both dates to filter by an availability window.")
+                    }
+                    if (dateFrom.isNotBlank() && dateTo.isNotBlank() && dateFrom > dateTo) {
+                        Text("From must be on or before To.")
+                    }
+                    FilterField(
+                        label = "Min stay:",
+                        value = minimumStay,
+                        onValueChange = onMinimumStayChange,
+                        keyboardType = KeyboardType.Number,
+                        onFocusLost = {
+                            if (minimumStay.isBlank()) onMinimumStayChange("1")
+                        }
+                    )
+                    Text("Minimum stay is measured in inclusive calendar days and must be at least 1.")
+                    if (minimumStay.toIntOrNull()?.let { it >= 1 } != true) {
+                        Text("Minimum stay must be at least 1 day.")
+                    }
                     FilterField("Max Occ:", occupancy, onOccupancyChange)
                 }
             }
@@ -266,7 +372,9 @@ fun FilterSection(
 fun FilterField(
     label: String,
     value: String,
-    onValueChange: (String) -> Unit
+    onValueChange: (String) -> Unit,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    onFocusLost: (() -> Unit)? = null
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
@@ -278,10 +386,15 @@ fun FilterField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             placeholder = { Text("Any") },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .onFocusChanged { focus ->
+                    if (!focus.isFocused) onFocusLost?.invoke()
+                }
         )
     }
 }
@@ -355,35 +468,68 @@ fun EntrantCalendarGrid(
     val daysinMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
     val firstWeekday = calendar.get(Calendar.DAY_OF_WEEK) - 1
 
-    var cell = 0
-    repeat(6) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .height(36.dp), verticalAlignment = Alignment.CenterVertically
-        ) {
-            repeat(7) {
-                val day = cell - firstWeekday + 1
-                cell = cell + 1
-                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    if (day in 1..daysinMonth) {
-                        val date = year.toString() + "-" + twoDigits(month) + "-" + twoDigits(day)
-                        var color = Color.LightGray
-                        if (campsite != null && scheduleController != null) {
-                            if (scheduleController.isDateBooked(campsite.id, date)) {
-                                color = Color.Red
-                            } else if (scheduleController.isInAvailability(campsite, date)) {
-                                color = Color.Green
+    val slashColor = MaterialTheme.colorScheme.outline
+    val weekCount = (firstWeekday + daysinMonth + 6) / 7
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.outlineVariant)
+            .padding(1.dp),
+        verticalArrangement = Arrangement.spacedBy(1.dp)
+    ) {
+        repeat(weekCount) { week ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                repeat(7) { weekday ->
+                    val day = week * 7 + weekday - firstWeekday + 1
+                    val hasDate = day in 1..daysinMonth
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .background(
+                                if (hasDate) {
+                                    MaterialTheme.colorScheme.surface
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (hasDate) {
+                            val date =
+                                year.toString() + "-" + twoDigits(month) + "-" + twoDigits(day)
+                            var color = Color(0xFF9E9E9E)
+
+                            if (campsite != null && scheduleController != null) {
+                                if (scheduleController.isDateBooked(campsite.id, date)) {
+                                    color = Color(0xFFC62828)
+                                } else if (scheduleController.isInAvailability(campsite, date)) {
+                                    color = Color(0xFF66BB6A)
+                                }
                             }
 
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .background(color, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(day.toString(), style = MaterialTheme.typography.labelSmall)
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .border(width = 1.dp, color = color, shape = CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(day.toString(), style = MaterialTheme.typography.labelSmall)
+                            }
+                        } else {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                drawLine(
+                                    color = slashColor,
+                                    start = Offset(size.width * 0.22f, size.height * 0.78f),
+                                    end = Offset(size.width * 0.78f, size.height * 0.22f),
+                                    strokeWidth = 1.dp.toPx()
+                                )
+                            }
                         }
                     }
                 }

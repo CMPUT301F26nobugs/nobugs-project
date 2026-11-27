@@ -100,7 +100,7 @@ class ReservationController(private val store: CampStore) {
             )
         )
         setEntryStatus(lottery, WaitlistStatus.BOOKED)
-        notify(lottery.id, "Reservation confirmed: ${campsite.name}, $start to $end")
+        notify(lottery.id, "Reservation confirmed: ${campsite.name}, $start to $end", NotificationType.CONFIRMATION)
         return null
     }
 
@@ -117,12 +117,19 @@ class ReservationController(private val store: CampStore) {
         store.updateReservation(reservation.copy(status = ReservationStatus.CANCELLED))
         notify(
             reservation.lotteryId,
-            "Reservation cancelled: ${reservation.campsiteName}, " +
-                "${reservation.startDate} to ${reservation.endDate}",
+            "Reservation cancelled: ${reservation.campsiteName}, ${reservation.startDate} to ${reservation.endDate}",
             NotificationType.CANCELLATION
         )
     }
 
+    /**
+     * Owner rejects a reservation at one of their campsites (US 02.08.01).
+     * Marks it CANCELLED with the reason, and sends the entrant a notification.
+     *
+     * @param reservation the reservation to reject
+     * @param reason why it is rejected, shown to the entrant
+     * @return null if it was rejected, or an error message to show
+     */
     fun reject(reservation: Reservation, reason: String): String?{
         if(reason.isBlank()){
             return "Enter a reason for rejecting"
@@ -172,7 +179,7 @@ class ReservationController(private val store: CampStore) {
             return "You can only rate your own stays"
         }
         if(reservation.status == ReservationStatus.CANCELLED){
-            return "Cancelled stays cant be rated"
+            return "Cancelled stays can't be rated"
         }
         if (reservation.rating != 0){
             return "You already rated this stay"
@@ -227,11 +234,7 @@ class ReservationController(private val store: CampStore) {
         )
     }
 
-    private fun notify(
-        lotteryId: String?,
-        message: String,
-        type: NotificationType? = null
-    ) {
+    private fun notify(lotteryId: String?, message: String, type: NotificationType) {
         val user = store.currentUser ?: return
         store.addNotification(
             Notification(
@@ -241,10 +244,11 @@ class ReservationController(private val store: CampStore) {
                 recipientId = user.id,
                 message = message,
                 sentAt = System.currentTimeMillis().toString(),
-                type = type ?: Notification().type
+                type = type
             )
         )
     }
+
     /**
      * Active reservations for campsites owned by the signed-in owner.
      *
