@@ -84,6 +84,7 @@ import com.example.dascamp.controllers.copyPickedImage
 import com.example.dascamp.model.DasCampRepository
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.ContentScale
 import com.example.dascamp.controllers.CampsiteController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ReservationCsv
@@ -473,7 +474,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp),
+                .heightIn(max = 400.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -482,9 +483,14 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
             StoredImage(
                 path = campsite.imageUri,
                 contentDescription = campsite.name,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                contentScale = ContentScale.Fit
             ) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                // No photo: grey box with an icon
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(180.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
                         imageVector = Icons.Default.Image,
                         contentDescription = "No campsite photo",
