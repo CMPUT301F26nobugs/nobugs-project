@@ -283,6 +283,7 @@ fun AdminProfileList(navController: NavController, campStore: CampStore) {
 fun AdminViewProfile(navController: NavController, profileType: ProfileType, campStore: CampStore, uid: String) {
 
     val user = campStore.userById(uid)  //get the specific user by the uid
+    val adminController = remember(campStore) {AdminController(campStore)}
 
     AdminPage(
         navController = navController,
@@ -359,6 +360,7 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
                     onClick = rememberConfirmClick(
                         message = "Remove owner role? This can't be undone.",
                         onConfirm = {
+                            adminController.revokeOwnership(user)  //remove ownership from owned campsites
                             campStore.updateUser(user.copy(owner = false))
                         }
                     )
