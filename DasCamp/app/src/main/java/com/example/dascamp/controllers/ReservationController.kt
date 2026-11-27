@@ -2,6 +2,7 @@ package com.example.dascamp.controllers
 
 import com.example.dascamp.model.CampStore
 import com.example.dascamp.model.Campsite
+import com.example.dascamp.model.CampsiteReview
 import com.example.dascamp.model.Lottery
 import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.Notification
@@ -99,7 +100,7 @@ class ReservationController(private val store: CampStore) {
             )
         )
         setEntryStatus(lottery, WaitlistStatus.BOOKED)
-        notify(lottery.id, "Reservation confirmed: ${campsite.name}, $start to $end")
+        notify(lottery.id, "Reservation confirmed: ${campsite.name}, $start to $end", NotificationType.CONFIRMATION)
         return null
     }
 
@@ -114,8 +115,11 @@ class ReservationController(private val store: CampStore) {
     fun cancel(reservation: Reservation) {
         if (reservation.entrantId != store.uid) return
         store.updateReservation(reservation.copy(status = ReservationStatus.CANCELLED))
-        notify(reservation.lotteryId, "Reservation cancelled: ${reservation.campsiteName}, " +
-                "${reservation.startDate} to ${reservation.endDate}")
+        notify(
+            reservation.lotteryId,
+            "Reservation cancelled: ${reservation.campsiteName}, ${reservation.startDate} to ${reservation.endDate}",
+            NotificationType.CANCELLATION
+        )
     }
 
     fun reject(reservation: Reservation, reason: String): String?{
@@ -157,6 +161,61 @@ class ReservationController(private val store: CampStore) {
                 )
             return null
     }
+
+    /** Entrant rates a finished stay 1 to 5 stars, saved as a review (US 01.13.01). Returns null if saved, or an error message. */
+    fun rate(reservation: Reservation, stars: Int): String?{
+        if (stars < 1 || stars > 5){
+            return "Choose 1 to 5 stars"
+        }
+        if (reservation.entrantId != store.uid){
+            return "You can only rate your own stays"
+        }
+        if(reservation.status == ReservationStatus.CANCELLED){
+            return "Cancelled stays cant be rated"
+        }
+        if (reservation.rating != 0){
+            return "You already rated this stay"
+        }
+
+        if(reservation.endDate >= today()){
+            return "You can rate after your stay ends"
+        }
+
+        var campsite: Campsite? = null
+        for (site in store.campsites){
+            if(site.id == reservation.campsiteId){
+                campsite = site
+            }
+        }
+        if (campsite == null){
+            return "This campsite no longer exists"
+        }
+
+        var existing: CampsiteReview? = null
+        for (review in store.reviews){
+            if(review.campsiteId == campsite.id && review.entrantId == store.uid){
+                existing = review
+            }
+        }
+        if(existing == null){
+            store.addReview(
+                    CampsiteReview(
+                        id = UUID.randomUUID().toString(),
+                        campsiteId = campsite.id,
+                        entrantId = store.uid,
+                        entrantName = reservation.entrantName,
+                        rating = stars,
+                        createdAt = System.currentTimeMillis().toString()
+                    )
+                    )
+        } else{
+            store.updateReview((existing.copy(rating = stars, ratingRemoved = false)))
+        }
+
+        ReviewController(store).refreshCampsiteRating(campsite.id)
+        store.updateReservation(reservation.copy(rating = stars))
+        return null
+    }
     private fun setEntryStatus(lottery: Lottery, status: WaitlistStatus) {
         store.updateLottery(
             lottery.copy(entrants = lottery.entrants.map {
@@ -167,7 +226,7 @@ class ReservationController(private val store: CampStore) {
         )
     }
 
-    private fun notify(lotteryId: String?, message: String) {
+    private fun notify(lotteryId: String?, message: String, type: NotificationType) {
         val user = store.currentUser ?: return
         store.addNotification(
             Notification(
@@ -176,10 +235,12 @@ class ReservationController(private val store: CampStore) {
                 recipientName = user.displayName(),
                 recipientId = user.id,
                 message = message,
-                sentAt = System.currentTimeMillis().toString()
+                sentAt = System.currentTimeMillis().toString(),
+                type = type
             )
         )
     }
+
     /**
      * Active reservations for campsites owned by the signed-in owner.
      *

@@ -22,13 +22,15 @@ enum class NotificationType { OWNER_MESSAGE, WIN, LOSE, CONFIRMATION, CANCELLATI
  * (e.g. a plain [NotificationType.OWNER_MESSAGE])
  * @property recipientName display name of the user receiving the notification
  * @property message the text content shown to the recipient
- * @property sentAt when the notification was sent, as a string (state the format, e.g. ISO-8601)
+ * @property sentAt when the notification was sent, as epoch milliseconds in a string
  * @property senderId id of the user or system that sent the notification
  * @property recipientId id of the user the notification is addressed to
  * @property type what kind of event this notification represents
  */
 data class Notification(
     val id: String = "",
+    /** Shared by the individual recipient records created by one owner send. */
+    val batchId: String = "",
     val lotteryId: String? = null,
     val recipientName: String = "",
     val message: String = "",

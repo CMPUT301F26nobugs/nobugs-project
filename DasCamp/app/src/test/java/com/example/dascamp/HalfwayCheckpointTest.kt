@@ -411,6 +411,42 @@ class HalfwayCheckpointTest {
     }
 
     @Test
+    fun joinWaitlist_capacityCountsOnlyWaitingEntries() {
+        val lottery = openLottery().copy(
+            waitlistCapacity = 1,
+            entrants = listOf(
+                WaitlistEntrant("former-entrant", "Former", status = WaitlistStatus.DECLINED)
+            )
+        )
+        store.addLottery(lottery)
+
+        val error = lotteryController.joinWaitlist(store.lotteries.first(), "Ada")
+
+        assertNull(error)
+        assertEquals(
+            1,
+            store.lotteries.first().entrants.count {
+                it.status == WaitlistStatus.WAITING
+            }
+        )
+    }
+
+    @Test
+    fun joinWaitlist_waitingCountAtCapacity_rejectsJoin() {
+        val lottery = openLottery().copy(
+            waitlistCapacity = 1,
+            entrants = listOf(
+                WaitlistEntrant("other-entrant", "Other", status = WaitlistStatus.WAITING)
+            )
+        )
+        store.addLottery(lottery)
+
+        val error = lotteryController.joinWaitlist(store.lotteries.first(), "Ada")
+
+        assertEquals("Waiting list is full", error)
+    }
+
+    @Test
     fun drawWinners_selectedEntrant_getsWinNotification() {
         // US 01.03.01
         val lottery = openLottery().copy(
