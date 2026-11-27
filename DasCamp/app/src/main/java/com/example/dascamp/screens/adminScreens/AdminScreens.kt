@@ -311,20 +311,7 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
                 )  /*todo: implement delete*/
             ) { Text("Delete Profile Picture") }
 
-            if (profileType == ProfileType.ENTRANT) {
-                // Entrant only -> delete profile
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = destructiveButtonColors(),
-                    onClick = rememberConfirmClick(
-                        message = "Remove this profile? This can't be undone.",
-                        onConfirm = {
-                            campStore.deleteUser(user)
-                            navController.navigate(AdminRoutes.PROFILE_LIST)
-                        }
-                    )
-                ) { Text("Delete Profile") }
-            } else {
+            if (profileType == ProfileType.OWNER){
                 // Owner only -> view messages with entrants (same message list as from a campsite)
                 Button(
                     modifier = Modifier.fillMaxWidth(),
@@ -336,10 +323,28 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
                     modifier = Modifier.fillMaxWidth(),
                     colors = destructiveButtonColors(),
                     onClick = rememberConfirmClick(
-                        message = "Remove this campsite owner? This can't be undone.",
-                        onConfirm = { navController.navigate(AdminRoutes.CAMPSITE_LIST) }
-                    ) /*todo: implement delete*/
-                ) { Text("Revoke Campsite Owner Role") }
+                        message = "Remove owner role? This can't be undone.",
+                        onConfirm = {
+                            campStore.updateUser(user.copy(owner = false))
+                        }
+                    )
+                ) {
+                    Text("Revoke Campsite Owner Role")
+                }
+            }
+            //delete profile
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                colors = destructiveButtonColors(),
+                onClick = rememberConfirmClick(
+                    message = "Remove this profile? This can't be undone.",
+                    onConfirm = {
+                        campStore.deleteUser(user)
+                        navController.popBackStack()  //for owner profile, if came from campsite page to back to camp list, if come from profile list, go back to profile list
+                    }
+                )
+            ) {
+                Text("Delete Profile")
             }
         }
     }
