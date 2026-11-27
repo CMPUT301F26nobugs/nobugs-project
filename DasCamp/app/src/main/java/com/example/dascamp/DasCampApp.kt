@@ -1,7 +1,10 @@
 package com.example.dascamp
 
+import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -13,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -24,6 +28,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.controllers.AdminController
 import com.example.dascamp.controllers.CampsiteController
 import com.example.dascamp.controllers.LotteryDrawWorker
+import com.example.dascamp.controllers.LotteryProposalController
 import com.example.dascamp.controllers.NotificationsController
 import com.example.dascamp.controllers.ProfileController
 import com.example.dascamp.controllers.ReservationController
@@ -66,6 +71,7 @@ import com.example.dascamp.screens.ownerScreens.OwnerDashboard
 import com.example.dascamp.screens.ownerScreens.OwnerEditCampsite
 import com.example.dascamp.screens.ownerScreens.OwnerEditLottery
 import com.example.dascamp.screens.ownerScreens.OwnerLotteryDetails
+import com.example.dascamp.screens.ownerScreens.OwnerLotteryApprovals
 import com.example.dascamp.screens.ownerScreens.OwnerLotteryList
 import com.example.dascamp.screens.ownerScreens.OwnerMapLocation
 import com.example.dascamp.screens.ownerScreens.OwnerMessageList
@@ -80,6 +86,10 @@ import com.example.dascamp.screens.ownerScreens.OwnerSendNotification
 import com.example.dascamp.views.ReservationView
 import com.example.dascamp.views.NotificationView
 import java.util.concurrent.TimeUnit
+import android.Manifest
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.messaging.FirebaseMessaging
 
 /**
  * Root composable of the app: creates the repository and controllers, decides where a
@@ -110,11 +120,16 @@ import java.util.concurrent.TimeUnit
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DasCampApp() {
-
     // Page Navigation
     val navController = rememberNavController()
     val startDestination = "signUpScreen"
     val context = LocalContext.current
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()    // request permission
+    ) { isGranted ->
+        // isGranted == false: user declined so app won't display notifications
+    }
 
     // The device id never changes. The active profile can, after sign out.
     val deviceId = remember {
@@ -141,6 +156,9 @@ fun DasCampApp() {
     val reservationView = remember(repository) { ReservationView(repository) }
     val notificationView = remember(repository) { NotificationView(repository) }
     val notificationsController = remember(repository) { NotificationsController(repository) }
+    val lotteryProposalController = remember(repository) {
+        LotteryProposalController(repository)
+    }
     val adminController = remember(repository) { AdminController(repository) }
 
     // Persist the draw check across app closes and device restarts. The one-time
@@ -165,6 +183,15 @@ fun DasCampApp() {
         if (!repository.usersLoaded) return@LaunchedEffect
         val user = repository.currentUser
         val route = navController.currentDestination?.route
+
+        if (signedIn &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
         if (!signedIn || user == null) {
             // Signed out, new device, or the profile was deleted
             if (route != "signUpScreen") {
@@ -182,6 +209,13 @@ fun DasCampApp() {
         }
     }
 
+    LaunchedEffect(activeUserId) {
+        val userId = activeUserId ?: return@LaunchedEffect
+        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+            FirebaseFirestore.getInstance().collection("users").document(userId)
+                .set(mapOf("fcmToken" to token), SetOptions.merge())
+        }
+    }
 
     // Provide the local user to the navhost
     CompositionLocalProvider(LocalCurrentUser provides repository.currentUser) {
@@ -231,10 +265,15 @@ fun DasCampApp() {
                     reservationView
                 )
             }
-            composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController) }
+            composable(EntrantRoutes.QR) { EntrantQrCodeScreen(navController, repository) }
 
             // OWNER NAVIGATION
-            composable(OwnerRoutes.DASHBOARD) { OwnerDashboard(navController) }
+            composable(OwnerRoutes.DASHBOARD) {
+                OwnerDashboard(navController, repository)
+            }
+            composable(OwnerRoutes.APPROVALS) {
+                OwnerLotteryApprovals(navController, repository, lotteryProposalController)
+            }
             composable(OwnerRoutes.CAMPSITES) { OwnerCampsitesList(navController, repository) }
             composable(OwnerRoutes.ADD) { OwnerAddCampsite(navController, repository) }
             composable(OwnerRoutes.CAMPSITE) { OwnerCampsite(navController, repository) }
@@ -253,7 +292,9 @@ fun DasCampApp() {
             composable(OwnerRoutes.CREATE) { OwnerCreateLottery(navController, repository) }
             composable(OwnerRoutes.LOTTERY) { OwnerLotteryDetails(navController, repository) }
             composable(OwnerRoutes.EDIT_LOTTERY) { OwnerEditLottery(navController, repository) }
-            composable(OwnerRoutes.ALERTS) { OwnerNotifications(navController, repository) }
+            composable(OwnerRoutes.ALERTS) {
+                OwnerNotifications(navController, repository, notificationsController)
+            }
             composable(OwnerRoutes.SEND) {
                 OwnerSendNotification(navController, notificationsController, repository)
             }

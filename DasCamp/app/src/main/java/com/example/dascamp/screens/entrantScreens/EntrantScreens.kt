@@ -26,10 +26,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -84,6 +89,7 @@ import com.example.dascamp.controllers.copyPickedImage
 import com.example.dascamp.model.DasCampRepository
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.ContentScale
 import com.example.dascamp.controllers.CampsiteController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ReservationCsv
@@ -109,19 +115,22 @@ import com.example.dascamp.model.label
 import com.example.dascamp.screens.LocalCurrentUser
 import com.example.dascamp.views.ReservationView
 import com.example.dascamp.views.NotificationView
-import com.example.dascamp.controllers.QrCameraPreview
+import com.example.dascamp.screens.QrCameraPreview
 import com.example.dascamp.controllers.QrCodeController
 
 /**
  * Entrant home screen, with shortcuts to the campsite list, reservations,
  * notifications, messages, and the QR scanner.
  *
- * The greeting is hardcoded to "User" for now.
+ * The greeting uses the signed-in user's first name.
  *
  * @param navController used to navigate to the selected section
  */
 @Composable
 fun EntrantDashboard(navController: NavController) {
+    val firstName = LocalCurrentUser.current?.firstName
+        ?.takeIf { it.isNotBlank() } ?: "User"
+
     EntrantPage(
         navController = navController,
         showBack = false,
@@ -134,8 +143,7 @@ fun EntrantDashboard(navController: NavController) {
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Welcome Back,", style = MaterialTheme.typography.titleLarge)
-            Text(text = "User", style = MaterialTheme.typography.titleLarge)
+            Text(text = "Welcome Back, $firstName", style = MaterialTheme.typography.titleLarge)
         }
 
         // Campsite button & reservations button container
@@ -174,19 +182,31 @@ fun EntrantDashboard(navController: NavController) {
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { navController.navigate(EntrantRoutes.NOTIFICATION_LIST) }
-            ) { Text("Notifications") }
+            ) {
+                Icon(Icons.Default.Campaign, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Notifications")
+            }
 
             // Message list button
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { navController.navigate(EntrantRoutes.MESSAGE_LIST) }
-            ) { Text("Messages") }
+            ) {
+                Icon(Icons.Default.ChatBubbleOutline, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Messages")
+            }
 
             // Scan QR code button
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { navController.navigate(EntrantRoutes.QR) }
-            ) { Text("Scan QR") }
+            ) {
+                Icon(Icons.Default.QrCodeScanner, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Scan QR")
+            }
         }
     }
 }
@@ -471,7 +491,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp),
+                .heightIn(max = 400.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -480,9 +500,14 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
             StoredImage(
                 path = campsite.imageUri,
                 contentDescription = campsite.name,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                contentScale = ContentScale.Fit
             ) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                // No photo: grey box with an icon
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(180.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
                         imageVector = Icons.Default.Image,
                         contentDescription = "No campsite photo",
@@ -1294,6 +1319,10 @@ fun EntrantMessageScreen(
         repository?.let { MessageView(it) }
     }
     DisposableEffect(view) { onDispose { view?.remove() } }
+    val messageScrollState = rememberScrollState()
+    LaunchedEffect(view?.messages?.size) {
+        messageScrollState.animateScrollTo(messageScrollState.maxValue)
+    }
 
     val reservation = repository?.reservations?.find { it.id == repository.openReservationId }
     val campsite = repository?.campsites?.find { it.id == reservation?.campsiteId }
@@ -1321,6 +1350,10 @@ fun EntrantMessageScreen(
     EntrantPage(
         navController,
         showBack = true,
+        topBar = {
+            Text(text = title, style = MaterialTheme.typography.titleLarge)
+        },
+        scrollState = messageScrollState,
         bottomBar = if (ownerId.isNotBlank() && entrantId.isNotBlank()) {{
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 sendError?.let { Text(it) }
@@ -1341,16 +1374,6 @@ fun EntrantMessageScreen(
             }
         }} else null
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = title, style = MaterialTheme.typography.titleLarge)
-            }
-        }
-
         if (ownerId.isBlank() || entrantId.isBlank()) {
             Text("Open a conversation from a campsite, lottery, or reservation.")
         } else {
@@ -1754,59 +1777,26 @@ fun AppRules(onDismiss: () -> Unit) {
 }
 
 
-//campsite rules
-@Composable
-fun CampsiteRules(rulesText: String,
-                         onDismiss: () -> Unit,
-                         onConfirm: () -> Unit
-    ) {
-    var hasRead by rememberSaveable { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("App Guide & Policy") },
-        text = {
-            Column(
-                modifier = Modifier
-                    .heightIn(max = 400.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = 300.dp)
-                ) {
-                    Text(rulesText, style = MaterialTheme.typography.bodyMedium)
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { hasRead = !hasRead },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(checked = hasRead, onCheckedChange = { hasRead = it })
-                    Text("I have read and agree to the campsite rules and policies")
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = onConfirm, enabled = hasRead) {
-                Text("Confirm reservation")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
-}
-
-
-// QR CODE SCREEN
+/**
+ * QR code scanner screen for entrants.
+ *
+ * Asks for camera permission, then shows the camera. When a DasCamp QR code is read,
+ * it opens that campsite (it sets [DasCampRepository.openCampsiteId] and goes to
+ * [EntrantRoutes.CAMPSITE], the same way the campsite list does).
+ * Any other QR code shows "Not a DasCamp QR Code".
+ *
+ * The camera reads one code per visit, so the entrant reopens the screen to scan again.
+ *
+ * @param navController used to open the scanned campsite
+ * @param repository where the scanned campsite id is stored; if null, every scan
+ * shows the "Not a DasCamp QR Code" message
+ */
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun EntrantQrCodeScreen(navController: NavController) {
+fun EntrantQrCodeScreen(navController: NavController, repository: DasCampRepository? = null) {
     val context = LocalContext.current
     val qrController =  remember { QrCodeController() }
+    var scanMessage by remember {mutableStateOf("")}
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
@@ -1842,8 +1832,13 @@ fun EntrantQrCodeScreen(navController: NavController) {
                     QrCameraPreview(
                         modifier = Modifier.fillMaxSize()
                     ) { scannedValue ->
-                        val campsiteID = qrController.campsiteIdFrom(scannedValue)
-                        navController.navigate("${EntrantRoutes.CAMPSITE}/$campsiteID")
+                       val id = qrController.campsiteIdFrom(scannedValue)
+                        if (id != null && repository != null){
+                            repository.openCampsiteId = id
+                            navController.navigate(EntrantRoutes.CAMPSITE)
+                        } else {
+                            scanMessage = "Not a DasCamp QR Code"
+                        }
                     }
                 } else {
                 Column(
@@ -1862,6 +1857,7 @@ fun EntrantQrCodeScreen(navController: NavController) {
                 }
             }
             }
+            Text (scanMessage)
         }
     }
 }

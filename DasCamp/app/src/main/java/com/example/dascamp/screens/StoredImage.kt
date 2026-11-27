@@ -12,12 +12,15 @@ import java.io.File
 /**
  * Draws a picture saved in app storage. [fallback] is shown when there is no file.
  * Used for the entrant profile image. US 01.08.02
+ * * @param contentScale how the picture fits the box: Crop fills it (cuts the edges),
+ *  * Fit shows the whole picture
  */
 @Composable
 fun StoredImage(
     path: String?,
     contentDescription: String,
     modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Crop,
     fallback: @Composable () -> Unit
 ) {
     val stamp = if (path.isNullOrBlank()) 0L else File(path).lastModified()
@@ -31,7 +34,7 @@ fun StoredImage(
             bitmap = bitmap.asImageBitmap(),
             contentDescription = contentDescription,
             modifier = modifier,
-            contentScale = ContentScale.Crop
+            contentScale = contentScale
         )
     }
 }

@@ -44,9 +44,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.dascamp.screens.BigButton
-import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
+import com.example.dascamp.screens.LocalCurrentUser
 import com.example.dascamp.ui.theme.DasCampTheme
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.*
@@ -103,6 +103,9 @@ enum class ProfileType(val label: String) {
  */
 @Composable
 fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
+    val firstName = LocalCurrentUser.current?.firstName
+        ?.takeIf { it.isNotBlank() } ?: "User"
+
     AdminPage(
         navController = navController,
         showBack = false,
@@ -115,8 +118,7 @@ fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Welcome Back,", style = MaterialTheme.typography.titleLarge)
-            Text(text = "Admin", style = MaterialTheme.typography.titleLarge)
+            Text(text = "Welcome Back, $firstName", style = MaterialTheme.typography.titleLarge)
         }
 
         // Campsite button & profiles button container
@@ -143,27 +145,37 @@ fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
             )
         }
 
-        // Notification Logs
-        Text(
-            "Signed in on this device",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        ProfileAction(
-            icon = Icons.Default.Campaign,
-            label = "Notification logs",
-            onClick = { navController.navigate(AdminRoutes.NOTIFICATION_LOG) }
-        )
-        ProfileAction(
-            icon = Icons.Default.HowToReg,
-            label = "Owner applications",
-            onClick = { navController.navigate(AdminRoutes.OWNER_APPLICATIONS) }
-        )
-        ProfileAction(
-            icon = Icons.AutoMirrored.Filled.Logout,
-            label = "Sign out",
-            onClick = onSignOut
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            verticalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AdminRoutes.NOTIFICATION_LOG) }
+            ) {
+                Icon(Icons.Default.Campaign, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Notification logs")
+            }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AdminRoutes.OWNER_APPLICATIONS) }
+            ) {
+                Icon(Icons.Default.HowToReg, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Owner applications")
+            }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onSignOut
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Sign out")
+            }
+        }
     }
 }
 
