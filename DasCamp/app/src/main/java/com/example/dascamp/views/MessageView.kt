@@ -8,7 +8,7 @@ import com.example.dascamp.model.ModelView
 import com.example.dascamp.model.OwnerMessage
 
 /**
- * Watches the shared owner/entrant conversation currently open in the repository.
+ * Watches messages for the reservation currently open in [DasCampRepository.openReservationId].
  *
  * Used by the entrant and owner message screens. US 01.14.01
  */
@@ -21,37 +21,9 @@ class MessageView(private val repository: DasCampRepository) : ModelView {
     }
 
     override fun update() {
-        val selectedReservation = repository.reservations
-            .find { it.id == repository.openReservationId }
-        val ownerId = repository.openMessageOwnerId.ifBlank {
-            selectedReservation?.let { reservation ->
-                repository.campsites.find { it.id == reservation.campsiteId }?.ownerId
-            }.orEmpty()
-        }
-        val entrantId = repository.openMessageEntrantId.ifBlank {
-            selectedReservation?.entrantId.orEmpty()
-        }
-        val legacyReservationIds = if (ownerId.isBlank() || entrantId.isBlank()) {
-            emptySet()
-        } else {
-            repository.reservations
-                .filter { reservation ->
-                    reservation.entrantId == entrantId &&
-                        repository.campsites.any {
-                            it.id == reservation.campsiteId && it.ownerId == ownerId
-                        }
-                }
-                .map { it.id }
-                .toSet()
-        }
-
+        val reservationId = repository.openReservationId
         messages = repository.messages
-            .filter { message ->
-                (message.ownerId == ownerId && message.entrantId == entrantId) ||
-                    (message.ownerId.isBlank() &&
-                        message.entrantId.isBlank() &&
-                        message.reservationId in legacyReservationIds)
-            }
+            .filter { it.reservationId == reservationId }
             .sortedBy { it.sentAt.toLongOrNull() ?: 0L }
     }
 

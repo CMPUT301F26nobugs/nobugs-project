@@ -25,7 +25,6 @@ import com.example.dascamp.controllers.AdminController
 import com.example.dascamp.controllers.CampsiteController
 import com.example.dascamp.controllers.LotteryDrawWorker
 import com.example.dascamp.controllers.NotificationsController
-import com.example.dascamp.controllers.ProfileController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.DasCampRepository
@@ -265,15 +264,14 @@ fun DasCampApp() {
 
             // ADMIN NAVIGATION
             composable(AdminRoutes.DASHBOARD) { AdminDashboard(navController, onSignOut = signOut) }
-            composable(AdminRoutes.PROFILE_LIST) { AdminProfileList(navController, repository) }
+            composable(AdminRoutes.PROFILE_LIST) { AdminProfileList(navController) }
             composable(AdminRoutes.PROFILE) { entry ->
                 val type = ProfileType.valueOf(           // turn text into enum
                     entry.arguments
                         ?.getString("profileType")  // ENTRANT or OWNER -> check is inside AdminViewProfile
                         ?: "ENTRANT"                      // default to ENTRANT if getString returns null
                 )
-                val uid = entry.arguments?.getString("uid") ?: ""
-                AdminViewProfile(navController, type, repository, uid)     // show the screen
+                AdminViewProfile(navController, type)     // show the screen
             }
             composable(AdminRoutes.NOTIFICATION_LOG) { NotificationLog(navController) }
             composable(AdminRoutes.REQUEST_LOG) { RequestLog(navController) }

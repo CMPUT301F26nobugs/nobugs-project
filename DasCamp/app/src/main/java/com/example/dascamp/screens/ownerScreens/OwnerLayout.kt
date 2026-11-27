@@ -110,7 +110,6 @@ fun OwnerPage(
     navController: NavController,
     showBack: Boolean,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
-    bottomBar: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     OwnerTheme {
@@ -121,52 +120,22 @@ fun OwnerPage(
             navBar = { OwnerNavBar(navController) },
             roleMenu = { RoleMenu(navController, Role.OWNER) }
         ) { innerPadding ->
-            if (bottomBar == null) {
-                Box(
-                    modifier = Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .fillMaxWidth()
-                            .widthIn(max = contentMaxWidth)
-                            .verticalScroll(rememberScrollState())
-                            .padding(screenPadding()),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalAlignment = horizontalAlignment,
-                        content = content
-                    )
-                }
-            } else {
+            Box(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+            ) {
                 Column(
                     modifier = Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .align(Alignment.CenterHorizontally)
-                            .fillMaxWidth()
-                            .widthIn(max = contentMaxWidth)
-                            .verticalScroll(rememberScrollState())
-                            .padding(screenPadding()),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalAlignment = horizontalAlignment,
-                        content = content
-                    )
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .fillMaxWidth()
-                            .widthIn(max = contentMaxWidth)
-                            .padding(horizontal = screenPadding(), vertical = 8.dp)
-                    ) {
-                        bottomBar()
-                    }
-                }
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .widthIn(max = contentMaxWidth)
+                        .verticalScroll(rememberScrollState())
+                        .padding(screenPadding()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = horizontalAlignment,
+                    content = content
+                )
             }
         }
     }

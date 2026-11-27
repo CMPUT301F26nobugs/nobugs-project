@@ -3,11 +3,19 @@ package com.example.dascamp.screens
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import coil.compose.SubcomposeAsyncImage
+import com.example.dascamp.controllers.CampImages
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Draws a picture saved in app storage. [fallback] is shown when there is no file.
@@ -20,6 +28,36 @@ fun StoredImage(
     modifier: Modifier = Modifier,
     fallback: @Composable () -> Unit
 ) {
+    if (!path.isNullOrBlank() && path.startsWith("firestore:")) {
+        var bitmap by remember(path) { mutableStateOf<android.graphics.Bitmap?>(null) }
+        LaunchedEffect(path) {
+            val bytes = withContext(Dispatchers.IO) { CampImages.load(path) }
+            bitmap = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+        }
+        val loaded = bitmap
+        if (loaded == null) {
+            fallback()
+        } else {
+            Image(
+                bitmap = loaded.asImageBitmap(),
+                contentDescription = contentDescription,
+                modifier = modifier,
+                contentScale = ContentScale.Crop
+            )
+        }
+        return
+    }
+    if (!path.isNullOrBlank() && (path.startsWith("http") || path.startsWith("content:"))) {
+        SubcomposeAsyncImage(
+            model = path,
+            contentDescription = contentDescription,
+            modifier = modifier,
+            contentScale = ContentScale.Crop,
+            loading = { fallback() },
+            error = { fallback() }
+        )
+        return
+    }
     val stamp = if (path.isNullOrBlank()) 0L else File(path).lastModified()
     val bitmap = remember(path, stamp) {
         if (path.isNullOrBlank() || !File(path).exists()) null else decodeSampled(path, 512)
