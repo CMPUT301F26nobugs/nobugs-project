@@ -58,6 +58,7 @@ import com.example.dascamp.controllers.AdminController
 import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.Policy
 import com.example.dascamp.model.CampStore
+import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.Notification
 import com.example.dascamp.model.NotificationType
 import com.example.dascamp.model.OwnerApplicationStatus
@@ -592,7 +593,7 @@ fun AdminCampsiteList(
     repository: DasCampRepository? = null
 ) {
     var query by rememberSaveable { mutableStateOf("") } // campsite search
-    val shown = repository?.campsites?.filter { site ->
+    val filteredCamps = repository?.campsites?.filter { site ->
         query.isBlank() ||
             site.name.contains(query, ignoreCase = true) ||
             site.location.contains(query, ignoreCase = true)
@@ -617,27 +618,70 @@ fun AdminCampsiteList(
             singleLine = true
         )
 
-        if (repository == null) {
-            EmptyCard {
-                navController.navigate(AdminRoutes.campsite("123"))
-            }
-        } else if (shown.isEmpty()) {
+        if (filteredCamps.isEmpty()) {
             Text("No campsites")
         } else {
-            shown.forEach { site ->
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { navController.navigate(AdminRoutes.campsite(site.id)) }
-                ) { Text("${site.name} · ${site.location}") }
+            filteredCamps.forEach { campsite ->
+                AdminCampsiteSummaryCard(
+                    campsite = campsite,
+                    onClick = {
+                        navController.navigate(AdminRoutes.campsite(campsite.id))
+                    }
+                )
             }
         }
     }
 }
-@Preview
+
+/**
+ * One campsite in the admin camplist. The name and place stay on the left.
+ * The rating sits in its own chip on the right. US 03.04.01
+ */
+
 @Composable
-fun AdminCampsiteListPreview() {
-    DasCampTheme {
-        RequestLog(rememberNavController())
+private fun AdminCampsiteSummaryCard(campsite: Campsite, onClick: () -> Unit){
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = campsite.name.ifBlank { "Untitled campsite" },
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "${campsite.location.ifBlank { "Location not set" }}  ·  up to ${campsite.maxOccupancy}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Text(
+                    text = "★ ${"%.1f".format(campsite.rating)}",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
     }
 }
 
