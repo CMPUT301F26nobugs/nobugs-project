@@ -47,6 +47,7 @@ import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.EmptyCard
 import com.example.dascamp.screens.EmptyValue
+import com.example.dascamp.screens.LocalCurrentUser
 import com.example.dascamp.ui.theme.DasCampTheme
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.*
@@ -82,6 +83,9 @@ enum class ProfileType(val label: String) {
  */
 @Composable
 fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
+    val firstName = LocalCurrentUser.current?.firstName
+        ?.takeIf { it.isNotBlank() } ?: "User"
+
     AdminPage(
         navController = navController,
         showBack = false,
@@ -94,8 +98,7 @@ fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Welcome Back,", style = MaterialTheme.typography.titleLarge)
-            Text(text = "Admin", style = MaterialTheme.typography.titleLarge)
+            Text(text = "Welcome Back, $firstName", style = MaterialTheme.typography.titleLarge)
         }
 
         // Campsite button & profiles button container
