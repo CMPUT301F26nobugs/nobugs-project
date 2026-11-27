@@ -281,8 +281,8 @@ fun DasCampApp() {
             composable(AdminRoutes.OTHER_LOG) { OtherLog(navController, repository) }
             composable(AdminRoutes.CAMPSITE_LIST) { AdminCampsiteList(navController, repository) }
             composable(AdminRoutes.CAMPSITE) { entry ->
-                val campsiteId = entry.arguments?.getString("campsiteId") ?: "default_id"
-                AdminViewCampsite(navController, repository, campsiteId)
+                val campsiteId = entry.arguments?.getString("campsiteId") ?: ""
+                AdminViewCampsite(navController, repository, campsiteId, scheduleController)
             }
             composable(AdminRoutes.IMAGE_GALLERY) { ImageGallery(navController) }
             composable(AdminRoutes.MESSAGE_LIST) { AdminMessageList(navController) }
