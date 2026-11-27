@@ -56,9 +56,12 @@ class AdminController(private val store: CampStore) {
     }
 
     /** Remove a campsite owner. */
-    fun revokeOwner(applicant: User) {
+    fun revokeOwnership(owner: User) {
+        val owned = store.campsites.filter { it.ownerId == owner.id}  //copy list of all owned camps
+        owned.forEach {store.updateCampsite(it.copy(ownerId = ""))}  //remove ownership from all
+
         store.updateUser(
-            applicant.copy(
+            owner.copy(
                 owner = false,
                 ownerApplication = OwnerApplicationStatus.EMPTY
             )

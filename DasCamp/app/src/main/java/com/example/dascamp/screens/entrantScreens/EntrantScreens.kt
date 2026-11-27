@@ -893,7 +893,7 @@ fun EntrantCampsiteScreen(navController: NavController, repository: DasCampRepos
 
 /** One number in the campsite summary row. */
 @Composable
-private fun RowScope.CampsiteFact(label: String, value: String) {
+fun RowScope.CampsiteFact(label: String, value: String) {
     Column(
         modifier = Modifier.weight(1f),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -909,7 +909,7 @@ private fun RowScope.CampsiteFact(label: String, value: String) {
 
 /** A titled block. Blank text is skipped so empty policies do not leave a heading. */
 @Composable
-private fun CampsiteSection(title: String, body: String) {
+fun CampsiteSection(title: String, body: String) {
     if (body.isBlank()) return
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium)
@@ -923,7 +923,7 @@ private fun CampsiteSection(title: String, body: String) {
 
 /** A colored dot and a short calendar key. */
 @Composable
-private fun LegendDot(color: Color, label: String) {
+fun LegendDot(color: Color, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
@@ -936,7 +936,7 @@ private fun LegendDot(color: Color, label: String) {
 }
 
 /** Short map caption. Four decimal places is enough to find the pin. */
-private fun readableCoordinates(latitude: Double, longitude: Double): String {
+fun readableCoordinates(latitude: Double, longitude: Double): String {
     if (latitude == 0.0 && longitude == 0.0) return "The owner has not set a map pin"
     return "${"%.4f".format(latitude)}, ${"%.4f".format(longitude)}"
 }
