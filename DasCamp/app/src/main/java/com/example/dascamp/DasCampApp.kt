@@ -285,7 +285,7 @@ fun DasCampApp() {
                 AdminViewCampsite(navController, repository, campsiteId, scheduleController)
             }
             composable(AdminRoutes.IMAGE_GALLERY) { ImageGallery(navController) }
-            composable(AdminRoutes.MESSAGE_LIST) { AdminMessageList(navController) }
+            composable(AdminRoutes.MESSAGE_LIST) { AdminMessageList(navController, repository) }
             composable(AdminRoutes.MESSAGE) { entry ->
                 val messageId = entry.arguments?.getString("messageId") ?: "default_id"
                 AdminViewMessage(navController)
