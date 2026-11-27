@@ -82,6 +82,8 @@ import com.example.dascamp.model.formatPrice
 import com.example.dascamp.model.label
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.CampsiteMap
+import com.example.dascamp.screens.EmptyValue
+import com.example.dascamp.screens.LocalCurrentUser
 import com.example.dascamp.screens.DatePickerField
 import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
@@ -97,13 +99,18 @@ import java.util.UUID
  */
 @Composable
 fun OwnerDashboard(navController: NavController) {
+    val firstName = LocalCurrentUser.current?.firstName
+        ?.takeIf { it.isNotBlank() } ?: "User"
+
     OwnerPage(navController, showBack = false, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            "Welcome Back,",
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center
-        )
-        Text("Owner", style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = "Welcome Back, $firstName", style = MaterialTheme.typography.titleLarge)
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             BigButton(
                 { navController.openOwnerTab(OwnerRoutes.CAMPSITES) },
@@ -118,20 +125,27 @@ fun OwnerDashboard(navController: NavController) {
                 "My\nLotteries"
             )
         }
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.openOwnerTab(OwnerRoutes.ALERTS) }
-        ) { Text("Notification Logs") }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            verticalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.openOwnerTab(OwnerRoutes.ALERTS) }
+            ) { Text("Notification Logs") }
 
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate(OwnerRoutes.MESSAGE_LIST) })
-        { Text("Message Logs") }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(OwnerRoutes.MESSAGE_LIST) }
+            ) { Text("Message Logs") }
 
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.openOwnerTab(OwnerRoutes.RESERVATIONS) })
-        { Text("Reservations") }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.openOwnerTab(OwnerRoutes.RESERVATIONS) }
+            ) { Text("Reservations") }
+        }
     }
 }
 
