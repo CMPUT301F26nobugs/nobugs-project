@@ -109,7 +109,7 @@ import com.example.dascamp.model.label
 import com.example.dascamp.screens.LocalCurrentUser
 import com.example.dascamp.views.ReservationView
 import com.example.dascamp.views.NotificationView
-import com.example.dascamp.controllers.QrCameraPreview
+import com.example.dascamp.screens.QrCameraPreview
 import com.example.dascamp.controllers.QrCodeController
 
 /**
@@ -1801,12 +1801,26 @@ fun CampsiteRules(rulesText: String,
 }
 
 
-// QR CODE SCREEN
+/**
+ * QR code scanner screen for entrants.
+ *
+ * Asks for camera permission, then shows the camera. When a DasCamp QR code is read,
+ * it opens that campsite (it sets [DasCampRepository.openCampsiteId] and goes to
+ * [EntrantRoutes.CAMPSITE], the same way the campsite list does).
+ * Any other QR code shows "Not a DasCamp QR Code".
+ *
+ * The camera reads one code per visit, so the entrant reopens the screen to scan again.
+ *
+ * @param navController used to open the scanned campsite
+ * @param repository where the scanned campsite id is stored; if null, every scan
+ * shows the "Not a DasCamp QR Code" message
+ */
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun EntrantQrCodeScreen(navController: NavController) {
+fun EntrantQrCodeScreen(navController: NavController, repository: DasCampRepository? = null) {
     val context = LocalContext.current
     val qrController =  remember { QrCodeController() }
+    var scanMessage by remember {mutableStateOf("")}
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
@@ -1842,8 +1856,13 @@ fun EntrantQrCodeScreen(navController: NavController) {
                     QrCameraPreview(
                         modifier = Modifier.fillMaxSize()
                     ) { scannedValue ->
-                        val campsiteID = qrController.campsiteIdFrom(scannedValue)
-                        navController.navigate("${EntrantRoutes.CAMPSITE}/$campsiteID")
+                       val id = qrController.campsiteIdFrom(scannedValue)
+                        if (id != null && repository != null){
+                            repository.openCampsiteId = id
+                            navController.navigate(EntrantRoutes.CAMPSITE)
+                        } else {
+                            scanMessage = "Not a DasCamp QR Code"
+                        }
                     }
                 } else {
                 Column(
@@ -1862,6 +1881,7 @@ fun EntrantQrCodeScreen(navController: NavController) {
                 }
             }
             }
+            Text (scanMessage)
         }
     }
 }
