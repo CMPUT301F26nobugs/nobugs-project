@@ -116,12 +116,15 @@ import com.example.dascamp.controllers.QrCodeController
  * Entrant home screen, with shortcuts to the campsite list, reservations,
  * notifications, messages, and the QR scanner.
  *
- * The greeting is hardcoded to "User" for now.
+ * The greeting uses the signed-in user's first name.
  *
  * @param navController used to navigate to the selected section
  */
 @Composable
 fun EntrantDashboard(navController: NavController) {
+    val firstName = LocalCurrentUser.current?.firstName
+        ?.takeIf { it.isNotBlank() } ?: "User"
+
     EntrantPage(
         navController = navController,
         showBack = false,
@@ -134,8 +137,7 @@ fun EntrantDashboard(navController: NavController) {
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Welcome Back,", style = MaterialTheme.typography.titleLarge)
-            Text(text = "User", style = MaterialTheme.typography.titleLarge)
+            Text(text = "Welcome Back, $firstName", style = MaterialTheme.typography.titleLarge)
         }
 
         // Campsite button & reservations button container
