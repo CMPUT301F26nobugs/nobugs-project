@@ -114,9 +114,11 @@ enum class ProfileType(val label: String) {
 
 /**
  * Admin home screen, with shortcuts to the campsite list, the profile list,
- * and the notification logs.
+ * the notification logs, owner applications, notification logs, message logs,
+ * and image gallery
  *
  * @param navController used to navigate to the selected section
+ * @param onSignOut called when the admin uses sign out button
  */
 @Composable
 fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
@@ -224,10 +226,10 @@ fun AdminDashboardPreview() {
  * Screen listing user profiles, with a search field and entrant/owner filter chips.
  *
  * The search text and selected filter survive configuration changes. Selecting
- * the chosen chip again clears the filter (shows all). The list itself is still
- * a placeholder card that navigates to a profile.
+ * the chosen chip again clears the filter (shows all). Admins only appear under the Admins chip.
  *
  * @param navController used to navigate to a profile
+ * @param campStore source of all users
  */
 @Composable
 fun AdminProfileList(navController: NavController, campStore: CampStore) {
@@ -322,15 +324,18 @@ fun AdminProfileList(navController: NavController, campStore: CampStore) {
 }
 
 /**
- * Detail screen for a single entrant or owner profile.
+ * Detail screen for a single entrant or owner profile (US 03.02.01, 03.03.01, 03.07.01).
  *
- * Both types can have their profile picture deleted. Entrants can additionally be
- * deleted, while owners offer a link to their messages with entrants and a
- * "Revoke Campsite Owner Role" action. Destructive actions ask for confirmation first.
- * The profile data and the delete actions are still placeholders.
+ * Both types can have their profile picture and account deleted.
+ * Owners additionally offer a link to their messages with entrants and a
+ * "Revoke Campsite Owner Role" action.
+ * Admins cannot have their profile deleted or owner role revoked
+ * Destructive actions ask for confirmation first.
  *
  * @param navController used for back navigation and for following actions
  * @param profileType whether this is an entrant or an owner profile
+ * @param campStore source of the users and where changes are saved
+ * @param uid id of the user being displayed
  */
 @Composable
 fun AdminViewProfile(navController: NavController, profileType: ProfileType, campStore: CampStore, uid: String) {
@@ -515,14 +520,6 @@ fun NotificationLog(navController: NavController) {
     }
 }
 
-@Preview
-@Composable
-fun NotificationLogPreview() {
-    DasCampTheme {
-        NotificationLog(rememberNavController())
-    }
-}
-
 /**
  * Lists users whose owner application is pending, with approve and deny actions.
  *
@@ -587,9 +584,10 @@ private fun OwnerApplicationCard(user: User, onApprove: () -> Unit, onDeny: () -
 }
 
 /**
- * Log of campsite requests made by users.
+ * Log of lottery win notifications.
  *
  * @param navController used for navigation
+ * @param store source of the notifications
  */
 @Composable
 fun RequestLog(
@@ -626,11 +624,15 @@ fun OtherLog(
 }
 
 /**
- * Shared skeleton for the three log screens: a centered title above a list of
- * log entries (still a placeholder).
+ * Shared layout for the three notification log screens (US 03.08.01).
+ * Newest notifications at the top.
+ * Notifications sent together (same batch id) are shown once.
+ * Each card shows the message, time sent, and the notification type.
  *
  * @param navController used for navigation
  * @param title the heading shown at the top of the screen
+ * @param store source of the notifications and of the users names
+ * @param include decides which notifications appear in this log, defaults to all
  */
 @Composable
 private fun LogScreen(
@@ -701,10 +703,11 @@ fun RequestLogPreview() {
 }
 
 /**
- * Screen listing campsites, with a search field. The list itself is still a
- * placeholder card that opens a campsite.
+ * Screen listing campsites, with a search field (US 03.04.01).
+ * Clicking on a campsite opens AdminViewCampsite
  *
  * @param navController used to navigate to a campsite
+ * @param repository source of the campsites
  */
 @Composable
 fun AdminCampsiteList(
@@ -805,14 +808,16 @@ private fun AdminCampsiteSummaryCard(campsite: Campsite, onClick: () -> Unit){
 }
 
 /**
- * Detail screen for a single campsite, as seen by an admin.
+ * Detail screen for a single campsite, as seen by an admin (US 03.01.01, 03.03.01, 03.09.01, 03.10.01).
  *
- * Shows the image, main info, rules, geolocation, and availability legend
- * (all placeholders for now), plus actions to delete the image, view messages
- * with entrants, view the owner's profile, and remove the campsite. Destructive
- * actions ask for confirmation first.
+ * Shows the image, main info, rules, geolocation, and availability legend.
+ * Admins can delete the image, view messages with entrants, view the owner's profile, and remove the campsite.
+ * Destructive actions ask for confirmation first.
  *
  * @param navController used for back navigation and for following actions
+ * @param repository source of the campsite, reviews, and where changes are saved
+ * @param campsiteId id of the campsite being displayed
+ * @param scheduleController used to draw the availability calendar
  */
 @Composable
 fun AdminViewCampsite(
@@ -1245,14 +1250,6 @@ fun ImageGallery(navController: NavController, repository: DasCampRepository? = 
     }
 }
 
-@Preview
-@Composable
-fun ImageGalleryPreview() {
-    DasCampTheme {
-        RequestLog(rememberNavController())
-    }/*todo*/
-}
-
 /** One row in the admin message log: an owner/entrant pair and their newest message. */
 private data class AdminThread(
     val ownerId: String,
@@ -1261,8 +1258,13 @@ private data class AdminThread(
     val latestMessage: String  //for the message preview
 )
 /**
- * Screen listing message conversations between owners and entrants, with a search field.
+ * Screen listing message conversations between owners and entrants (US 03.12.01).
+ * One card per owner/entrant pair, a search field is provided.
+ * Clicking on a card opens AdminViewMessage.
+ *
  * @param navController used to navigate to a message
+ * @param repository source of the campsites
+ * @param ownerId if not blank, only this owner's conversations are shown
  */
 @Composable
 fun AdminMessageList(navController: NavController, repository: DasCampRepository? = null, ownerId: String = "") {
@@ -1345,21 +1347,14 @@ fun AdminMessageList(navController: NavController, repository: DasCampRepository
     }
 }
 
-@Preview
-@Composable
-fun AdminMessageListPreview() {
-    DasCampTheme {
-        RequestLog(rememberNavController())
-    }
-}
-
 /**
- * Screen showing a single conversation between an entrant and a campsite owner,
- * with the entrant's message on top and the owner's reply below. The message
- * content is hardcoded placeholder text for now.
+ * Read only view of a conversation between an entrant and a campsite owner (US 03.12.01).
+ * Owner messages on the left, entrant on the right.
+ * Conversation is opened by the card that was clicked on in the previous page using
+ * the chosen ids from the repository
  *
  * @param navController used for back navigation
- * @param repository used for message source and profile names
+ * @param repository source of messages and usernames
  */
 @Composable
 fun AdminViewMessage(navController: NavController, repository: DasCampRepository? = null) {
@@ -1449,14 +1444,6 @@ fun AdminViewMessage(navController: NavController, repository: DasCampRepository
                 }
             }
         }
-    }
-}
-
-@Preview
-@Composable
-fun AdminViewMessagePreview() {
-    DasCampTheme {
-        RequestLog(rememberNavController())
     }
 }
 
