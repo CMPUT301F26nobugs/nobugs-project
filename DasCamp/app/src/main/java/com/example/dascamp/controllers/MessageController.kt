@@ -74,7 +74,8 @@ class MessageController(private val store: CampStore) {
         entrantId: String,
         body: String,
         lotteryId: String? = null,
-        reservationId: String? = null
+        reservationId: String? = null,
+        fromOwner: Boolean = false
     ): String? {
         val user = store.currentUser ?: return "Sign up first"
         val text = body.trim()
@@ -123,7 +124,8 @@ class MessageController(private val store: CampStore) {
                 body = text,
                 sentAt = System.currentTimeMillis().toString(),
                 senderId = user.id,
-                receiverId = receiverId
+                receiverId = receiverId,
+                fromOwner = fromOwner
             )
         )
         return null

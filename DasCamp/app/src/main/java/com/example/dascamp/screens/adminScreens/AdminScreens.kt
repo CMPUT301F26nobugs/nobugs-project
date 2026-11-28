@@ -52,11 +52,18 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
 import com.example.dascamp.controllers.AdminController
+import com.example.dascamp.controllers.MessageController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.Policy
@@ -65,6 +72,7 @@ import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.Notification
 import com.example.dascamp.model.NotificationType
 import com.example.dascamp.model.OwnerApplicationStatus
+import com.example.dascamp.model.OwnerMessage
 import com.example.dascamp.model.User
 import com.example.dascamp.model.formatPrice
 import com.example.dascamp.screens.CampsiteMap
@@ -75,6 +83,13 @@ import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
 import com.example.dascamp.screens.entrantScreens.EntrantPage
 import com.example.dascamp.screens.entrantScreens.LegendDot
 import com.example.dascamp.screens.entrantScreens.readableCoordinates
+import com.example.dascamp.screens.ownerScreens.OwnerPage
+import com.example.dascamp.screens.ownerScreens.OwnerRoutes
+import com.example.dascamp.views.MessageView
+import kotlin.collections.filter
+import kotlin.collections.forEach
+import kotlin.collections.orEmpty
+import kotlin.text.orEmpty
 
 /**
  * The kinds of profile an admin can browse.
@@ -150,6 +165,14 @@ fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
                 Icon(Icons.Default.Campaign, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Notification logs")
+            }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+            ) {
+                Icon(Icons.Default.ChatBubbleOutline, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Message logs")
             }
             Button(
                 modifier = Modifier.fillMaxWidth(),
@@ -358,13 +381,14 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
                 )  /*todo: implement delete*/
             ) { Text("Delete Profile Picture") }
 
-            if (profileType == ProfileType.OWNER){
-                // Owner only -> view messages with entrants (same message list as from a campsite)
+            if (profileType == ProfileType.OWNER || profileType == ProfileType.ADMIN) {
+                // Owner roles only -> view messages with entrants (same message list as from a campsite)
                 Button(
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+                    onClick = { navController.navigate(AdminRoutes.messageList(user.id)) }
                 ) { Text("View Messages with Entrants") }
-
+            }
+            if(profileType == ProfileType.OWNER){
                 // Owner only -> remove campsite owner role
                 Button(
                     modifier = Modifier.fillMaxWidth(),
@@ -806,7 +830,7 @@ fun AdminViewCampsite(
                     }
                 )
             ) {
-                Text("Delete Campsite Image")
+                Text("Delete Campsite Image") /*todo check this */
             }
         }
 
@@ -1011,7 +1035,7 @@ fun AdminViewCampsite(
         // view messages with entrants (same message list as from a campsite)
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+            onClick = { navController.navigate(AdminRoutes.messageList(campsite.ownerId)) }
         ) { Text("View Messages between Owner and Entrants") }
 
         if (campsite.ownerId.isBlank()) {
@@ -1074,40 +1098,97 @@ fun ImageGallery(navController: NavController) {
 fun ImageGalleryPreview() {
     DasCampTheme {
         RequestLog(rememberNavController())
-    }
+    }/*todo*/
 }
 
+/** One row in the admin message log: an owner/entrant pair and their newest message. */
+private data class AdminThread(
+    val ownerId: String,
+    val entrantId: String,
+    val title: String,  //heading/title text for the message view cards
+    val latestMessage: String  //for the message preview
+)
 /**
- * Screen listing message conversations between owners and entrants, with a
- * search field. The list itself is still a placeholder card that opens a message.
- *
+ * Screen listing message conversations between owners and entrants, with a search field.
  * @param navController used to navigate to a message
  */
 @Composable
-fun AdminMessageList(navController: NavController) {
-    var query by rememberSaveable { mutableStateOf("") }  // profile search
-    AdminPage(
-        navController = navController,
-        showBack = true,
-    ) {
-        // Title
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) { Text(text = "Message Log", style = MaterialTheme.typography.titleLarge) }
+fun AdminMessageList(navController: NavController, repository: DasCampRepository? = null, ownerId: String = "") {
+    var query by rememberSaveable { mutableStateOf("") }
+    val threads = repository?.messages.orEmpty()
+        .filter{ownerId.isBlank() || it.ownerId == ownerId}
+        .groupBy{it.ownerId to it.entrantId}  //group messages by conversation (owner and entrant), only 1 list item for group
+        .map{(ids,msgs) ->  //map data into 1 item/conversation in the view message list
+            val owner = repository?.userById(ids.first)?.displayName().orEmpty().ifBlank { "N/A" }  //if no name found, name shown will be unnamed
+            val entrant = repository?.userById(ids.second)?.displayName().orEmpty().ifBlank { "N/A" }
+            AdminThread(ids.first, ids.second, "Owner: $owner\nEntrant: $entrant", msgs.last().body)  //build thread preview info
+        }
+        .filter { thread ->
+        query.isBlank() ||  //search filter for title or message preview
+                thread.title.contains(query, ignoreCase = true) ||
+                thread.latestMessage.contains(query, ignoreCase = true)
+    }
+    AdminPage(navController, showBack = true) {
+        Text("Message Logs", style = MaterialTheme.typography.titleLarge)
 
-        // Search Bar
+        if(ownerId.isNotBlank()){
+            val ownerName = repository?.userById(ownerId)?.displayName().orEmpty()
+            Text("Messages from owner: $ownerName", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search Profiles") },
-            leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Search") },
+            placeholder = { Text("Search Messages") },
+            leadingIcon = {
+                Icon(imageVector = Icons.Default.Search, contentDescription = "Search")
+            },
             singleLine = true
         )
-        // Display Profiles (PLACEHOLDER)
-        EmptyCard {
-            navController.navigate(AdminRoutes.message("123"))
+        Spacer(modifier = Modifier.height(16.dp))
+        if (threads.isEmpty()) Text("No conversations yet")
+        threads.forEach { thread ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        repository?.openMessageOwnerId = thread.ownerId
+                        repository?.openMessageEntrantId = thread.entrantId
+                        repository?.openMessageLotteryId = null
+                        repository?.openReservationId = ""
+                        navController.navigate(AdminRoutes.message(thread.entrantId))
+                    },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.padding(start = 16.dp).weight(1f)
+                    ) {
+                        Text(thread.title, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            thread.latestMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = "Open conversation",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -1126,44 +1207,94 @@ fun AdminMessageListPreview() {
  * content is hardcoded placeholder text for now.
  *
  * @param navController used for back navigation
+ * @param repository used for message source and profile names
  */
 @Composable
-fun AdminViewMessage(navController: NavController) {
+fun AdminViewMessage(navController: NavController, repository: DasCampRepository? = null) {
+    val view = remember(
+        repository,
+        repository?.openReservationId,
+        repository?.openMessageOwnerId,
+        repository?.openMessageEntrantId
+    ) {
+        repository?.let { MessageView(it) }
+    }
+    DisposableEffect(view) { onDispose { view?.remove() } }
+
+    val ownerId = repository?.openMessageOwnerId.orEmpty()
+    val entrantId = repository?.openMessageEntrantId.orEmpty()
+    val ownerName = repository?.userById(ownerId)?.displayName().orEmpty().ifBlank {"Unnamed"}
+    val entrantName = repository?.userById(entrantId)?.displayName().orEmpty().ifBlank {"Unnamed"}
+
+    val messageScrollState = rememberScrollState()
+    LaunchedEffect(view?.messages?.size) {
+        messageScrollState.animateScrollTo(messageScrollState.maxValue)
+    }
+
     AdminPage(
         navController = navController,
         showBack = true,
-    ) { Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Title
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) { Text(text = "Message", style = MaterialTheme.typography.titleLarge) }
-
-        // Entrant message
-        Text("Entrant", style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.End))
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = Color(0xFF5285F2)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Hi I wanna book this",
-                color = Color.White,
-                modifier = Modifier.padding(14.dp))
+            Text(
+                "Owner: $ownerName",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                "Entrant: $entrantName",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleMedium
+            )
         }
 
-        // Owner message
-        Text("Campsite Owner", style = MaterialTheme.typography.titleLarge)
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = Color(0xFFE6E6E6)
-        ) {
-            Text("Ok, sure", modifier = Modifier.padding(14.dp))
+        if(ownerId.isBlank() || entrantId.isBlank()){
+            Text("Open a conversation from a campsite, profile, or message logs.")
+        } else if(view == null || view.messages.isEmpty()){
+            Text("No messages")
+        }else{
+            view.messages.forEach { message ->
+                val ownerMessage = if(ownerId != entrantId){
+                    message.senderId == ownerId  //owner and entrant are different people
+                }else{
+                    message.fromOwner  //owner and entrant are the same person
+                }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = if(ownerMessage){
+                        Alignment.Start
+                    }else{
+                        Alignment.End
+                    }
+                ) {
+                    Text(
+                        text = if (ownerMessage) ownerName else entrantName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(
+                            topStart = 16.dp,
+                            topEnd = 16.dp,
+                            bottomStart = if (ownerMessage) 4.dp else 16.dp,  //owner on the left side
+                            bottomEnd = if (ownerMessage) 16.dp else 4.dp  //entrant on the right side
+                        ),
+                        color = if (ownerMessage) MaterialTheme.colorScheme.surfaceVariant
+                        else MaterialTheme.colorScheme.primary,  //entrant gets primary colour
+                        modifier = Modifier.widthIn(max = 280.dp)
+                    ) {
+                        Text(
+                            text = message.body,
+                            modifier = Modifier.padding(12.dp),
+                            color = if (ownerMessage) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
             }
         }
     }

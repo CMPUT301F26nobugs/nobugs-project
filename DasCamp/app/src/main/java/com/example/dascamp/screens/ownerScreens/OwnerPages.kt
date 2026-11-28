@@ -1505,7 +1505,8 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
             body = body,
             lotteryId = repository?.openMessageLotteryId,
             reservationId = repository?.openReservationId
-                ?.takeIf { it.isNotBlank() }
+                ?.takeIf { it.isNotBlank() },
+            fromOwner = true
         )
         error = result
         if (result == null) body = ""
@@ -1542,7 +1543,11 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
         } else {
             if (view == null || view.messages.isEmpty()) Text("No messages yet")
             view?.messages?.forEach { message ->
-                val mine = message.senderId == repository?.uid
+                val mine = if(ownerId != entrantId){  //messages show on diff sides if same account is sending the messages
+                        message.senderId == repository?.uid
+                    }else{
+                        message.fromOwner
+                    }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start

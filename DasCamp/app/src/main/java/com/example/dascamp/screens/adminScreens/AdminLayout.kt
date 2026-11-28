@@ -47,7 +47,10 @@ object AdminRoutes {
     const val CAMPSITE_LIST = "adminCampsiteList"
     const val CAMPSITE = "adminViewCampsite/{campsiteId}"
     const val IMAGE_GALLERY = "adminImageGallery"
-    const val MESSAGE_LIST = "adminMessageList"
+    const val MESSAGE_LIST = "adminMessageList?ownerId={ownerId}"
+    fun messageList(ownerId: String = ""): String{
+        return "adminMessageList?ownerId=$ownerId"  //for view message with entrans -> only display messages from the one owner
+    }
     const val MESSAGE = "adminViewMessage/{messageId}"
     const val PROFILE_LIST = "adminProfileList"
     const val PROFILE = "adminProfile/{profileType}/{uid}" // route pattern, registed in NavHost

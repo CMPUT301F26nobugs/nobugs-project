@@ -1382,7 +1382,11 @@ fun EntrantMessageScreen(
             Text("Open a conversation from a campsite, lottery, or reservation.")
         } else {
             view?.messages.orEmpty().forEach { message ->
-                val isSender = message.senderId == repository?.uid
+                val isSender = if(ownerId != entrantId){  //messages show on diff sides if same account is sending the messages
+                        message.senderId == repository?.uid
+                    }else{
+                        !message.fromOwner
+                    }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = if (isSender) Arrangement.End else Arrangement.Start
