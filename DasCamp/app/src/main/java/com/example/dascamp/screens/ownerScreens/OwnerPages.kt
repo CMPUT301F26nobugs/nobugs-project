@@ -610,7 +610,8 @@ fun OwnerMapLocation(navController: NavController, repository: DasCampRepository
             Box(modifier = Modifier
                 .fillMaxWidth()
                 .height(300.dp)
-                .clipToBounds()){
+                .clip(RoundedCornerShape(16.dp))
+            ){
                 CampsiteMap(
                     latitude = campsite.latitude,
                     longitude = campsite.longitude,
@@ -620,7 +621,7 @@ fun OwnerMapLocation(navController: NavController, repository: DasCampRepository
                 )
             }
 
-            Text("Location Coordinates: " + campsite.latitude + ", " + campsite.longitude)
+            Text("Location Coordinates: " + readableCoordinates(campsite.latitude, campsite.longitude))
 
             Button(
                 modifier = Modifier.fillMaxWidth(),
