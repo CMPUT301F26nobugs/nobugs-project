@@ -106,6 +106,7 @@ import com.example.dascamp.screens.DatePickerField
 import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.StoredImage
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
+import com.example.dascamp.screens.entrantScreens.readableCoordinates
 import com.example.dascamp.views.MessageView
 import com.example.dascamp.views.ProfileView
 import com.example.dascamp.views.ReservationView
@@ -413,21 +414,42 @@ private fun CampsiteForm(
             startLongitude = -113.49
         }
 
-        CampsiteMap(
-            latitude = startLatitude,
-            longitude = startLongitude,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(180.dp),
-            onLocationPicked = {
-                pickedLatitude, pickedLongitude ->
-                form = form.copy(
-                    latitude = pickedLatitude.toString(),
-                    longitude = pickedLongitude.toString()
-                )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp)
+        ){
+            Column{
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .clipToBounds()
+                ){
+                    CampsiteMap(
+                        latitude = startLatitude,
+                        longitude = startLongitude,
+                        modifier = Modifier.fillMaxWidth(),
+                        onLocationPicked = {pickedLatitude, pickedLongitude ->
+                            form = form.copy(
+                                latitude = pickedLatitude.toString(),
+                                longitude = pickedLongitude.toString()
+                            )
+                        }
+                    )
+                }
+                Column(modifier = Modifier.padding(12.dp)){
+                    Text(
+                        text = form.location.ifBlank {"Campsite pin"},
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        text = "Picked: " + readableCoordinates(startLatitude, startLongitude),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-        )
-        Text("Picked: " + form.latitude + ", " + form.longitude)
+        }
 
         FormField("Amenities", form.description, onValueChange = { typed -> form = form.copy(description = typed) })
         FormField("Maximum occupancy", form.maxOccupancy, onValueChange = { typed -> form = form.copy(maxOccupancy = typed) })
@@ -590,7 +612,8 @@ fun OwnerMapLocation(navController: NavController, repository: DasCampRepository
             Box(modifier = Modifier
                 .fillMaxWidth()
                 .height(300.dp)
-                .clipToBounds()){
+                .clip(RoundedCornerShape(16.dp))
+            ){
                 CampsiteMap(
                     latitude = campsite.latitude,
                     longitude = campsite.longitude,
@@ -600,7 +623,7 @@ fun OwnerMapLocation(navController: NavController, repository: DasCampRepository
                 )
             }
 
-            Text("Location Coordinates: " + campsite.latitude + ", " + campsite.longitude)
+            Text("Location Coordinates: " + readableCoordinates(campsite.latitude, campsite.longitude))
 
             Button(
                 modifier = Modifier.fillMaxWidth(),

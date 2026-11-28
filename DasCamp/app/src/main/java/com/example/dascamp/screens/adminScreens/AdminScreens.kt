@@ -972,7 +972,7 @@ fun AdminViewCampsite(
                         style = MaterialTheme.typography.titleSmall
                     )
                     Text(
-                        text = readableCoordinates(campsite.latitude, campsite.longitude),
+                        text = "Coordinates: " + readableCoordinates(campsite.latitude, campsite.longitude),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
