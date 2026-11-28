@@ -326,7 +326,7 @@ fun DasCampApp() {
                 val campsiteId = entry.arguments?.getString("campsiteId") ?: ""
                 AdminViewCampsite(navController, repository, campsiteId, scheduleController)
             }
-            composable(AdminRoutes.IMAGE_GALLERY) { ImageGallery(navController) }
+            composable(AdminRoutes.IMAGE_GALLERY) { ImageGallery(navController, repository) }
             composable(AdminRoutes.MESSAGE_LIST, arguments = listOf(navArgument("ownerId"){defaultValue = "" }))
             {entry ->
                 val ownerId = entry.arguments?.getString("ownerId") ?: ""
