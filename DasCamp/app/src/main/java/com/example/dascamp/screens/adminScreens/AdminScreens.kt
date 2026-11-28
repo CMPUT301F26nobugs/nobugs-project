@@ -53,6 +53,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.ChevronRight
@@ -60,9 +61,12 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
 import com.example.dascamp.controllers.AdminController
+import com.example.dascamp.controllers.CampImages
 import com.example.dascamp.controllers.MessageController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.DasCampRepository
@@ -86,10 +90,15 @@ import com.example.dascamp.screens.entrantScreens.readableCoordinates
 import com.example.dascamp.screens.ownerScreens.OwnerPage
 import com.example.dascamp.screens.ownerScreens.OwnerRoutes
 import com.example.dascamp.views.MessageView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 import kotlin.collections.filter
 import kotlin.collections.forEach
 import kotlin.collections.orEmpty
 import kotlin.text.orEmpty
+import kotlin.text.startsWith
 
 /**
  * The kinds of profile an admin can browse.
@@ -319,6 +328,7 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
 
     val user = campStore.userById(uid)  //get the specific user by the uid
     val adminController = remember(campStore) {AdminController(campStore)}
+    val scope = rememberCoroutineScope()  //for remove pfp
 
     AdminPage(
         navController = navController,
@@ -347,14 +357,27 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
             Text("Profile not found")
         } else{
 
-            // Profile picture (PLACEHOLDER)
-            Card(
-                modifier = Modifier.size(120.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            ) { Icon(Icons.Default.Person, "Profile picture", Modifier.fillMaxSize()) }
+            // Profile picture
+            Box(
+                modifier = Modifier
+                    .size(112.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                StoredImage(
+                    path = user.profileImageUri,
+                    contentDescription = "Profile picture",
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "No profile picture",
+                        modifier = Modifier.size(56.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             // Profile info
             Column(
@@ -371,15 +394,31 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Both profile types: delete profile picture
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = rememberConfirmClick(
-                    message = "Remove this profile picture? This can't be undone.",
-                    onConfirm =  {navController.navigate(AdminRoutes.PROFILE_LIST
-                    ) }
-                )  /*todo: implement delete*/
-            ) { Text("Delete Profile Picture") }
+            // Both profile types: delete profile picture -> button only shows if there is a profile picture
+            if(!user.profileImageUri.isNullOrBlank()){
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = destructiveButtonColors(),
+                    onClick = rememberConfirmClick(
+                        message = "Remove this profile picture? This can't be undone.",
+                        onConfirm = {
+                            val path = user.profileImageUri
+                            scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    CampImages.delete(CampImages.profilePath(user.id))
+                                    if (!path.startsWith("firestore:") && !path.startsWith("http")) {
+                                        File(path).delete()  //delete from firestoe
+                                    }
+                                }
+                                campStore.updateUser(user.copy(profileImageUri = null))  //remove uri
+                            }
+                            navController.navigate(AdminRoutes.PROFILE_LIST)
+                        }
+                    )
+                ){
+                    Text("Delete Profile Picture")
+                }
+            }
 
             if (profileType == ProfileType.OWNER || profileType == ProfileType.ADMIN) {
                 // Owner roles only -> view messages with entrants (same message list as from a campsite)
@@ -779,6 +818,7 @@ fun AdminViewCampsite(
     val admin = remember(repository) { repository?.let { AdminController(it) } }
     val campsite = repository?.campsites?.find { it.id == campsiteId }
     val reviews = repository?.reviews?.filter { it.campsiteId == campsiteId }.orEmpty()
+    val scope = rememberCoroutineScope()  //for remove campsite image
 
     //if no campsite, show cant be found message
     if (campsite == null){
@@ -826,11 +866,20 @@ fun AdminViewCampsite(
                 onClick = rememberConfirmClick(
                     message = "Remove this image? This can't be undone.",
                     onConfirm = {
-                        repository.updateCampsite(campsite.copy(imageUri = ""))
+                        val path = campsite.imageUri
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                CampImages.delete(CampImages.profilePath(campsite.id))
+                                if (!path.startsWith("firestore:") && !path.startsWith("http")) {
+                                    File(path).delete()  //delete from firestoe
+                                }
+                            }
+                            repository.updateCampsite(campsite.copy(imageUri = null))  //remove uri
+                        }
                     }
                 )
             ) {
-                Text("Delete Campsite Image") /*todo check this */
+                Text("Delete Campsite Image")
             }
         }
 
