@@ -55,6 +55,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.ChevronRight
@@ -62,9 +63,13 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.example.dascamp.controllers.AdminController
+import com.example.dascamp.controllers.CampImages
 import com.example.dascamp.controllers.MessageController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.DasCampRepository
@@ -88,10 +93,15 @@ import com.example.dascamp.screens.entrantScreens.readableCoordinates
 import com.example.dascamp.screens.ownerScreens.OwnerPage
 import com.example.dascamp.screens.ownerScreens.OwnerRoutes
 import com.example.dascamp.views.MessageView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 import kotlin.collections.filter
 import kotlin.collections.forEach
 import kotlin.collections.orEmpty
 import kotlin.text.orEmpty
+import kotlin.text.startsWith
 
 /**
  * The kinds of profile an admin can browse.
@@ -106,9 +116,11 @@ enum class ProfileType(val label: String) {
 
 /**
  * Admin home screen, with shortcuts to the campsite list, the profile list,
- * and the notification logs.
+ * the notification logs, owner applications, notification logs, message logs,
+ * and image gallery
  *
  * @param navController used to navigate to the selected section
+ * @param onSignOut called when the admin uses sign out button
  */
 @Composable
 fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
@@ -168,6 +180,14 @@ fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
         ) {
             Button(
                 modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AdminRoutes.OWNER_APPLICATIONS) }
+            ) {
+                Icon(Icons.Default.HowToReg, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Owner applications")
+            }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
                 onClick = { navController.navigate(AdminRoutes.NOTIFICATION_LOG) }
             ) {
                 Icon(Icons.Default.Campaign, contentDescription = null)
@@ -184,11 +204,11 @@ fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
             }
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(AdminRoutes.OWNER_APPLICATIONS) }
+                onClick = { navController.navigate(AdminRoutes.IMAGE_GALLERY) }
             ) {
-                Icon(Icons.Default.HowToReg, contentDescription = null)
+                Icon(Icons.Default.Image, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Owner applications")
+                Text("Image gallery")
             }
             Button(
                 modifier = Modifier.fillMaxWidth(),
@@ -214,10 +234,10 @@ fun AdminDashboardPreview() {
  * Screen listing user profiles, with a search field and entrant/owner filter chips.
  *
  * The search text and selected filter survive configuration changes. Selecting
- * the chosen chip again clears the filter (shows all). The list itself is still
- * a placeholder card that navigates to a profile.
+ * the chosen chip again clears the filter (shows all). Admins only appear under the Admins chip.
  *
  * @param navController used to navigate to a profile
+ * @param campStore source of all users
  */
 @Composable
 fun AdminProfileList(navController: NavController, campStore: CampStore) {
@@ -312,21 +332,25 @@ fun AdminProfileList(navController: NavController, campStore: CampStore) {
 }
 
 /**
- * Detail screen for a single entrant or owner profile.
+ * Detail screen for a single entrant or owner profile (US 03.02.01, 03.03.01, 03.07.01).
  *
- * Both types can have their profile picture deleted. Entrants can additionally be
- * deleted, while owners offer a link to their messages with entrants and a
- * "Revoke Campsite Owner Role" action. Destructive actions ask for confirmation first.
- * The profile data and the delete actions are still placeholders.
+ * Both types can have their profile picture and account deleted.
+ * Owners additionally offer a link to their messages with entrants and a
+ * "Revoke Campsite Owner Role" action.
+ * Admins cannot have their profile deleted or owner role revoked
+ * Destructive actions ask for confirmation first.
  *
  * @param navController used for back navigation and for following actions
  * @param profileType whether this is an entrant or an owner profile
+ * @param campStore source of the users and where changes are saved
+ * @param uid id of the user being displayed
  */
 @Composable
 fun AdminViewProfile(navController: NavController, profileType: ProfileType, campStore: CampStore, uid: String) {
 
     val user = campStore.userById(uid)  //get the specific user by the uid
     val adminController = remember(campStore) {AdminController(campStore)}
+    val scope = rememberCoroutineScope()  //for remove pfp
 
     AdminPage(
         navController = navController,
@@ -355,14 +379,27 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
             Text("Profile not found")
         } else{
 
-            // Profile picture (PLACEHOLDER)
-            Card(
-                modifier = Modifier.size(120.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            ) { Icon(Icons.Default.Person, "Profile picture", Modifier.fillMaxSize()) }
+            // Profile picture
+            Box(
+                modifier = Modifier
+                    .size(112.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                StoredImage(
+                    path = user.profileImageUri,
+                    contentDescription = "Profile picture",
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "No profile picture",
+                        modifier = Modifier.size(56.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             // Profile info
             Column(
@@ -379,15 +416,30 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Both profile types: delete profile picture
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = rememberConfirmClick(
-                    message = "Remove this profile picture? This can't be undone.",
-                    onConfirm =  {navController.navigate(AdminRoutes.PROFILE_LIST
-                    ) }
-                )  /*todo: implement delete*/
-            ) { Text("Delete Profile Picture") }
+            // Both profile types: delete profile picture -> button only shows if there is a profile picture
+            if(!user.profileImageUri.isNullOrBlank()){
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = destructiveButtonColors(),
+                    onClick = rememberConfirmClick(
+                        message = "Remove this profile picture? This can't be undone.",
+                        onConfirm = {
+                            val path = user.profileImageUri
+                            scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    CampImages.delete(CampImages.profilePath(user.id))
+                                    if (!path.startsWith("firestore:") && !path.startsWith("http")) {
+                                        File(path).delete()  //delete from firestoe
+                                    }
+                                }
+                                campStore.updateUser(user.copy(profileImageUri = null))  //remove uri
+                            }
+                        }
+                    )
+                ){
+                    Text("Delete Profile Picture")
+                }
+            }
 
             if (profileType == ProfileType.OWNER || profileType == ProfileType.ADMIN) {
                 // Owner roles only -> view messages with entrants (same message list as from a campsite)
@@ -405,7 +457,6 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
                         message = "Remove owner role? This can't be undone.",
                         onConfirm = {
                             adminController.revokeOwnership(user)  //remove ownership from owned campsites
-                            campStore.updateUser(user.copy(owner = false))
                         }
                     )
                 ) {
@@ -477,14 +528,6 @@ fun NotificationLog(navController: NavController) {
     }
 }
 
-@Preview
-@Composable
-fun NotificationLogPreview() {
-    DasCampTheme {
-        NotificationLog(rememberNavController())
-    }
-}
-
 /**
  * Lists users whose owner application is pending, with approve and deny actions.
  *
@@ -549,9 +592,10 @@ private fun OwnerApplicationCard(user: User, onApprove: () -> Unit, onDeny: () -
 }
 
 /**
- * Log of campsite requests made by users.
+ * Log of lottery win notifications.
  *
  * @param navController used for navigation
+ * @param store source of the notifications
  */
 @Composable
 fun RequestLog(
@@ -588,11 +632,15 @@ fun OtherLog(
 }
 
 /**
- * Shared skeleton for the three log screens: a centered title above a list of
- * log entries (still a placeholder).
+ * Shared layout for the three notification log screens (US 03.08.01).
+ * Newest notifications at the top.
+ * Notifications sent together (same batch id) are shown once.
+ * Each card shows the message, time sent, and the notification type.
  *
  * @param navController used for navigation
  * @param title the heading shown at the top of the screen
+ * @param store source of the notifications and of the users names
+ * @param include decides which notifications appear in this log, defaults to all
  */
 @Composable
 private fun LogScreen(
@@ -663,10 +711,11 @@ fun RequestLogPreview() {
 }
 
 /**
- * Screen listing campsites, with a search field. The list itself is still a
- * placeholder card that opens a campsite.
+ * Screen listing campsites, with a search field (US 03.04.01).
+ * Clicking on a campsite opens AdminViewCampsite
  *
  * @param navController used to navigate to a campsite
+ * @param repository source of the campsites
  */
 @Composable
 fun AdminCampsiteList(
@@ -767,14 +816,16 @@ private fun AdminCampsiteSummaryCard(campsite: Campsite, onClick: () -> Unit){
 }
 
 /**
- * Detail screen for a single campsite, as seen by an admin.
+ * Detail screen for a single campsite, as seen by an admin (US 03.01.01, 03.03.01, 03.09.01, 03.10.01).
  *
- * Shows the image, main info, rules, geolocation, and availability legend
- * (all placeholders for now), plus actions to delete the image, view messages
- * with entrants, view the owner's profile, and remove the campsite. Destructive
- * actions ask for confirmation first.
+ * Shows the image, main info, rules, geolocation, and availability legend.
+ * Admins can delete the image, view messages with entrants, view the owner's profile, and remove the campsite.
+ * Destructive actions ask for confirmation first.
  *
  * @param navController used for back navigation and for following actions
+ * @param repository source of the campsite, reviews, and where changes are saved
+ * @param campsiteId id of the campsite being displayed
+ * @param scheduleController used to draw the availability calendar
  */
 @Composable
 fun AdminViewCampsite(
@@ -787,9 +838,10 @@ fun AdminViewCampsite(
     val admin = remember(repository) { repository?.let { AdminController(it) } }
     val campsite = repository?.campsites?.find { it.id == campsiteId }
     val reviews = repository?.reviews?.filter { it.campsiteId == campsiteId }.orEmpty()
+    val scope = rememberCoroutineScope()  //for remove campsite image
 
-    //if no campsite, show cant be found message
-    if (campsite == null){
+    //if no repository or campsite, show cant be found message
+    if (repository == null || campsite == null){
         AdminPage(navController = navController, showBack = true) {
             Text("Campsite not found")
         }
@@ -834,11 +886,20 @@ fun AdminViewCampsite(
                 onClick = rememberConfirmClick(
                     message = "Remove this image? This can't be undone.",
                     onConfirm = {
-                        repository.updateCampsite(campsite.copy(imageUri = ""))
+                        val path = campsite.imageUri
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                CampImages.delete(CampImages.campsitePath(campsite.id))
+                                if (!path.startsWith("firestore:") && !path.startsWith("http")) {
+                                    File(path).delete()  //delete from firestoe
+                                }
+                            }
+                            repository.updateCampsite(campsite.copy(imageUri = null))  //remove uri
+                        }
                     }
                 )
             ) {
-                Text("Delete Campsite Image") /*todo check this */
+                Text("Delete Campsite Image")
             }
         }
 
@@ -919,7 +980,7 @@ fun AdminViewCampsite(
                         style = MaterialTheme.typography.titleSmall
                     )
                     Text(
-                        text = readableCoordinates(campsite.latitude, campsite.longitude),
+                        text = "Coordinates: " + readableCoordinates(campsite.latitude, campsite.longitude),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -982,34 +1043,35 @@ fun AdminViewCampsite(
                         }
                     }
                 }
-                pendingRemoval?.let { (reviewId, kind) ->
-                    Dialog(onDismissRequest = { pendingRemoval = null }) {
-                        Column(
-                            modifier = Modifier
-                                .background(Color.DarkGray, RoundedCornerShape(8.dp))
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Text(
-                                if (kind == "rating") {
-                                    "Remove this rating? It will no longer count toward the campsite  and can't be undone."
-                                } else {
-                                    "Remove this review? This can't be undone."
-                                },
-                                color = Color.White
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                TextButton(onClick = { pendingRemoval = null }) { Text("Cancel") }
-                                TextButton(onClick = {
-                                    pendingRemoval = null
-                                    if (kind == "rating") admin?.removeRating(reviewId)
-                                    else admin?.removeReview(reviewId)
-                                }) { Text("Remove", color = Color.Red) }
-                            }
-                        }
+            }
+        }
+
+        pendingRemoval?.let { (reviewId, kind) ->
+            Dialog(onDismissRequest = { pendingRemoval = null }) {
+                Column(
+                    modifier = Modifier
+                        .background(Color.DarkGray, RoundedCornerShape(8.dp))
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        if (kind == "rating") {
+                            "Remove this rating? It will no longer count toward the campsite  and can't be undone."
+                        } else {
+                            "Remove this review? This can't be undone."
+                        },
+                        color = Color.White
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { pendingRemoval = null }) { Text("Cancel") }
+                        TextButton(onClick = {
+                            pendingRemoval = null
+                            if (kind == "rating") admin?.removeRating(reviewId)
+                            else admin?.removeReview(reviewId)
+                        }) { Text("Remove", color = Color.Red) }
                     }
                 }
             }
@@ -1070,7 +1132,7 @@ fun AdminViewCampsite(
                 message = "Remove this campsite? This can't be undone.",
                 onConfirm = {
                     repository.deleteCampsite(campsite)
-                    navController.navigate(AdminRoutes.CAMPSITE_LIST)
+                    navController.popBackStack()
                 }
             )
         ) {
@@ -1079,34 +1141,121 @@ fun AdminViewCampsite(
     }
 }
 
+
+/** An item in the image gallery contains the image, a label, and the screen it belongs to. */
+private data class GalleryImage(
+    val path: String,
+    val label: String,
+    val route: String
+)
 /**
- * Admin gallery of uploaded images. The list is still a placeholder card.
+ * Admin gallery of uploaded images (US 03.06.01).
+ * Contains all photos including profile photos and campsite photos.
+ * Clicking on an image brings open the page where it exists where it can be deleted (US 03.03.01).
  *
  * @param navController used for navigation
+ * @param repository used for getting the images
  */
 @Composable
-fun ImageGallery(navController: NavController) {
+fun ImageGallery(navController: NavController, repository: DasCampRepository? = null) {
+    val images = buildList{
+        //go through all campsite images
+        repository?.campsites.orEmpty().forEach{campsite ->
+            val path = campsite.imageUri
+            if(!path.isNullOrBlank()){  //if image exists
+                add(
+                    GalleryImage(
+                        path,
+                        "Campsite: ${campsite.name.ifBlank { "Untitled" }}",  //show camp name of where the image belongs
+                        AdminRoutes.campsite(campsite.id)  //where the image lives
+                    )
+                )
+            }
+        }
+        //go through all profile pictures
+        repository?.users.orEmpty().forEach{user ->
+            val path = user.profileImageUri
+            if(!path.isNullOrBlank()){  //if image exists
+                val type = if(user.admin){  //determine the user type of the clicked profile
+                    ProfileType.ADMIN
+                }else if(user.owner){
+                    ProfileType.OWNER
+                }else{
+                    ProfileType.ENTRANT
+                }
+                add(
+                    GalleryImage(
+                        path,
+                        "Profile: ${user.displayName().ifBlank{"N/A"}}",  //show profile name who the pfp belongs to
+                        AdminRoutes.profile(type,user.id)  //where the image lives
+                    )
+                )
+            }
+        }
+    }
     AdminPage(
         navController = navController,
         showBack = true,
-    ) {
-        // Title
+    ){
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
-        ) { Text(text = "Image Gallery", style = MaterialTheme.typography.titleLarge) }
-        EmptyCard {
-            navController.navigate(AdminRoutes.campsite("123"))
+        ){
+            Text(
+                text = "Image Gallery",
+                style = MaterialTheme.typography.titleLarge
+            )
+        }
+        if(images.isEmpty()){
+            Text("No images uploaded to firebase")
+        }else{
+            images.chunked(2).forEach{imageRow ->  //2 images per row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ){
+                    imageRow.forEach{image ->  //each image in the row
+                        Card(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable{navController.navigate(image.route)},
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        ){
+                            Column{
+                                StoredImage(
+                                    path = image.path,
+                                    contentDescription = image.label,
+                                    modifier = Modifier.fillMaxWidth().height(140.dp),
+                                    contentScale = ContentScale.Crop  //make sure every image is the same size
+                                ){
+                                    Box(
+                                        Modifier.fillMaxWidth().height(140.dp),
+                                        contentAlignment = Alignment.Center
+                                    ){
+                                        Icon(
+                                            Icons.Default.Image,
+                                            contentDescription = null
+                                        )
+                                    }
+                                }
+                                Text(
+                                    image.label,
+                                    modifier = Modifier.padding(8.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            }
+                        }
+                    }
+                    //if there is only 1 image in the row (odd number of total images)
+                    //keep the image the same size as the others -> dont strecth image to the whole width
+                    if(imageRow.size == 1){
+                        Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
         }
     }
-}
-
-@Preview
-@Composable
-fun ImageGalleryPreview() {
-    DasCampTheme {
-        RequestLog(rememberNavController())
-    }/*todo*/
 }
 
 /** One row in the admin message log: an owner/entrant pair and their newest message. */
@@ -1117,8 +1266,13 @@ private data class AdminThread(
     val latestMessage: String  //for the message preview
 )
 /**
- * Screen listing message conversations between owners and entrants, with a search field.
+ * Screen listing message conversations between owners and entrants (US 03.12.01).
+ * One card per owner/entrant pair, a search field is provided.
+ * Clicking on a card opens AdminViewMessage.
+ *
  * @param navController used to navigate to a message
+ * @param repository source of the campsites
+ * @param ownerId if not blank, only this owner's conversations are shown
  */
 @Composable
 fun AdminMessageList(navController: NavController, repository: DasCampRepository? = null, ownerId: String = "") {
@@ -1154,7 +1308,6 @@ fun AdminMessageList(navController: NavController, repository: DasCampRepository
             },
             singleLine = true
         )
-        Spacer(modifier = Modifier.height(16.dp))
         if (threads.isEmpty()) Text("No conversations yet")
         threads.forEach { thread ->
             Card(
@@ -1201,21 +1354,14 @@ fun AdminMessageList(navController: NavController, repository: DasCampRepository
     }
 }
 
-@Preview
-@Composable
-fun AdminMessageListPreview() {
-    DasCampTheme {
-        RequestLog(rememberNavController())
-    }
-}
-
 /**
- * Screen showing a single conversation between an entrant and a campsite owner,
- * with the entrant's message on top and the owner's reply below. The message
- * content is hardcoded placeholder text for now.
+ * Read only view of a conversation between an entrant and a campsite owner (US 03.12.01).
+ * Owner messages on the left, entrant on the right.
+ * Conversation is opened by the card that was clicked on in the previous page using
+ * the chosen ids from the repository
  *
  * @param navController used for back navigation
- * @param repository used for message source and profile names
+ * @param repository source of messages and usernames
  */
 @Composable
 fun AdminViewMessage(navController: NavController, repository: DasCampRepository? = null) {
@@ -1305,14 +1451,6 @@ fun AdminViewMessage(navController: NavController, repository: DasCampRepository
                 }
             }
         }
-    }
-}
-
-@Preview
-@Composable
-fun AdminViewMessagePreview() {
-    DasCampTheme {
-        RequestLog(rememberNavController())
     }
 }
 
