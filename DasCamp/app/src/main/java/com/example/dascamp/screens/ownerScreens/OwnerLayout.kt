@@ -70,9 +70,8 @@ object OwnerRoutes {
 /** Navbar tabs return to the dashboard first, so Back does not replay every tab */
 fun NavController.openOwnerTab(route: String) {
     navigate(route) {
-        popUpTo(OwnerRoutes.DASHBOARD) { saveState = true }
+        popUpTo(OwnerRoutes.DASHBOARD) { inclusive = false }
         launchSingleTop = true
-        restoreState = true
     }
 }
 

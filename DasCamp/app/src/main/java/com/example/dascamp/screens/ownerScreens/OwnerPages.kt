@@ -72,6 +72,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.controllers.ProfileController
 import com.example.dascamp.controllers.CampImages
 import com.example.dascamp.controllers.LotteryNotificationAudience
 import com.example.dascamp.controllers.LotteryProposalController
@@ -1120,7 +1121,7 @@ fun OwnerNotifications(
     repository: DasCampRepository? = null,
     notificationsController: NotificationsController? = null
 ) {
-    var showingIncoming by rememberSaveable { mutableStateOf(false) }
+    var showingIncoming by rememberSaveable { mutableStateOf(true) }
     val ownerInboxController = remember(repository, notificationsController) {
         notificationsController ?: repository?.let { NotificationsController(it) }
     }
@@ -1141,21 +1142,21 @@ fun OwnerNotifications(
 
     OwnerPage(navController, showBack = false) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (!showingIncoming) Button(onClick = { showingIncoming = false }) {
-                Text("Outgoing")
-            } else OutlinedButton(onClick = { showingIncoming = false }) {
-                Text("Outgoing")
-            }
             if (showingIncoming) Button(onClick = { showingIncoming = true }) {
                 Text("Incoming")
             } else OutlinedButton(onClick = { showingIncoming = true }) {
                 Text("Incoming")
             }
+            if (!showingIncoming) Button(onClick = { showingIncoming = false }) {
+                Text("Outgoing")
+            } else OutlinedButton(onClick = { showingIncoming = false }) {
+                Text("Outgoing")
+            }
         }
         if (showingIncoming) {
             Text("Incoming notifications", style = MaterialTheme.typography.titleLarge)
             if (repository?.currentUser?.notificationsOn == false) {
-                Text("Notifications are turned off")
+                Text("Incoming notifications are turned off. Turn notifications on in your profile settings to see them.")
             } else if (incoming.isEmpty()) {
                 Text("No incoming notifications")
             } else {
@@ -1586,6 +1587,9 @@ fun OwnerProfile(
     onSignOut: () -> Unit = {}
 ) {
     val saved = repository?.currentUser
+    val profileController = remember(repository) {
+        repository?.let { ProfileController(it) }
+    }
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -1673,8 +1677,10 @@ fun OwnerProfile(
                 Text("Notifications", modifier = Modifier.weight(1f))
                 Switch(
                     checked = notificationsOn,
-                    onCheckedChange = { notificationsOn = it },
-                    enabled = editing
+                    onCheckedChange = {
+                        notificationsOn = it
+                        profileController?.setNotifications(it)
+                    }
                 )
             }
         }
