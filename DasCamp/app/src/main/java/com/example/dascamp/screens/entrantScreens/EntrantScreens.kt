@@ -48,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -85,7 +86,7 @@ import com.example.dascamp.controllers.NotificationsController
 import com.example.dascamp.controllers.LotteryController
 import com.example.dascamp.controllers.MessageController
 import com.example.dascamp.controllers.ReviewController
-import com.example.dascamp.controllers.copyPickedImage
+import com.example.dascamp.controllers.CampImages
 import com.example.dascamp.model.DasCampRepository
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.draw.clipToBounds
@@ -103,6 +104,9 @@ import com.example.dascamp.screens.StoredImage
 import com.example.dascamp.screens.DatePickerField
 import com.example.dascamp.views.MessageView
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.example.dascamp.screens.BigButton
 import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.views.ProfileView
@@ -1439,17 +1443,23 @@ fun EntrantProfileScreen(
     var showEdit by rememberSaveable { mutableStateOf(false) }
     var imageMessage by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
-    // Photo picker. No storage permission is required: the system hands us one image.
+    val scope = rememberCoroutineScope()
+    // Photo picker. The picture is shrunk, then stored in Firestore.
     val imagePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        val path = copyPickedImage(context, uri, "profile-$entrantId.jpg")
-        if (path == null) {
-            imageMessage = "Could not save that picture"
-        } else {
-            controller.setProfileImage(path)
-            imageMessage = null
+        scope.launch {
+            imageMessage = "Uploading photo…"
+            val marker = withContext(Dispatchers.IO) {
+                CampImages.upload(context, uri, CampImages.profilePath(entrantId))
+            }
+            if (marker == null) {
+                imageMessage = "Could not save that picture"
+            } else {
+                controller.setProfileImage(marker)
+                imageMessage = null
+            }
         }
     }
 
@@ -1520,9 +1530,17 @@ fun EntrantProfileScreen(
         }
         if (!profile?.profileImageUri.isNullOrBlank()) {
             TextButton(onClick = {
-                profile?.profileImageUri?.let { path -> File(path).delete() }
-                controller.setProfileImage(null)
-                imageMessage = null
+                val path = profile?.profileImageUri
+                scope.launch {
+                    withContext(Dispatchers.IO) {
+                        CampImages.delete(CampImages.profilePath(entrantId))
+                        if (path != null && !path.startsWith("firestore:") && !path.startsWith("http")) {
+                            File(path).delete()
+                        }
+                    }
+                    controller.setProfileImage(null)
+                    imageMessage = null
+                }
             }) { Text("Remove photo") }
         }
         imageMessage?.let { Text(it) }
