@@ -87,6 +87,7 @@ import com.example.dascamp.views.ReservationView
 import com.example.dascamp.views.NotificationView
 import java.util.concurrent.TimeUnit
 import android.Manifest
+import androidx.navigation.navArgument
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.messaging.FirebaseMessaging
@@ -326,9 +327,13 @@ fun DasCampApp() {
                 AdminViewCampsite(navController, repository, campsiteId, scheduleController)
             }
             composable(AdminRoutes.IMAGE_GALLERY) { ImageGallery(navController) }
-            composable(AdminRoutes.MESSAGE_LIST) { AdminMessageList(navController, repository) }
+            composable(AdminRoutes.MESSAGE_LIST, arguments = listOf(navArgument("ownerId"){defaultValue = "" }))
+            {entry ->
+                val ownerId = entry.arguments?.getString("ownerId") ?: ""
+                AdminMessageList(navController, repository, ownerId)
+            }
             composable(AdminRoutes.MESSAGE) { entry ->
-                val messageId = entry.arguments?.getString("messageId") ?: "default_id"
+                val messageId = entry.arguments?.getString("messageId")?: "default_id"
                 AdminViewMessage(navController, repository)
             }
             composable(AdminRoutes.OWNER_APPLICATIONS) { AdminOwnerApplications(navController, repository, adminController) }

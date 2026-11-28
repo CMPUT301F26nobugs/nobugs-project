@@ -385,7 +385,7 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
                 // Owner roles only -> view messages with entrants (same message list as from a campsite)
                 Button(
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+                    onClick = { navController.navigate(AdminRoutes.messageList(user.id)) }
                 ) { Text("View Messages with Entrants") }
             }
             if(profileType == ProfileType.OWNER){
@@ -1035,7 +1035,7 @@ fun AdminViewCampsite(
         // view messages with entrants (same message list as from a campsite)
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+            onClick = { navController.navigate(AdminRoutes.messageList(campsite.ownerId)) }
         ) { Text("View Messages between Owner and Entrants") }
 
         if (campsite.ownerId.isBlank()) {
@@ -1113,9 +1113,10 @@ private data class AdminThread(
  * @param navController used to navigate to a message
  */
 @Composable
-fun AdminMessageList(navController: NavController, repository: DasCampRepository? = null) {
+fun AdminMessageList(navController: NavController, repository: DasCampRepository? = null, ownerId: String = "") {
     var query by rememberSaveable { mutableStateOf("") }
     val threads = repository?.messages.orEmpty()
+        .filter{ownerId.isBlank() || it.ownerId == ownerId}
         .groupBy{it.ownerId to it.entrantId}  //group messages by conversation (owner and entrant), only 1 list item for group
         .map{(ids,msgs) ->  //map data into 1 item/conversation in the view message list
             val owner = repository?.userById(ids.first)?.displayName().orEmpty().ifBlank { "N/A" }  //if no name found, name shown will be unnamed
@@ -1129,6 +1130,12 @@ fun AdminMessageList(navController: NavController, repository: DasCampRepository
     }
     AdminPage(navController, showBack = true) {
         Text("Message Logs", style = MaterialTheme.typography.titleLarge)
+
+        if(ownerId.isNotBlank()){
+            val ownerName = repository?.userById(ownerId)?.displayName().orEmpty()
+            Text("Messages from owner: $ownerName", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
