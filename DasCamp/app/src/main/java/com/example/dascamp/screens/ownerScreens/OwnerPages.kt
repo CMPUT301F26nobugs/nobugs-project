@@ -115,6 +115,7 @@ import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.layout.heightIn
 
 /**
  * Owner home. The two large buttons open the campsite list and the lottery list.
@@ -272,7 +273,7 @@ fun OwnerCampsite(
             StoredImage(
                 path = campsite.imageUri,
                 contentDescription = campsite.name,
-                modifier = Modifier.fillMaxWidth().height(400.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
                 contentScale = ContentScale.Fit
             ) {}
         }
@@ -484,7 +485,7 @@ private fun CampsiteForm(
         StoredImage(
             path = form.imageUri,
             contentDescription = "Campsite Photo",
-            modifier = Modifier.fillMaxWidth().height(400.dp),
+            modifier = Modifier.fillMaxWidth().heightIn( max = 400.dp),
             contentScale = ContentScale.Fit
                 ) {
             Text("No photo yet")
