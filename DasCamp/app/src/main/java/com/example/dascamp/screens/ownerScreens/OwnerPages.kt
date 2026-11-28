@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -64,6 +65,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -105,6 +107,7 @@ import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.StoredImage
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
 import com.example.dascamp.views.MessageView
+import com.example.dascamp.views.ProfileView
 import com.example.dascamp.views.ReservationView
 import com.google.zxing.common.BitMatrix
 import java.util.UUID
@@ -1414,7 +1417,6 @@ fun OwnerMessageList(navController: NavController, repository: DasCampRepository
             },
             singleLine = true
         )
-        Spacer(modifier = Modifier.height(16.dp))
         if (threads.isEmpty()) Text("No conversations yet")
         threads.forEach { thread ->
             Card(
@@ -1586,10 +1588,14 @@ fun OwnerProfile(
     repository: DasCampRepository? = null,
     onSignOut: () -> Unit = {}
 ) {
+    if (repository == null) return
     val saved = repository?.currentUser
+    val ownerId = saved?.id ?: repository.uid
+    val view = remember(ownerId) { ProfileView(repository, ownerId) }
     val profileController = remember(repository) {
         repository?.let { ProfileController(it) }
     }
+    val controller = remember { ProfileController(repository) }
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -1597,6 +1603,28 @@ fun OwnerProfile(
     var notificationsOn by remember { mutableStateOf(true) }
     var loaded by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
+    val profile = view.profile
+    var imageMessage by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    // Photo picker. The picture is shrunk, then stored in Firestore.
+    val imagePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            imageMessage = "Uploading photo…"
+            val marker = withContext(Dispatchers.IO) {
+                CampImages.upload(context, uri, CampImages.profilePath(ownerId))
+            }
+            if (marker == null) {
+                imageMessage = "Could not save that picture"
+            } else {
+                controller.setProfileImage(marker)
+                imageMessage = null
+            }
+        }
+    }
 
     LaunchedEffect(saved?.id) {
         if (saved != null && !loaded) {
@@ -1611,19 +1639,38 @@ fun OwnerProfile(
 
     OwnerPage(navController, showBack = false, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Profile", style = MaterialTheme.typography.titleLarge)
-        Icon(
-            Icons.Default.Person,
-            contentDescription = null,
+        Box(
             modifier = Modifier
-                .size(96.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                .padding(18.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+                .size(112.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable {
+                    imagePicker.launch(
+                        androidx.activity.result.PickVisualMediaRequest(
+                            ActivityResultContracts.PickVisualMedia.ImageOnly
+                        )
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            StoredImage(
+                path = profile?.profileImageUri,
+                contentDescription = "Profile picture",
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Add a profile picture",
+                    modifier = Modifier.size(56.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
         Text(
             saved?.displayName()?.ifBlank { "Owner" } ?: "Owner",
             style = MaterialTheme.typography.headlineSmall
         )
+
         Text(
             "Signed in on this device",
             style = MaterialTheme.typography.bodySmall,
@@ -1662,6 +1709,15 @@ fun OwnerProfile(
             )
             Spacer(Modifier.width(8.dp))
             Text(if (editing) "Save" else "Edit details")
+        }
+        TextButton(onClick = {
+            imagePicker.launch(
+                androidx.activity.result.PickVisualMediaRequest(
+                    ActivityResultContracts.PickVisualMedia.ImageOnly
+                )
+            )
+        }) {
+            Text(if (profile?.profileImageUri.isNullOrBlank()) "Add photo" else "Change photo")
         }
         Surface(
             modifier = Modifier.fillMaxWidth(),

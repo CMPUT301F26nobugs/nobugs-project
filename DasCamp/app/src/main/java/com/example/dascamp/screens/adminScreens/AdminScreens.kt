@@ -1300,7 +1300,6 @@ fun AdminMessageList(navController: NavController, repository: DasCampRepository
             },
             singleLine = true
         )
-        Spacer(modifier = Modifier.height(16.dp))
         if (threads.isEmpty()) Text("No conversations yet")
         threads.forEach { thread ->
             Card(
