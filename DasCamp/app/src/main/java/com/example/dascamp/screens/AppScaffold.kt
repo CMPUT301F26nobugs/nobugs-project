@@ -7,17 +7,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -158,9 +162,9 @@ val LocalCurrentUser = compositionLocalOf<User?> { null }
 
 /**
  * Header toggle for switching between the roles this user holds
- * Hidden when the user has only one role
+ * Displays the current role when the user holds multiple roles.
  *
- * Reads the user from [LocalCurrentUser]. Tapping the icon opens a dropdown of the user's
+ * Reads the user from [LocalCurrentUser]. Tapping the role button opens a dropdown of the user's
  * roles, with the [current] one in bold. Choosing a different role navigates to that role's
  * dashboard and clears the back stack (`popUpTo(0)`), so back doesn't return to the old role.
  *
@@ -178,17 +182,30 @@ fun RoleMenu(navController: NavController, current: Role) {
         Triple(Role.ADMIN, user.admin, AdminRoutes.DASHBOARD)
     ).filter { it.second }
 
-    android.util.Log.d("RoleMenu", "user=${LocalCurrentUser.current}")
-
     if (options.size < 2) return
+
+    android.util.Log.d("RoleMenu", "user=${LocalCurrentUser.current}")
 
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }) {
+        TextButton(
+            onClick = { open = true },
+            modifier = Modifier.height(32.dp),
+            shape = RoundedCornerShape(50),
+            contentPadding = PaddingValues(horizontal = 6.dp),
+            colors = ButtonDefaults.textButtonColors(
+                containerColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.16f),
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
+        ) {
+            Text(
+                current.name.lowercase().replaceFirstChar { it.uppercase() },
+                style = MaterialTheme.typography.labelMedium
+            )
             Icon(
-                Icons.Default.SwapHoriz,
-                contentDescription = "Switch role",
-                tint = MaterialTheme.colorScheme.onPrimary
+                Icons.Default.ArrowDropDown,
+                contentDescription = "Choose role",
+                modifier = Modifier.size(20.dp)
             )
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {

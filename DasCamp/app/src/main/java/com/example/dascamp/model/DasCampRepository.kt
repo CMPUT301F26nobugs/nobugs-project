@@ -20,6 +20,7 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
     private val db = Firebase.firestore
     private val campsitesRef = db.collection("campsites")
     private val lotteriesRef = db.collection("lotteries")
+    private val lotteryProposalsRef = db.collection("lotteryProposals")
     private val reservationsRef = db.collection("reservations")
     private val notificationsRef = db.collection("notifications")
     private val usersRef = db.collection("users")
@@ -34,6 +35,9 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
 
     private val _lotteries = mutableStateListOf<Lottery>()
     override val lotteries: List<Lottery> get() = _lotteries
+
+    private val _lotteryProposals = mutableStateListOf<LotteryProposal>()
+    override val lotteryProposals: List<LotteryProposal> get() = _lotteryProposals
 
     private val _reservations = mutableStateListOf<Reservation>()
     override val reservations: List<Reservation> get() = _reservations
@@ -88,6 +92,7 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
     init {
         listen(campsitesRef, _campsites, Campsite::class.java) { campsitesLoaded = true }
         listen(lotteriesRef, _lotteries, Lottery::class.java)
+        listen(lotteryProposalsRef, _lotteryProposals, LotteryProposal::class.java)
         listen(reservationsRef, _reservations, Reservation::class.java)
         listen(notificationsRef, _notifications, Notification::class.java)
         listen(usersRef, _users, User::class.java) { usersLoaded = true }
@@ -104,6 +109,110 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
     override fun addLottery(lottery: Lottery) = save(lotteriesRef, lottery.id, lottery)
     override fun updateLottery(lottery: Lottery) = save(lotteriesRef, lottery.id, lottery)
     override fun deleteLottery(lottery: Lottery) = remove(lotteriesRef, lottery.id)
+
+    override fun createLotteryProposal(
+        proposal: LotteryProposal,
+        requestNotifications: List<Notification>
+    ) = db.batch().let { batch ->
+        batch.set(lotteryProposalsRef.document(proposal.id), proposal)
+        requestNotifications.forEach { notification ->
+            batch.set(notificationsRef.document(notification.id), notification)
+        }
+        batch.commit()
+    }
+
+    override fun respondToLotteryProposal(
+        proposalId: String,
+        ownerId: String,
+        approve: Boolean
+    ) = db.runTransaction { transaction ->
+        val proposalRef = lotteryProposalsRef.document(proposalId)
+        val proposal = transaction.get(proposalRef).toObject(LotteryProposal::class.java)
+            ?: return@runTransaction LotteryProposalAction.NOT_FOUND
+        if (proposal.status != LotteryProposalStatus.PENDING) {
+            return@runTransaction LotteryProposalAction.NOT_PENDING
+        }
+        val ownApproval = proposal.ownerApprovals.firstOrNull { it.ownerId == ownerId }
+            ?: return@runTransaction LotteryProposalAction.NOT_AUTHORIZED
+        if (ownApproval.status != OwnerApprovalStatus.PENDING) {
+            return@runTransaction LotteryProposalAction.ALREADY_RESPONDED
+        }
+
+        val approvals = proposal.ownerApprovals.map { approval ->
+            if (approval.ownerId == ownerId) {
+                approval.copy(
+                    status = if (approve) OwnerApprovalStatus.APPROVED
+                    else OwnerApprovalStatus.DECLINED
+                )
+            } else approval
+        }
+        val rejected = !approve
+        val allApproved = approvals.all { it.status == OwnerApprovalStatus.APPROVED }
+        val updated = proposal.copy(
+            ownerApprovals = approvals,
+            status = when {
+                rejected -> LotteryProposalStatus.REJECTED
+                allApproved -> LotteryProposalStatus.PUBLISHED
+                else -> LotteryProposalStatus.PENDING
+            }
+        )
+
+        val lotteryRef = lotteriesRef.document(proposal.lotteryDraft.id)
+        if (allApproved && !rejected && transaction.get(lotteryRef).exists()) {
+            return@runTransaction LotteryProposalAction.LOTTERY_ALREADY_EXISTS
+        }
+
+        transaction.set(proposalRef, updated)
+        when {
+            rejected -> updated.notifications(
+                type = NotificationType.LOTTERY_PROPOSAL_UPDATE,
+                message = "The shared lottery proposal \"${proposal.lotteryDraft.name}\" was rejected.",
+                senderId = proposal.creatorId
+            ).forEach { notification ->
+                transaction.set(notificationsRef.document(notification.id), notification)
+            }
+
+            allApproved -> {
+                transaction.set(
+                    lotteryRef,
+                    proposal.lotteryDraft.copy(status = LotteryStatus.OPEN)
+                )
+                updated.notifications(
+                    type = NotificationType.LOTTERY_PROPOSAL_UPDATE,
+                    message = "The shared lottery \"${proposal.lotteryDraft.name}\" was published.",
+                    senderId = proposal.creatorId
+                ).forEach { notification ->
+                    transaction.set(notificationsRef.document(notification.id), notification)
+                }
+            }
+        }
+        LotteryProposalAction.UPDATED
+    }
+
+    override fun cancelLotteryProposal(
+        proposalId: String,
+        creatorId: String
+    ) = db.runTransaction { transaction ->
+        val proposalRef = lotteryProposalsRef.document(proposalId)
+        val proposal = transaction.get(proposalRef).toObject(LotteryProposal::class.java)
+            ?: return@runTransaction LotteryProposalAction.NOT_FOUND
+        if (proposal.creatorId != creatorId) {
+            return@runTransaction LotteryProposalAction.NOT_AUTHORIZED
+        }
+        if (proposal.status != LotteryProposalStatus.PENDING) {
+            return@runTransaction LotteryProposalAction.NOT_PENDING
+        }
+        val cancelled = proposal.copy(status = LotteryProposalStatus.CANCELLED)
+        transaction.set(proposalRef, cancelled)
+        cancelled.notifications(
+            type = NotificationType.LOTTERY_PROPOSAL_UPDATE,
+            message = "The shared lottery proposal \"${proposal.lotteryDraft.name}\" was cancelled.",
+            senderId = creatorId
+        ).forEach { notification ->
+            transaction.set(notificationsRef.document(notification.id), notification)
+        }
+        LotteryProposalAction.UPDATED
+    }
 
     // RESERVATIONS
     override fun addReservation(reservation: Reservation) = save(reservationsRef, reservation.id, reservation)

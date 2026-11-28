@@ -14,17 +14,20 @@ import java.util.Locale
 import java.util.UUID
 
 /**
- * SCHEDULE CONTROLLER
+ * SCHEDULE CONTROLLER (Availability Schedule feature)
  *
  * Responsibilities:
  * - Find dates that are already booked
  * - Check if dates are still available
- * - Check if date is inside owner's availability
+ * - Check if a date is inside the owner's availability
+ * - Reserve dates for a lottery winner, first come first served
  *
  * Collaborators:
- * - DasCampstore, Campsite, Reservation, DateRange
+ * - CampStore, Campsite, Reservation, Lottery, DateRange
  *
- * Stories: US 02.06.01, US 01.04.01
+ * All dates are Strings in "yyyy-MM-dd", so they can be compared with < and >.
+ *
+ * Stories: US 02.06.01, 01.01.05, 01.04.01, 02.11.01, 02.04.04
  */
 class ScheduleController (private val store: CampStore){
     private fun today(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
@@ -146,7 +149,7 @@ class ScheduleController (private val store: CampStore){
 
         //guest in occupancy allowed
         if(guestCount < 1 || guestCount >  campsite.maxOccupancy){
-            return "Guest must be between 1 " + campsite.maxOccupancy.toString()
+            return "Guest must be between 1 and " + campsite.maxOccupancy.toString()
         }
 
         // are dates still free (first come first served)
@@ -176,7 +179,6 @@ class ScheduleController (private val store: CampStore){
                 recipientId = entrantId,
                 message = "Reservation confirmed: ${campsite.name}, $startDate to $endDate",
                 sentAt = System.currentTimeMillis().toString()
-                // type = ...  use an existing NotificationType, or add CONFIRMATION to the enum
             )
         )
 

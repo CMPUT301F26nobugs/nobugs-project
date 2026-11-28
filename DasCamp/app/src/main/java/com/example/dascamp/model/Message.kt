@@ -21,6 +21,7 @@ data class OwnerMessage(
     val sentAt: String = "",
     val senderId: String = "",
     val receiverId: String = "",
+    val fromOwner: Boolean = false, //if owner and entrant have the same id/are the same person -> same account
     @get:ServerTimestamp val serverSentAt: Timestamp? = null
 ) {
     /** Server time for new messages, with the legacy client timestamp as fallback. */

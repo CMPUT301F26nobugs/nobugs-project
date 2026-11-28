@@ -3,7 +3,9 @@ package com.example.dascamp.screens.ownerScreens
 import android.content.Intent
 import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,23 +19,29 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.FactCheck
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -46,21 +54,31 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.controllers.ProfileController
+import com.example.dascamp.controllers.CampImages
 import com.example.dascamp.controllers.LotteryNotificationAudience
+import com.example.dascamp.controllers.LotteryProposalController
+import com.example.dascamp.controllers.MessageController
 import com.example.dascamp.controllers.NotificationsController
+import com.example.dascamp.controllers.QrCodeController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
 import com.example.dascamp.model.Campsite
@@ -68,44 +86,53 @@ import com.example.dascamp.model.CampsiteFormState
 import com.example.dascamp.model.DasCampRepository
 import com.example.dascamp.model.DateRange
 import com.example.dascamp.model.LotteryFormState
+import com.example.dascamp.model.LotteryProposal
+import com.example.dascamp.model.LotteryProposalAction
+import com.example.dascamp.model.LotteryProposalStatus
 import com.example.dascamp.model.LotteryStatus
 import com.example.dascamp.model.NotificationType
-import com.example.dascamp.model.label
-import com.example.dascamp.model.Notification
-import com.example.dascamp.controllers.MessageController
+import com.example.dascamp.model.OwnerApprovalStatus
 import com.example.dascamp.model.Reservation
 import com.example.dascamp.model.ReservationStatus
 import com.example.dascamp.model.formatPrice
-import com.example.dascamp.views.MessageView
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.platform.LocalContext
-import com.example.dascamp.controllers.QrCodeController
+import com.example.dascamp.model.label
 import com.example.dascamp.screens.BigButton
-import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.CampsiteMap
 import com.example.dascamp.screens.EmptyValue
+import com.example.dascamp.screens.LocalCurrentUser
 import com.example.dascamp.screens.DatePickerField
+import com.example.dascamp.screens.ProfileAction
+import com.example.dascamp.screens.StoredImage
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
+import com.example.dascamp.views.MessageView
 import com.example.dascamp.views.ReservationView
 import com.google.zxing.common.BitMatrix
 import java.util.UUID
-import androidx.compose.foundation.Image
-import androidx.compose.ui.graphics.asImageBitmap
-
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Owner home. The two large buttons open the campsite list and the lottery list.
  * The three wide buttons open alerts, message logs, and reservations.
  */
 @Composable
-fun OwnerDashboard(navController: NavController) {
+fun OwnerDashboard(
+    navController: NavController,
+    repository: DasCampRepository? = null
+) {
+    val firstName = LocalCurrentUser.current?.firstName
+        ?.takeIf { it.isNotBlank() } ?: "User"
+
     OwnerPage(navController, showBack = false, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            "Welcome Back,",
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center
-        )
-        Text("Owner", style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = "Welcome Back, $firstName", style = MaterialTheme.typography.titleLarge)
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             BigButton(
                 { navController.openOwnerTab(OwnerRoutes.CAMPSITES) },
@@ -120,20 +147,56 @@ fun OwnerDashboard(navController: NavController) {
                 "My\nLotteries"
             )
         }
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.openOwnerTab(OwnerRoutes.ALERTS) }
-        ) { Text("Notification Logs") }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            verticalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.openOwnerTab(OwnerRoutes.ALERTS) }
+            ) {
+                Icon(Icons.Default.Campaign, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Notifications")
+            }
 
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate(OwnerRoutes.MESSAGE_LIST) })
-        { Text("Message Logs") }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(OwnerRoutes.MESSAGE_LIST) }
+            ) {
+                Icon(Icons.Default.ChatBubbleOutline, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Messages")
+            }
 
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.openOwnerTab(OwnerRoutes.RESERVATIONS) })
-        { Text("Reservations") }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.openOwnerTab(OwnerRoutes.RESERVATIONS) }
+            ) {
+                Icon(Icons.Default.EventAvailable, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Reservations")
+            }
+
+            val pendingRequestCount = repository?.lotteryProposals.orEmpty().count { proposal ->
+                proposal.status == LotteryProposalStatus.PENDING &&
+                    proposal.ownerApprovals.any {
+                        it.ownerId == repository?.uid &&
+                            it.ownerId != proposal.creatorId &&
+                            it.status == OwnerApprovalStatus.PENDING
+                    }
+            }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(OwnerRoutes.APPROVALS) }
+            ) {
+                Icon(Icons.Default.FactCheck, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Lottery approvals ($pendingRequestCount)")
+            }
+        }
     }
 }
 
@@ -190,6 +253,7 @@ fun OwnerCampsite(
     navController: NavController,
     repository: DasCampRepository? = null
 ) {
+    val scope = rememberCoroutineScope()
     val campsite = repository?.campsites?.find { it.id == repository.openCampsiteId }
 
     if (campsite == null){
@@ -200,6 +264,14 @@ fun OwnerCampsite(
     }
     OwnerPage(navController, showBack = true) {
         Text(campsite.name, style = MaterialTheme.typography.titleLarge)
+        if(!campsite.imageUri.isNullOrBlank()){
+            StoredImage(
+                path = campsite.imageUri,
+                contentDescription = campsite.name,
+                modifier = Modifier.fillMaxWidth().height(400.dp),
+                contentScale = ContentScale.Fit
+            ) {}
+        }
 
         //Location
         Text("Location", style = MaterialTheme.typography.titleMedium)
@@ -269,8 +341,13 @@ fun OwnerCampsite(
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
-                campsite?.let { repository.deleteCampsite(it) }
-                navController.popBackStack()
+                scope.launch {
+                    withContext(Dispatchers.IO) {
+                        CampImages.delete(CampImages.campsitePath(campsite.id))
+                    }
+                    repository?.deleteCampsite(campsite)
+                    navController.popBackStack()
+                }
             }
         ) { Text("Delete campsite") }
     }
@@ -307,6 +384,18 @@ private fun CampsiteForm(
         )
     }
     var error by remember { mutableStateOf<String?>(null) }
+    var uploading by remember { mutableStateOf(false) }
+    val campsiteId = existing?.id ?: remember { UUID.randomUUID().toString() }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) {uri ->
+        if (uri != null){
+            form = form.copy(imageUri = uri.toString())
+            error = null
+        }
+    }
     OwnerPage(navController, showBack = true) {
         Text(title, style = MaterialTheme.typography.titleLarge)
         FormField("Name", form.name, onValueChange = { typed -> form = form.copy(name = typed) })
@@ -324,7 +413,9 @@ private fun CampsiteForm(
         CampsiteMap(
             latitude = startLatitude,
             longitude = startLongitude,
-            modifier = Modifier.fillMaxWidth().height(180.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp),
             onLocationPicked = {
                 pickedLatitude, pickedLongitude ->
                 form = form.copy(
@@ -364,26 +455,76 @@ private fun CampsiteForm(
             label = { Text("Available to") }
         )
         error?.let { Text(it) }
-        Button(onClick = {}) { Text("Upload photo") }
+        Text("Photo (optional)", style = MaterialTheme.typography.titleMedium)
+        StoredImage(
+            path = form.imageUri,
+            contentDescription = "Campsite Photo",
+            modifier = Modifier.fillMaxWidth().height(400.dp),
+            contentScale = ContentScale.Fit
+                ) {
+            Text("No photo yet")
+        }
+        Button(onClick = {
+            photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        }) {
+            if (form.imageUri.isNullOrBlank()){
+                Text("Upload Photo")
+            } else{
+                Text("Change Photo")
+            }
+        }
+        if (!form.imageUri.isNullOrBlank()){
+            TextButton(onClick = {
+                val current = form.imageUri
+                form = form.copy(imageUri = null)
+                if (current != null && current.startsWith("firestore:")) {
+                    scope.launch {
+                        withContext(Dispatchers.IO) {
+                            CampImages.delete(CampImages.campsitePath(campsiteId))
+                        }
+                    }
+                }
+            }) { Text("Remove photo") }
+        }
         Button(
             modifier = Modifier.fillMaxWidth(),
+            enabled = !uploading,
             onClick = {
-                val built = form.toCampsite(
-                    id = existing?.id ?: UUID.randomUUID().toString(),
-                    ownerId = existing?.ownerId ?: repository?.uid.orEmpty(),
-                    rating = existing?.rating ?: 0.0,
-                    ratingCount = existing?.ratingCount ?: 0
-                )
-                val campsite = built.campsite
-                if (campsite == null) {
-                    error = built.error
-                } else if (repository != null) {
-                    if (existing == null) repository.addCampsite(campsite) else repository.updateCampsite(campsite)
-                    repository.openCampsiteId = campsite.id
-                    navController.popBackStack()
+                scope.launch {
+                    uploading = true
+                    var imageUri = form.imageUri
+                    if (imageUri != null && imageUri.startsWith("content:")) {
+                        imageUri = withContext(Dispatchers.IO) {
+                            CampImages.upload(
+                                context,
+                                android.net.Uri.parse(imageUri),
+                                CampImages.campsitePath(campsiteId)
+                            )
+                        }
+                        if (imageUri == null) {
+                            uploading = false
+                            error = "Could not save that picture"
+                            return@launch
+                        }
+                    }
+                    val built = form.copy(imageUri = imageUri).toCampsite(
+                        id = campsiteId,
+                        ownerId = existing?.ownerId ?: repository?.uid.orEmpty(),
+                        rating = existing?.rating ?: 0.0,
+                        ratingCount = existing?.ratingCount ?: 0
+                    )
+                    uploading = false
+                    val campsite = built.campsite
+                    if (campsite == null) {
+                        error = built.error
+                    } else if (repository != null) {
+                        if (existing == null) repository.addCampsite(campsite) else repository.updateCampsite(campsite)
+                        repository.openCampsiteId = campsite.id
+                        navController.popBackStack()
+                    }
                 }
             }
-        ) { Text(action) }
+        ) { Text(if (uploading) "Uploading…" else action) }
     }
 }
 
@@ -403,13 +544,19 @@ fun OwnerBookedDates(navController: NavController, repository: DasCampRepository
         EntrantCalendarGrid(campsite, scheduleController)
         Row(verticalAlignment = Alignment.CenterVertically){
             Text("Open = ")
-            Box(modifier = Modifier.size(20.dp).background(Color.Green))
+            Box(modifier = Modifier
+                .size(20.dp)
+                .background(Color.Green))
             Spacer(modifier = Modifier.padding(8.dp))
             Text("Booked = ")
-            Box(modifier = Modifier.size(20.dp).background(Color.Red))
+            Box(modifier = Modifier
+                .size(20.dp)
+                .background(Color.Red))
             Spacer(modifier = Modifier.padding(8.dp))
             Text("Closed = ")
-            Box(modifier = Modifier.size(20.dp).background(Color.LightGray))
+            Box(modifier = Modifier
+                .size(20.dp)
+                .background(Color.LightGray))
         }
         Text("Stays", style = MaterialTheme.typography.titleMedium)
         if(booked.isEmpty()){
@@ -437,11 +584,16 @@ fun OwnerMapLocation(navController: NavController, repository: DasCampRepository
             Text("Location Name: " + campsite.location)
 
             //geolocation box
-            Box(modifier = Modifier.fillMaxWidth().height(300.dp).clipToBounds()){
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp)
+                .clipToBounds()){
                 CampsiteMap(
                     latitude = campsite.latitude,
                     longitude = campsite.longitude,
-                    modifier = Modifier.fillMaxWidth().height(300.dp)  //onLocationPicked = null -> view only, pin cannot be moved
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)  //onLocationPicked = null -> view only, pin cannot be moved
                 )
             }
 
@@ -469,33 +621,33 @@ fun OwnerQrCode(navController: NavController, repository: DasCampRepository? = n
     val qrController = remember { QrCodeController() }
 
     var campsite: Campsite? = null
-    if (repository != null){
-        for (site in repository.campsites){
-            if(site.id == repository.openCampsiteId){
+    if (repository != null) {
+        for (site in repository.campsites) {
+            if (site.id == repository.openCampsiteId) {
                 campsite = site
             }
         }
     }
 
-    if(campsite == null){
-        OwnerPage(navController, showBack = true){
+    if (campsite == null) {
+        OwnerPage(navController, showBack = true) {
             Text("Campsite not found")
         }
         return
     }
 
     val text = qrController.qrText(campsite)
-    val bitmap = remember(text){qrBitmap(qrController.makeQr(text, 600))}
+    val bitmap = remember(text) { qrBitmap(qrController.makeQr(text, 600)) }
 
     val savePng = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("image/png")
     ) { uri ->
-        if (uri != null){
+        if (uri != null) {
             context.contentResolver.openOutputStream(uri)?.use { stream ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+            }
         }
     }
-}
     OwnerPage(navController, showBack = true, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("QR Code", style = MaterialTheme.typography.titleLarge)
         Text(campsite.name, style = MaterialTheme.typography.titleMedium)
@@ -528,7 +680,7 @@ fun OwnerQrCode(navController: NavController, repository: DasCampRepository? = n
 
     }
 
-    }
+}
 
     /** Turns the QR grid into a picture: true = black square, false = white square */
     fun qrBitmap(matrix: BitMatrix): Bitmap{
@@ -699,6 +851,17 @@ private fun LotteryForm(
         )
     }
     var error by remember { mutableStateOf<String?>(null) }
+    val proposalController = remember(repository) {
+        repository?.let { LotteryProposalController(it) }
+    }
+    var approvalDeadline by remember(existing?.id) { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    val selectedOwnerIds = form.campsiteIds.mapNotNull { campsiteId ->
+        repository?.campsites?.firstOrNull { it.id == campsiteId }?.ownerId
+    }.distinct()
+    val needsApproval = existing == null && selectedOwnerIds.size > 1
+    val defaultApprovalDeadline =
+        proposalController?.defaultApprovalDeadline(form.registrationStart).orEmpty()
     OwnerPage(navController, showBack = true) {
         Text(title, style = MaterialTheme.typography.titleLarge)
         FormField("Lottery name", form.name, onValueChange = { typed -> form = form.copy(name = typed) })
@@ -755,12 +918,22 @@ private fun LotteryForm(
             onDateSelected = { form = form.copy(bookingEnd = it) },
             label = { Text("Booking end") }
         )
+        if (needsApproval) {
+            Text("The lottery will be created only after every other campsite owner approves.")
+            DatePickerField(
+                value = approvalDeadline.ifBlank { defaultApprovalDeadline },
+                modifier = Modifier.fillMaxWidth(),
+                onDateSelected = { approvalDeadline = it },
+                label = { Text("Owner approval deadline") }
+            )
+        }
         FormField("Number of winners", form.winnerCount, onValueChange = { typed -> form = form.copy(winnerCount = typed) })
         FormField("Response window (hours)", form.responseWindowHours, onValueChange = { typed -> form = form.copy(responseWindowHours = typed) })
         FormField("Waitlist capacity, optional", form.waitlistCapacity, onValueChange = { typed -> form = form.copy(waitlistCapacity = typed) })
         error?.let { Text(it) }
         Button(
             modifier = Modifier.fillMaxWidth(),
+            enabled = !submitting,
             onClick = {
                 val built = form.toLottery(
                     id = existing?.id ?: UUID.randomUUID().toString(),
@@ -777,12 +950,44 @@ private fun LotteryForm(
                 if (lottery == null) {
                     error = built.error
                 } else if (repository != null) {
-                    if (existing == null) repository.addLottery(lottery) else repository.updateLottery(lottery)
-                    repository.openLotteryId = lottery.id
-                    navController.popBackStack()
+                    val overlapError = proposalController
+                        ?.validateNoOverlap(lottery, existing?.id)
+                    if (overlapError != null) {
+                        error = overlapError
+                    } else if (existing != null) {
+                        repository.updateLottery(lottery)
+                        repository.openLotteryId = lottery.id
+                        navController.popBackStack()
+                    } else if (needsApproval) {
+                        val submission = proposalController?.createProposal(
+                            lottery,
+                            approvalDeadline.ifBlank { defaultApprovalDeadline }
+                        )
+                        if (submission == null || submission.error != null) {
+                            error = submission?.error ?: "Could not create the proposal"
+                        } else if (submission.task == null) {
+                            error = "Could not submit the proposal"
+                        } else {
+                            submitting = true
+                            submission.task
+                                .addOnSuccessListener {
+                                    submitting = false
+                                    navController.navigate(OwnerRoutes.APPROVALS)
+                                }
+                                .addOnFailureListener { exception ->
+                                    submitting = false
+                                    error = exception.localizedMessage
+                                        ?: "Could not submit the proposal"
+                                }
+                        }
+                    } else {
+                        repository.addLottery(lottery)
+                        repository.openLotteryId = lottery.id
+                        navController.popBackStack()
+                    }
                 }
             }
-        ) { Text(action) }
+        ) { Text(if (needsApproval) "Request owner approval" else action) }
     }
 }
 
@@ -911,7 +1116,15 @@ fun OwnerReservationDetails(navController: NavController, repository: DasCampRep
 
 /** Alerts tab. The blank card is one sent notification. */
 @Composable
-fun OwnerNotifications(navController: NavController, repository: DasCampRepository? = null) {
+fun OwnerNotifications(
+    navController: NavController,
+    repository: DasCampRepository? = null,
+    notificationsController: NotificationsController? = null
+) {
+    var showingIncoming by rememberSaveable { mutableStateOf(true) }
+    val ownerInboxController = remember(repository, notificationsController) {
+        notificationsController ?: repository?.let { NotificationsController(it) }
+    }
     val sentGroups = repository?.let { repo ->
         repo.notifications
             .filter {
@@ -923,18 +1136,205 @@ fun OwnerNotifications(navController: NavController, repository: DasCampReposito
                 group.firstOrNull()?.sentAt?.toLongOrNull() ?: 0L
             }
     }.orEmpty()
+    val incoming = ownerInboxController
+        ?.ownerInbox(repository?.notifications.orEmpty())
+        .orEmpty()
 
     OwnerPage(navController, showBack = false) {
-        Text("Sent notifications", style = MaterialTheme.typography.titleLarge)
-        if (sentGroups.isEmpty()) {
-            Text("No sent notifications")
-        } else {
-            sentGroups.forEach { group ->
-                val first = group.first()
-                Text(first.message)
-                Text("Sent to ${group.size} entrant(s): ${group.joinToString { it.recipientName }}")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (showingIncoming) Button(onClick = { showingIncoming = true }) {
+                Text("Incoming")
+            } else OutlinedButton(onClick = { showingIncoming = true }) {
+                Text("Incoming")
+            }
+            if (!showingIncoming) Button(onClick = { showingIncoming = false }) {
+                Text("Outgoing")
+            } else OutlinedButton(onClick = { showingIncoming = false }) {
+                Text("Outgoing")
             }
         }
+        if (showingIncoming) {
+            Text("Incoming notifications", style = MaterialTheme.typography.titleLarge)
+            if (repository?.currentUser?.notificationsOn == false) {
+                Text("Incoming notifications are turned off. Turn notifications on in your profile settings to see them.")
+            } else if (incoming.isEmpty()) {
+                Text("No incoming notifications")
+            } else {
+                incoming.forEach { notification -> Text(notification.message) }
+            }
+        } else {
+            Text("Sent notifications", style = MaterialTheme.typography.titleLarge)
+            if (sentGroups.isEmpty()) {
+                Text("No sent notifications")
+            } else {
+                sentGroups.forEach { group ->
+                    val first = group.first()
+                    Text(first.message)
+                    Text("Sent to ${group.size} entrant(s): ${group.joinToString { it.recipientName }}")
+                }
+            }
+        }
+    }
+}
+
+/** Owner view of shared-lottery proposals created by or sent to this owner. */
+@Composable
+fun OwnerLotteryApprovals(
+    navController: NavController,
+    repository: DasCampRepository,
+    controller: LotteryProposalController
+) {
+    var showingRequests by rememberSaveable { mutableStateOf(true) }
+    var confirm by remember { mutableStateOf<Pair<LotteryProposal, Boolean>?>(null) }
+    var confirmCancel by remember { mutableStateOf<LotteryProposal?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val uid = repository.uid
+    val incoming = repository.lotteryProposals.filter { proposal ->
+        proposal.creatorId != uid && proposal.ownerApprovals.any { it.ownerId == uid }
+    }
+    val outgoing = repository.lotteryProposals.filter { it.creatorId == uid }
+
+    OwnerPage(navController, showBack = true) {
+        Text("Lottery approvals", style = MaterialTheme.typography.titleLarge)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (showingRequests) Button(
+                modifier = Modifier.weight(1f),
+                onClick = { showingRequests = true }
+            ) {
+                Text("Incoming", maxLines = 1)
+            } else OutlinedButton(
+                modifier = Modifier.weight(1f),
+                onClick = { showingRequests = true }
+            ) {
+                Text("Incoming", maxLines = 1)
+            }
+            if (!showingRequests) Button(
+                modifier = Modifier.weight(1f),
+                onClick = { showingRequests = false }
+            ) {
+                Text("My proposals", maxLines = 1)
+            } else OutlinedButton(
+                modifier = Modifier.weight(1f),
+                onClick = { showingRequests = false }
+            ) {
+                Text("My proposals", maxLines = 1)
+            }
+        }
+        error?.let { Text(it) }
+
+        if (showingRequests) {
+            if (incoming.isEmpty()) Text("No campsite-use requests")
+            incoming.forEach { proposal ->
+                val approval = proposal.ownerApprovals.first { it.ownerId == uid }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(proposal.lotteryDraft.name)
+                    Text(
+                        "Campsites: " + approval.campsiteIds.joinToString { campsiteId ->
+                            repository.campsites.firstOrNull { it.id == campsiteId }?.name
+                                ?: campsiteId
+                        }
+                    )
+                    Text("From ${proposal.creatorName}")
+                    val status = when {
+                        proposal.status == LotteryProposalStatus.REJECTED &&
+                            approval.status == OwnerApprovalStatus.DECLINED -> "Declined"
+                        proposal.status == LotteryProposalStatus.REJECTED -> "Rejected"
+                        proposal.status == LotteryProposalStatus.PUBLISHED -> "Published"
+                        proposal.status == LotteryProposalStatus.EXPIRED -> "Expired"
+                        proposal.status == LotteryProposalStatus.CANCELLED -> "Cancelled"
+                        approval.status == OwnerApprovalStatus.DECLINED -> "Declined"
+                        approval.status == OwnerApprovalStatus.APPROVED -> "Approved"
+                        else -> "Pending"
+                    }
+                    Text(status)
+                    if (proposal.status == LotteryProposalStatus.PENDING &&
+                        approval.status == OwnerApprovalStatus.PENDING
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { confirm = proposal to true }) {
+                                Text("Approve")
+                            }
+                            OutlinedButton(onClick = { confirm = proposal to false }) {
+                                Text("Decline")
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            if (outgoing.isEmpty()) Text("No proposals created")
+            outgoing.forEach { proposal ->
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(proposal.lotteryDraft.name)
+                    Text(proposal.status.name.lowercase().replaceFirstChar { it.uppercase() })
+                    if (proposal.status == LotteryProposalStatus.PENDING) {
+                        proposal.ownerApprovals.forEach { approval ->
+                            Text(
+                                "${approval.ownerName}: " +
+                                    approval.status.name.lowercase()
+                                        .replaceFirstChar { it.uppercase() }
+                            )
+                        }
+                        OutlinedButton(onClick = { confirmCancel = proposal }) {
+                            Text("Cancel proposal")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    confirm?.let { (proposal, approve) ->
+        AlertDialog(
+            onDismissRequest = { confirm = null },
+            title = { Text(if (approve) "Approve request?" else "Decline request?") },
+            text = { Text("This decision cannot be changed.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirm = null
+                    controller.respond(proposal.id, uid, approve)
+                        .addOnSuccessListener { result ->
+                            if (result != LotteryProposalAction.UPDATED) {
+                                error = "This request has already been handled or is unavailable."
+                            }
+                        }
+                        .addOnFailureListener {
+                            error = it.localizedMessage ?: "Could not save your response"
+                        }
+                }) { Text(if (approve) "Approve" else "Decline") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirm = null }) { Text("Keep pending") }
+            }
+        )
+    }
+
+    confirmCancel?.let { proposal ->
+        AlertDialog(
+            onDismissRequest = { confirmCancel = null },
+            title = { Text("Cancel proposal?") },
+            text = { Text("All involved owners will be notified.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmCancel = null
+                    controller.cancel(proposal.id, uid)
+                        .addOnSuccessListener { result ->
+                            if (result != LotteryProposalAction.UPDATED) {
+                                error = "This proposal is no longer pending."
+                            }
+                        }
+                        .addOnFailureListener {
+                            error = it.localizedMessage ?: "Could not cancel the proposal"
+                        }
+                }) { Text("Cancel proposal") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmCancel = null }) { Text("Keep pending") }
+            }
+        )
     }
 }
 
@@ -1040,7 +1440,9 @@ fun OwnerMessageList(navController: NavController, repository: DasCampRepository
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(
-                        modifier = Modifier.padding(start = 16.dp).weight(1f)
+                        modifier = Modifier
+                            .padding(start = 16.dp)
+                            .weight(1f)
                     ) {
                         Text(thread.otherName, style = MaterialTheme.typography.bodyLarge)
                         Text(
@@ -1076,6 +1478,10 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
         repository?.let { MessageView(it) }
     }
     DisposableEffect(view) { onDispose { view?.remove() } }
+    val messageScrollState = rememberScrollState()
+    LaunchedEffect(view?.messages?.size) {
+        messageScrollState.animateScrollTo(messageScrollState.maxValue)
+    }
     val reservation = repository?.reservations?.find { it.id == repository.openReservationId }
     val ownerId = repository?.openMessageOwnerId?.ifBlank {
         reservation?.let { selected ->
@@ -1099,7 +1505,8 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
             body = body,
             lotteryId = repository?.openMessageLotteryId,
             reservationId = repository?.openReservationId
-                ?.takeIf { it.isNotBlank() }
+                ?.takeIf { it.isNotBlank() },
+            fromOwner = true
         )
         error = result
         if (result == null) body = ""
@@ -1107,6 +1514,10 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
     OwnerPage(
         navController,
         showBack = true,
+        topBar = {
+            Text(entrantName, style = MaterialTheme.typography.titleLarge)
+        },
+        scrollState = messageScrollState,
         bottomBar = if (ownerId == repository?.uid && entrantId.isNotBlank()) {{
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 error?.let { Text(it) }
@@ -1127,13 +1538,16 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
             }
         }} else null
     ) {
-        Text(entrantName, style = MaterialTheme.typography.titleLarge)
         if (ownerId != repository?.uid || entrantId.isBlank()) {
             Text("Open a participant conversation from a lottery or reservation.")
         } else {
             if (view == null || view.messages.isEmpty()) Text("No messages yet")
             view?.messages?.forEach { message ->
-                val mine = message.senderId == repository?.uid
+                val mine = if(ownerId != entrantId){  //messages show on diff sides if same account is sending the messages
+                        message.senderId == repository?.uid
+                    }else{
+                        message.fromOwner
+                    }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start
@@ -1173,6 +1587,9 @@ fun OwnerProfile(
     onSignOut: () -> Unit = {}
 ) {
     val saved = repository?.currentUser
+    val profileController = remember(repository) {
+        repository?.let { ProfileController(it) }
+    }
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -1260,8 +1677,10 @@ fun OwnerProfile(
                 Text("Notifications", modifier = Modifier.weight(1f))
                 Switch(
                     checked = notificationsOn,
-                    onCheckedChange = { notificationsOn = it },
-                    enabled = editing
+                    onCheckedChange = {
+                        notificationsOn = it
+                        profileController?.setNotifications(it)
+                    }
                 )
             }
         }
@@ -1315,26 +1734,4 @@ private fun FormField(
         enabled = enabled,
         singleLine = true
     )
-}
-
-@Composable
-private fun CalendarGrid() {
-    Row(Modifier.fillMaxWidth()) {
-        listOf("S", "M", "T", "W", "T", "F", "S").forEach {
-            Text(it, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-        }
-    }
-    repeat(5) {
-        Row(Modifier.fillMaxWidth().height(36.dp), verticalAlignment = Alignment.CenterVertically) {
-            repeat(7) {
-                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Box(
-                        Modifier
-                            .size(28.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                    )
-                }
-            }
-        }
-    }
 }

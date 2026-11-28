@@ -1,9 +1,10 @@
 package com.example.dascamp.screens.entrantScreens
 
-import android.icu.util.Calendar
+import java.util.Calendar
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -86,6 +88,14 @@ object EntrantRoutes {
     const val RESERVATION = "entrantReservation"
 }
 
+/** Navigate to a tab root, removing any detail screens above the dashboard. */
+fun NavController.openEntrantTab(route: String) {
+    navigate(route) {
+        popUpTo(EntrantRoutes.DASHBOARD) { inclusive = false }
+        launchSingleTop = true
+    }
+}
+
 /**
  * Common layout for entrant screens: the app scaffold with the entrant navigation
  * bar and role menu, wrapped around a scrollable, padded column.
@@ -102,8 +112,12 @@ fun EntrantPage(
     showBack: Boolean,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     bottomBar: (@Composable () -> Unit)? = null,
+    topBar: (@Composable () -> Unit)? = null,
+    scrollState: ScrollState? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val pageScrollState = scrollState ?: rememberScrollState()
+
     AppScaffold(
         onBackClick = if (showBack) {
             { navController.popBackStack() }
@@ -122,7 +136,7 @@ fun EntrantPage(
                         .align(Alignment.TopCenter)
                         .fillMaxWidth()
                         .widthIn(max = contentMaxWidth)
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(pageScrollState)
                         .padding(screenPadding()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalAlignment = horizontalAlignment,
@@ -135,13 +149,36 @@ fun EntrantPage(
                     .padding(innerPadding)
                     .fillMaxSize()
             ) {
+                topBar?.let {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .fillMaxWidth()
+                            .widthIn(max = contentMaxWidth)
+                            .padding(horizontal = screenPadding(), vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        it()
+                    }
+                }
+                if (topBar != null) {
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .fillMaxWidth()
+                            .widthIn(max = contentMaxWidth)
+                            .padding(horizontal = screenPadding()),
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                }
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .align(Alignment.CenterHorizontally)
                         .fillMaxWidth()
                         .widthIn(max = contentMaxWidth)
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(pageScrollState)
                         .padding(screenPadding()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalAlignment = horizontalAlignment,
@@ -185,27 +222,27 @@ fun EntrantNavBar(navController: NavController) {
 
             // Home Button
             IconButton(
-                onClick = { navController.navigate(EntrantRoutes.DASHBOARD) }
+                onClick = { navController.openEntrantTab(EntrantRoutes.DASHBOARD) }
             ) { Icon(imageVector = Icons.Default.Home, contentDescription = "Home", tint = MaterialTheme.colorScheme.onPrimary) }
 
             // Campsites Button
             IconButton(
-                onClick = { navController.navigate(EntrantRoutes.CAMPSITE_LIST) }
+                onClick = { navController.openEntrantTab(EntrantRoutes.CAMPSITE_LIST) }
             ) { Icon(imageVector = Icons.Default.Place, contentDescription = "Campsites", tint = MaterialTheme.colorScheme.onPrimary) }
 
             // Notifications Button
             IconButton(
-                onClick = { navController.navigate(EntrantRoutes.NOTIFICATION_LIST) }
+                onClick = { navController.openEntrantTab(EntrantRoutes.NOTIFICATION_LIST) }
             ) { Icon(imageVector = Icons.Default.Notifications, contentDescription = "Notifications", tint = MaterialTheme.colorScheme.onPrimary) }
 
             // Messages Button
             IconButton(
-                onClick = { navController.navigate(EntrantRoutes.MESSAGE_LIST) }
+                onClick = { navController.openEntrantTab(EntrantRoutes.MESSAGE_LIST) }
             ) { Icon(imageVector = Icons.Default.Email, contentDescription = "Messages", tint = MaterialTheme.colorScheme.onPrimary) }
 
             // Profile Button
             IconButton(
-                onClick = { navController.navigate(EntrantRoutes.PROFILE) }
+                onClick = { navController.openEntrantTab(EntrantRoutes.PROFILE) }
             ) { Icon(imageVector = Icons.Default.Person, contentDescription = "Profile", tint = MaterialTheme.colorScheme.onPrimary) }
         }
     }
