@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -113,7 +114,7 @@ fun SignUpScreen(
             .align(Alignment.TopCenter)
             .fillMaxWidth()
             .widthIn(max = 560.dp)
-            .imePadding()
+            .safeDrawingPadding()
             .verticalScroll(rememberScrollState())
             .padding(screenPadding()),
         verticalArrangement = Arrangement.spacedBy(12.dp),

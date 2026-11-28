@@ -1251,8 +1251,6 @@ fun EntrantMessageList(
             singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
         if (threads.isEmpty()) {
             Text("No conversations yet. Message an owner from a reservation or lottery.")
         }
