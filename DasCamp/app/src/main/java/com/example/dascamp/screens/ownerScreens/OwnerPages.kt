@@ -59,6 +59,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -71,6 +72,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.dascamp.controllers.CampImages
 import com.example.dascamp.controllers.LotteryNotificationAudience
 import com.example.dascamp.controllers.LotteryProposalController
 import com.example.dascamp.controllers.MessageController
@@ -78,7 +80,6 @@ import com.example.dascamp.controllers.NotificationsController
 import com.example.dascamp.controllers.QrCodeController
 import com.example.dascamp.controllers.ReservationController
 import com.example.dascamp.controllers.ScheduleController
-import com.example.dascamp.controllers.copyPickedImage
 import com.example.dascamp.model.Campsite
 import com.example.dascamp.model.CampsiteFormState
 import com.example.dascamp.model.DasCampRepository
@@ -106,7 +107,9 @@ import com.example.dascamp.views.MessageView
 import com.example.dascamp.views.ReservationView
 import com.google.zxing.common.BitMatrix
 import java.util.UUID
-import com.example.dascamp.controllers.copyPickedImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Owner home. The two large buttons open the campsite list and the lottery list.
@@ -249,6 +252,7 @@ fun OwnerCampsite(
     navController: NavController,
     repository: DasCampRepository? = null
 ) {
+    val scope = rememberCoroutineScope()
     val campsite = repository?.campsites?.find { it.id == repository.openCampsiteId }
 
     if (campsite == null){
@@ -336,8 +340,13 @@ fun OwnerCampsite(
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
-                campsite?.let { repository.deleteCampsite(it) }
-                navController.popBackStack()
+                scope.launch {
+                    withContext(Dispatchers.IO) {
+                        CampImages.delete(CampImages.campsitePath(campsite.id))
+                    }
+                    repository?.deleteCampsite(campsite)
+                    navController.popBackStack()
+                }
             }
         ) { Text("Delete campsite") }
     }
@@ -374,17 +383,16 @@ private fun CampsiteForm(
         )
     }
     var error by remember { mutableStateOf<String?>(null) }
+    var uploading by remember { mutableStateOf(false) }
+    val campsiteId = existing?.id ?: remember { UUID.randomUUID().toString() }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val photoPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) {uri ->
         if (uri != null){
-            val path = copyPickedImage(context, uri, "campsite-" + System.currentTimeMillis() + ".jpg")
-            if (path == null){
-                error = "Could not save that picture"
-            } else{
-                form = form.copy(imageUri = path)
-            }
+            form = form.copy(imageUri = uri.toString())
+            error = null
         }
     }
     OwnerPage(navController, showBack = true) {
@@ -465,27 +473,57 @@ private fun CampsiteForm(
             }
         }
         if (!form.imageUri.isNullOrBlank()){
-            TextButton(onClick = { form = form.copy(imageUri = null) }) { Text("Remove photo") }
+            TextButton(onClick = {
+                val current = form.imageUri
+                form = form.copy(imageUri = null)
+                if (current != null && current.startsWith("firestore:")) {
+                    scope.launch {
+                        withContext(Dispatchers.IO) {
+                            CampImages.delete(CampImages.campsitePath(campsiteId))
+                        }
+                    }
+                }
+            }) { Text("Remove photo") }
         }
         Button(
             modifier = Modifier.fillMaxWidth(),
+            enabled = !uploading,
             onClick = {
-                val built = form.toCampsite(
-                    id = existing?.id ?: UUID.randomUUID().toString(),
-                    ownerId = existing?.ownerId ?: repository?.uid.orEmpty(),
-                    rating = existing?.rating ?: 0.0,
-                    ratingCount = existing?.ratingCount ?: 0
-                )
-                val campsite = built.campsite
-                if (campsite == null) {
-                    error = built.error
-                } else if (repository != null) {
-                    if (existing == null) repository.addCampsite(campsite) else repository.updateCampsite(campsite)
-                    repository.openCampsiteId = campsite.id
-                    navController.popBackStack()
+                scope.launch {
+                    uploading = true
+                    var imageUri = form.imageUri
+                    if (imageUri != null && imageUri.startsWith("content:")) {
+                        imageUri = withContext(Dispatchers.IO) {
+                            CampImages.upload(
+                                context,
+                                android.net.Uri.parse(imageUri),
+                                CampImages.campsitePath(campsiteId)
+                            )
+                        }
+                        if (imageUri == null) {
+                            uploading = false
+                            error = "Could not save that picture"
+                            return@launch
+                        }
+                    }
+                    val built = form.copy(imageUri = imageUri).toCampsite(
+                        id = campsiteId,
+                        ownerId = existing?.ownerId ?: repository?.uid.orEmpty(),
+                        rating = existing?.rating ?: 0.0,
+                        ratingCount = existing?.ratingCount ?: 0
+                    )
+                    uploading = false
+                    val campsite = built.campsite
+                    if (campsite == null) {
+                        error = built.error
+                    } else if (repository != null) {
+                        if (existing == null) repository.addCampsite(campsite) else repository.updateCampsite(campsite)
+                        repository.openCampsiteId = campsite.id
+                        navController.popBackStack()
+                    }
                 }
             }
-        ) { Text(action) }
+        ) { Text(if (uploading) "Uploading…" else action) }
     }
 }
 
