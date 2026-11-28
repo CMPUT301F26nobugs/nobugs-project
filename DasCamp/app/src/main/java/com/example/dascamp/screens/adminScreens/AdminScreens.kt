@@ -52,9 +52,13 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
 import com.example.dascamp.controllers.AdminController
@@ -80,9 +84,11 @@ import com.example.dascamp.screens.entrantScreens.LegendDot
 import com.example.dascamp.screens.entrantScreens.readableCoordinates
 import com.example.dascamp.screens.ownerScreens.OwnerPage
 import com.example.dascamp.screens.ownerScreens.OwnerRoutes
+import com.example.dascamp.views.MessageView
 import kotlin.collections.filter
 import kotlin.collections.forEach
 import kotlin.collections.orEmpty
+import kotlin.text.orEmpty
 
 /**
  * The kinds of profile an admin can browse.
@@ -1103,8 +1109,8 @@ fun AdminMessageList(navController: NavController, repository: DasCampRepository
     val threads = repository?.messages.orEmpty()
         .groupBy{it.ownerId to it.entrantId}  //group messages by conversation (owner and entrant), only 1 list item for group
         .map{(ids,msgs) ->  //map data into 1 item/conversation in the view message list
-            val owner = repository?.userById(ids.first)?.displayName().orEmpty().ifBlank { "Unnamed" }  //if no name found, name shown will be unnamed
-            val entrant = repository?.userById(ids.second)?.displayName().orEmpty().ifBlank { "Unnamed" }
+            val owner = repository?.userById(ids.first)?.displayName().orEmpty().ifBlank { "N/A" }  //if no name found, name shown will be unnamed
+            val entrant = repository?.userById(ids.second)?.displayName().orEmpty().ifBlank { "N/A" }
             AdminThread(ids.first, ids.second, "Owner: $owner\nEntrant: $entrant", msgs.last().body)  //build thread preview info
         }
         .filter { thread ->
@@ -1185,44 +1191,94 @@ fun AdminMessageListPreview() {
  * content is hardcoded placeholder text for now.
  *
  * @param navController used for back navigation
+ * @param repository used for message source and profile names
  */
 @Composable
-fun AdminViewMessage(navController: NavController) {
+fun AdminViewMessage(navController: NavController, repository: DasCampRepository? = null) {
+    val view = remember(
+        repository,
+        repository?.openReservationId,
+        repository?.openMessageOwnerId,
+        repository?.openMessageEntrantId
+    ) {
+        repository?.let { MessageView(it) }
+    }
+    DisposableEffect(view) { onDispose { view?.remove() } }
+
+    val ownerId = repository?.openMessageOwnerId.orEmpty()
+    val entrantId = repository?.openMessageEntrantId.orEmpty()
+    val ownerName = repository?.userById(ownerId)?.displayName().orEmpty().ifBlank {"Unnamed"}
+    val entrantName = repository?.userById(entrantId)?.displayName().orEmpty().ifBlank {"Unnamed"}
+
+    val messageScrollState = rememberScrollState()
+    LaunchedEffect(view?.messages?.size) {
+        messageScrollState.animateScrollTo(messageScrollState.maxValue)
+    }
+
     AdminPage(
         navController = navController,
         showBack = true,
-    ) { Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Title
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) { Text(text = "Message", style = MaterialTheme.typography.titleLarge) }
-
-        // Entrant message
-        Text("Entrant", style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.End))
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = Color(0xFF5285F2)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Hi I wanna book this",
-                color = Color.White,
-                modifier = Modifier.padding(14.dp))
+            Text(
+                "Owner: $ownerName",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                "Entrant: $entrantName",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleMedium
+            )
         }
 
-        // Owner message
-        Text("Campsite Owner", style = MaterialTheme.typography.titleLarge)
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = Color(0xFFE6E6E6)
-        ) {
-            Text("Ok, sure", modifier = Modifier.padding(14.dp))
+        if(ownerId.isBlank() || entrantId.isBlank()){
+            Text("Open a conversation from a campsite, profile, or message logs.")
+        } else if(view == null || view.messages.isEmpty()){
+            Text("No messages")
+        }else{
+            view.messages.forEach { message ->
+                val ownerMessage = if(ownerId != entrantId){
+                    message.senderId == ownerId  //owner and entrant are different people
+                }else{
+                    message.fromOwner  //owner and entrant are the same person
+                }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = if(ownerMessage){
+                        Alignment.Start
+                    }else{
+                        Alignment.End
+                    }
+                ) {
+                    Text(
+                        text = if (ownerMessage) ownerName else entrantName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(
+                            topStart = 16.dp,
+                            topEnd = 16.dp,
+                            bottomStart = if (ownerMessage) 4.dp else 16.dp,  //owner on the left side
+                            bottomEnd = if (ownerMessage) 16.dp else 4.dp  //entrant on the right side
+                        ),
+                        color = if (ownerMessage) MaterialTheme.colorScheme.surfaceVariant
+                        else MaterialTheme.colorScheme.primary,  //entrant gets primary colour
+                        modifier = Modifier.widthIn(max = 280.dp)
+                    ) {
+                        Text(
+                            text = message.body,
+                            modifier = Modifier.padding(12.dp),
+                            color = if (ownerMessage) MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
             }
         }
     }

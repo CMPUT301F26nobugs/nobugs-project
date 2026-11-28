@@ -1466,7 +1466,8 @@ fun OwnerMessages(navController: NavController, repository: DasCampRepository? =
             body = body,
             lotteryId = repository?.openMessageLotteryId,
             reservationId = repository?.openReservationId
-                ?.takeIf { it.isNotBlank() }
+                ?.takeIf { it.isNotBlank() },
+            fromOwner = true
         )
         error = result
         if (result == null) body = ""

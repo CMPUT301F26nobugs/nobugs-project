@@ -329,7 +329,7 @@ fun DasCampApp() {
             composable(AdminRoutes.MESSAGE_LIST) { AdminMessageList(navController, repository) }
             composable(AdminRoutes.MESSAGE) { entry ->
                 val messageId = entry.arguments?.getString("messageId") ?: "default_id"
-                AdminViewMessage(navController)
+                AdminViewMessage(navController, repository)
             }
             composable(AdminRoutes.OWNER_APPLICATIONS) { AdminOwnerApplications(navController, repository, adminController) }
         }
