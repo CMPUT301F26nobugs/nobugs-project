@@ -168,7 +168,7 @@ fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
             }
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+                onClick = { navController.navigate(AdminRoutes.messageList()) }
             ) {
                 Icon(Icons.Default.ChatBubbleOutline, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
