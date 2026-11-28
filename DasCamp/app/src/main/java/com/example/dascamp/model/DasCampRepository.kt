@@ -137,6 +137,18 @@ class DasCampRepository(override val uid: String): ObservableModel, CampStore {
         if (ownApproval.status != OwnerApprovalStatus.PENDING) {
             return@runTransaction LotteryProposalAction.ALREADY_RESPONDED
         }
+        if (proposal.approvalDeadlineAt <= System.currentTimeMillis()) {
+            val expired = proposal.copy(status = LotteryProposalStatus.EXPIRED)
+            transaction.set(proposalRef, expired)
+            expired.notifications(
+                type = NotificationType.LOTTERY_PROPOSAL_UPDATE,
+                message = "The shared lottery proposal \"${proposal.lotteryDraft.name}\" expired before all owners responded.",
+                senderId = ""
+            ).forEach { notification ->
+                transaction.set(notificationsRef.document(notification.id), notification)
+            }
+            return@runTransaction LotteryProposalAction.EXPIRED
+        }
 
         val approvals = proposal.ownerApprovals.map { approval ->
             if (approval.ownerId == ownerId) {

@@ -1297,7 +1297,9 @@ fun OwnerLotteryApprovals(
                     confirm = null
                     controller.respond(proposal.id, uid, approve)
                         .addOnSuccessListener { result ->
-                            if (result != LotteryProposalAction.UPDATED) {
+                            if (result == LotteryProposalAction.EXPIRED) {
+                                error = "The response deadline has passed. The proposal has expired."
+                            } else if (result != LotteryProposalAction.UPDATED) {
                                 error = "This request has already been handled or is unavailable."
                             }
                         }

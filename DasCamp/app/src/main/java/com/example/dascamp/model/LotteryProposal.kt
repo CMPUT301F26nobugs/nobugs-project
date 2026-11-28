@@ -15,6 +15,7 @@ enum class OwnerApprovalStatus {
 /** Result of attempting a transactional proposal action. */
 enum class LotteryProposalAction {
     UPDATED,
+    EXPIRED,
     NOT_FOUND,
     NOT_PENDING,
     NOT_AUTHORIZED,

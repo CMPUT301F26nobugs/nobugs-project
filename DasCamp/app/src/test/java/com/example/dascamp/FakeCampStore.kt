@@ -72,6 +72,17 @@ class FakeCampStore(override val uid: String) : CampStore {
         if (ownApproval.status != OwnerApprovalStatus.PENDING) {
             return Tasks.forResult(LotteryProposalAction.ALREADY_RESPONDED)
         }
+        if (proposal.approvalDeadlineAt <= System.currentTimeMillis()) {
+            val expired = proposal.copy(status = LotteryProposalStatus.EXPIRED)
+            _lotteryProposals.removeAll { it.id == proposalId }
+            _lotteryProposals.add(expired)
+            expired.notifications(
+                NotificationType.LOTTERY_PROPOSAL_UPDATE,
+                "The shared lottery proposal \"${proposal.lotteryDraft.name}\" expired before all owners responded.",
+                ""
+            ).forEach(::addNotification)
+            return Tasks.forResult(LotteryProposalAction.EXPIRED)
+        }
 
         val approvals = proposal.ownerApprovals.map { approval ->
             if (approval.ownerId == ownerId) {
