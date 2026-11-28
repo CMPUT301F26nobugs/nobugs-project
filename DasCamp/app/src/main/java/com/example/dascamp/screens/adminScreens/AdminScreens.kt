@@ -54,6 +54,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.TextButton
@@ -164,6 +165,14 @@ fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
                 Icon(Icons.Default.Campaign, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Notification logs")
+            }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+            ) {
+                Icon(Icons.Default.ChatBubbleOutline, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Message logs")
             }
             Button(
                 modifier = Modifier.fillMaxWidth(),
