@@ -2,6 +2,7 @@ package com.example.dascamp.screens.adminScreens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -131,24 +133,30 @@ fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
         // Campsite button & profiles button container
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Campsite list button
             BigButton(
                 onClickAction = { navController.navigate(AdminRoutes.CAMPSITE_LIST) },
                 icon = Icons.Default.LocationOn,
                 iconDesc = "campsites",
-                label = "View\nCampsites"
+                label = "View\nCampsites",
+                modifier = Modifier
+                    .weight(1f)
+                    .widthIn(max = 150.dp)
+                    .aspectRatio(1f)
             )
-
-            Spacer(modifier = Modifier.padding(8.dp))
 
             // Profile list button
             BigButton(
                 onClickAction = { navController.navigate(AdminRoutes.PROFILE_LIST) },
                 icon = Icons.Default.Person,
                 iconDesc = "profiles",
-                label = "View\nProfiles"
+                label = "View\nProfiles",
+                modifier = Modifier
+                    .weight(1f)
+                    .widthIn(max = 150.dp)
+                    .aspectRatio(1f)
             )
         }
 

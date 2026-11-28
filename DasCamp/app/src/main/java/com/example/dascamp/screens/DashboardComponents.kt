@@ -76,10 +76,11 @@ fun BigButton(
     onClickAction: () -> Unit,
     icon: ImageVector,
     iconDesc: String,
-    label: String
+    label: String,
+    modifier: Modifier = Modifier.size(150.dp)
 ) {
     Card(
-        modifier = Modifier.size(150.dp),
+        modifier = modifier,
         onClick = onClickAction,
     ) {
         Column(
@@ -91,7 +92,7 @@ fun BigButton(
                 modifier = Modifier.size(64.dp),
                 imageVector = icon,
                 contentDescription = iconDesc,
-                tint = MaterialTheme.colorScheme.onPrimary
+                tint = MaterialTheme.colorScheme.primary
             )
 
             Text(

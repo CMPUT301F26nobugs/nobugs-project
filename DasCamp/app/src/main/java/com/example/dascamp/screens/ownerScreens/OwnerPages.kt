@@ -5,10 +5,12 @@ import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,10 +43,12 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -133,18 +137,29 @@ fun OwnerDashboard(
         ) {
             Text(text = "Welcome Back, $firstName", style = MaterialTheme.typography.titleLarge)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
             BigButton(
                 { navController.openOwnerTab(OwnerRoutes.CAMPSITES) },
                 Icons.Default.Place,
                 "My campsites",
-                "My\nCampsites"
+                "My\nCampsites",
+                modifier = Modifier
+                    .weight(1f)
+                    .widthIn(max = 150.dp)
+                    .aspectRatio(1f)
             )
             BigButton(
                 { navController.navigate(OwnerRoutes.LOTTERIES) },
                 Icons.Default.DateRange,
                 "My lotteries",
-                "My\nLotteries"
+                "My\nLotteries",
+                modifier = Modifier
+                    .weight(1f)
+                    .widthIn(max = 150.dp)
+                    .aspectRatio(1f)
             )
         }
         Column(
@@ -223,22 +238,82 @@ fun OwnerCampsitesList(
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
             singleLine = true
         )
-        TextButton(onClick = { navController.navigate(OwnerRoutes.ADD) }) {
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { navController.navigate(OwnerRoutes.ADD) }
+        ) {
             Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
             Text("Add Campsite")
         }
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
         if (repository != null && !repository.campsitesLoaded) {
             Text("Loading campsites…")
         } else if (shown.isEmpty()) {
             Text("No campsites found")
         } else {
             shown.forEach { campsite ->
-                TextButton(
-                    onClick = {
-                        repository?.openCampsiteId = campsite.id
-                        navController.navigate(OwnerRoutes.CAMPSITE)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            repository?.openCampsiteId = campsite.id
+                            navController.navigate(OwnerRoutes.CAMPSITE)
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Place,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                campsite.name.ifBlank { "Untitled campsite" },
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            if (campsite.location.isNotBlank()) {
+                                Text(
+                                    campsite.location,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            Text(
+                                "Capacity: ${campsite.maxOccupancy} · " +
+                                    if (campsite.ratingCount > 0) {
+                                        "★ ${"%.1f".format(campsite.rating)} · " +
+                                            "${campsite.ratingCount} reviews"
+                                    } else {
+                                        "Not rated yet"
+                                    },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                ) { Text(campsite.name.ifBlank { "Untitled campsite" }) }
+                }
             }
         }
     }
@@ -338,8 +413,16 @@ fun OwnerCampsite(
         ) { Text("Create lottery") }
 
         //Delete button
-        Button(
+        OutlinedButton(
             modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
+            ),
+            border = BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.error
+            ),
             onClick = {
                 scope.launch {
                     withContext(Dispatchers.IO) {
@@ -722,15 +805,76 @@ fun OwnerLotteryList(navController: NavController, repository: DasCampRepository
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
             singleLine = true
         )
-        TextButton(onClick = { navController.navigate(OwnerRoutes.CREATE) }) {
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { navController.navigate(OwnerRoutes.CREATE) }
+        ) {
             Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
             Text("Create Lottery")
         }
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
         shown.forEach { lottery ->
-            TextButton(onClick = {
-                repository?.openLotteryId = lottery.id
-                navController.navigate(OwnerRoutes.LOTTERY)
-            }) { Text(lottery.name) }
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        repository?.openLotteryId = lottery.id
+                        navController.navigate(OwnerRoutes.LOTTERY)
+                    },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.DateRange,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            lottery.name.ifBlank { "Untitled lottery" },
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            lottery.status.label(),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            "Registration: ${lottery.registrationStart} – " +
+                                "${lottery.registrationEnd}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "${lottery.winnerCount} winner spots",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
@@ -1014,16 +1158,46 @@ fun OwnerReservations(navController: NavController, repository: DasCampRepositor
                 else OutlinedButton(onClick = { selected = label }) { Text(label) }
             }
         }
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
         if (reservations.isEmpty()) Text("No ${selected.lowercase()} reservations")
         reservations.forEach { reservation ->
-            OutlinedButton(
-                onClick = {
-                    repository?.openReservationId = reservation.id
-                    navController.navigate(OwnerRoutes.RESERVATION)
-                },
-                modifier = Modifier.fillMaxWidth()
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        repository?.openReservationId = reservation.id
+                        navController.navigate(OwnerRoutes.RESERVATION)
+                    },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             ) {
-                Text("${reservation.campsiteName} · ${reservation.entrantName} · ${reservation.startDate} to ${reservation.endDate}")
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        reservation.campsiteName,
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        "Entrant: ${reservation.entrantName}",
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        "Dates: ${reservation.startDate} to ${reservation.endDate}",
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }
@@ -1153,6 +1327,11 @@ fun OwnerNotifications(
                 Text("Outgoing")
             }
         }
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
         if (showingIncoming) {
             Text("Incoming notifications", style = MaterialTheme.typography.titleLarge)
             if (repository?.currentUser?.notificationsOn == false) {
@@ -1160,7 +1339,45 @@ fun OwnerNotifications(
             } else if (incoming.isEmpty()) {
                 Text("No incoming notifications")
             } else {
-                incoming.forEach { notification -> Text(notification.message) }
+                incoming.forEach { notification ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Notifications,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    notification.message,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                formatNotificationTime(notification.sentAt)?.let { sentTime ->
+                                    Text(
+                                        sentTime,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         } else {
             Text("Sent notifications", style = MaterialTheme.typography.titleLarge)
@@ -1169,12 +1386,61 @@ fun OwnerNotifications(
             } else {
                 sentGroups.forEach { group ->
                     val first = group.first()
-                    Text(first.message)
-                    Text("Sent to ${group.size} entrant(s): ${group.joinToString { it.recipientName }}")
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Campaign,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    first.message,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Text(
+                                    "Sent to ${group.size} entrant(s): " +
+                                        group.joinToString { it.recipientName },
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                formatNotificationTime(first.sentAt)?.let { sentTime ->
+                                    Text(
+                                        sentTime,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+/** Formats an epoch-millisecond notification time for display in the user's locale. */
+private fun formatNotificationTime(sentAt: String): String? {
+    val timestamp = sentAt.toLongOrNull() ?: return null
+    return java.text.DateFormat.getDateTimeInstance(
+        java.text.DateFormat.MEDIUM,
+        java.text.DateFormat.SHORT
+    ).format(java.util.Date(timestamp))
 }
 
 /** Owner view of shared-lottery proposals created by or sent to this owner. */
@@ -1229,36 +1495,67 @@ fun OwnerLotteryApprovals(
             if (incoming.isEmpty()) Text("No campsite-use requests")
             incoming.forEach { proposal ->
                 val approval = proposal.ownerApprovals.first { it.ownerId == uid }
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(proposal.lotteryDraft.name)
-                    Text(
-                        "Campsites: " + approval.campsiteIds.joinToString { campsiteId ->
-                            repository.campsites.firstOrNull { it.id == campsiteId }?.name
-                                ?: campsiteId
-                        }
-                    )
-                    Text("From ${proposal.creatorName}")
-                    val status = when {
-                        proposal.status == LotteryProposalStatus.REJECTED &&
-                            approval.status == OwnerApprovalStatus.DECLINED -> "Declined"
-                        proposal.status == LotteryProposalStatus.REJECTED -> "Rejected"
-                        proposal.status == LotteryProposalStatus.PUBLISHED -> "Published"
-                        proposal.status == LotteryProposalStatus.EXPIRED -> "Expired"
-                        proposal.status == LotteryProposalStatus.CANCELLED -> "Cancelled"
+                val status = when {
+                    proposal.status == LotteryProposalStatus.REJECTED &&
                         approval.status == OwnerApprovalStatus.DECLINED -> "Declined"
-                        approval.status == OwnerApprovalStatus.APPROVED -> "Approved"
-                        else -> "Pending"
-                    }
-                    Text(status)
-                    if (proposal.status == LotteryProposalStatus.PENDING &&
-                        approval.status == OwnerApprovalStatus.PENDING
+                    proposal.status == LotteryProposalStatus.REJECTED -> "Rejected"
+                    proposal.status == LotteryProposalStatus.PUBLISHED -> "Published"
+                    proposal.status == LotteryProposalStatus.EXPIRED -> "Expired"
+                    proposal.status == LotteryProposalStatus.CANCELLED -> "Cancelled"
+                    approval.status == OwnerApprovalStatus.DECLINED -> "Declined"
+                    approval.status == OwnerApprovalStatus.APPROVED -> "Approved"
+                    else -> "Pending"
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { confirm = proposal to true }) {
-                                Text("Approve")
-                            }
-                            OutlinedButton(onClick = { confirm = proposal to false }) {
-                                Text("Decline")
+                        Icon(
+                            Icons.Default.FactCheck,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                proposal.lotteryDraft.name,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                "Campsites: " + approval.campsiteIds.joinToString { campsiteId ->
+                                    repository.campsites.firstOrNull { it.id == campsiteId }?.name
+                                        ?: campsiteId
+                                }
+                            )
+                            Text("From ${proposal.creatorName}")
+                            Text(
+                                status,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            if (proposal.status == LotteryProposalStatus.PENDING &&
+                                approval.status == OwnerApprovalStatus.PENDING
+                            ) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(onClick = { confirm = proposal to true }) {
+                                        Text("Approve")
+                                    }
+                                    OutlinedButton(onClick = { confirm = proposal to false }) {
+                                        Text("Decline")
+                                    }
+                                }
                             }
                         }
                     }
@@ -1267,19 +1564,51 @@ fun OwnerLotteryApprovals(
         } else {
             if (outgoing.isEmpty()) Text("No proposals created")
             outgoing.forEach { proposal ->
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(proposal.lotteryDraft.name)
-                    Text(proposal.status.name.lowercase().replaceFirstChar { it.uppercase() })
-                    if (proposal.status == LotteryProposalStatus.PENDING) {
-                        proposal.ownerApprovals.forEach { approval ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.FactCheck,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             Text(
-                                "${approval.ownerName}: " +
-                                    approval.status.name.lowercase()
-                                        .replaceFirstChar { it.uppercase() }
+                                proposal.lotteryDraft.name,
+                                style = MaterialTheme.typography.titleMedium
                             )
-                        }
-                        OutlinedButton(onClick = { confirmCancel = proposal }) {
-                            Text("Cancel proposal")
+                            Text(
+                                proposal.status.name.lowercase()
+                                    .replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            if (proposal.status == LotteryProposalStatus.PENDING) {
+                                proposal.ownerApprovals.forEach { approval ->
+                                    Text(
+                                        "${approval.ownerName}: " +
+                                            approval.status.name.lowercase()
+                                                .replaceFirstChar { it.uppercase() }
+                                    )
+                                }
+                                OutlinedButton(onClick = { confirmCancel = proposal }) {
+                                    Text("Cancel proposal")
+                                }
+                            }
                         }
                     }
                 }
@@ -1416,7 +1745,11 @@ fun OwnerMessageList(navController: NavController, repository: DasCampRepository
             },
             singleLine = true
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
         if (threads.isEmpty()) Text("No conversations yet")
         threads.forEach { thread ->
             Card(

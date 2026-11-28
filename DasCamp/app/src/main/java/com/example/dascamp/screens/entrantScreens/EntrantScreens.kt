@@ -6,11 +6,13 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -37,8 +39,10 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -152,26 +156,31 @@ fun EntrantDashboard(navController: NavController) {
 
         // Campsite button & reservations button container
         Row(
-            modifier = Modifier
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Campsite list button
             BigButton(
                 onClickAction = { navController.navigate(EntrantRoutes.CAMPSITE_LIST) },
                 icon = Icons.Default.LocationOn,
                 iconDesc = "campsites",
-                label = "View\nCampsites"
+                label = "View\nCampsites",
+                modifier = Modifier
+                    .weight(1f)
+                    .widthIn(max = 150.dp)
+                    .aspectRatio(1f)
             )
-
-            Spacer(modifier = Modifier.padding(8.dp))
 
             // Reservation list button
             BigButton(
                 onClickAction = { navController.navigate(EntrantRoutes.RESERVATION_LIST) },
                 icon = Icons.Default.DateRange,
                 iconDesc = "reservations",
-                label = "View\nReservations"
+                label = "View\nReservations",
+                modifier = Modifier
+                    .weight(1f)
+                    .widthIn(max = 150.dp)
+                    .aspectRatio(1f)
             )
         }
 
@@ -1007,7 +1016,11 @@ fun EntrantNotificationList(
             Text(text = "Notifications",
                 style = MaterialTheme.typography.titleLarge)
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
 
         // Display the signed-in entrant's win/loss messages and other alerts.
         if (notificationsOff) {
@@ -1140,6 +1153,11 @@ fun EntrantReservationList(
                 OutlinedButton(onClick = { showPast = true }) { Text("Past") }
             }
         }
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
 
         if (shown.isEmpty()) Text(if (showPast) "No past reservations" else "No active reservations")
         shown.forEach { reservation ->
@@ -1151,21 +1169,59 @@ fun EntrantReservationList(
                 )
             ) {
                 Column(
-                    Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(reservation.campsiteName, style = MaterialTheme.typography.titleMedium)
-                    Text("${reservation.startDate} to ${reservation.endDate}")
-                    if (!showPast) {
-Button(onClick = {
-                            reservationController?.cancel(reservation)
-                            cancelled = reservation to System.currentTimeMillis()
-                        }) { Text("Cancel reservation") }
-                    } else{
+                    Surface(
+                        shape = RoundedCornerShape(50.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Text(
+                            if (showPast) "Past" else "Active",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                    Text(
+                        reservation.campsiteName,
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            "${reservation.startDate} to ${reservation.endDate}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    Text(
+                        "Guests: ${reservation.guestCount}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    HorizontalDivider(
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+
+                    if (showPast) {
                         if(reservation.rating == 0){
-                            Text("Rate your stay:")
-                            Row{
+                            Text("Rate your stay:", textAlign = TextAlign.Center)
+                            Row(horizontalArrangement = Arrangement.Center) {
                                 for (stars in 1..5){
                                     TextButton(onClick = {
                                         if(reservationController != null){
@@ -1180,19 +1236,44 @@ Button(onClick = {
                                 }
                             }
                         }else {
-                            Text("You rated this stay " + reservation.rating + "★")
+                            Text(
+                                "You rated this stay " + reservation.rating + "★",
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
-                    Button(onClick = {
-                        repository?.let { repo ->
-                            repo.openReservationId = reservation.id
-                            repo.openMessageOwnerId = repo.campsites
-                                .find { it.id == reservation.campsiteId }?.ownerId.orEmpty()
-                            repo.openMessageEntrantId = reservation.entrantId
-                            repo.openMessageLotteryId = null
+
+                    Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            repository?.let { repo ->
+                                repo.openReservationId = reservation.id
+                                repo.openMessageOwnerId = repo.campsites
+                                    .find { it.id == reservation.campsiteId }?.ownerId.orEmpty()
+                                repo.openMessageEntrantId = reservation.entrantId
+                                repo.openMessageLotteryId = null
+                            }
+                            navController.navigate(EntrantRoutes.MESSAGE)
                         }
-                        navController.navigate(EntrantRoutes.MESSAGE)
-                    }) { Text("Message owner") }
+                    ) { Text("Message owner") }
+
+                    if (!showPast) {
+                        OutlinedButton(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            ),
+                            border = BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.error
+                            ),
+                            onClick = {
+                                reservationController?.cancel(reservation)
+                                cancelled = reservation to System.currentTimeMillis()
+                            }
+                        ) { Text("Cancel reservation") }
+                    }
                 }
             }
         }
@@ -1251,7 +1332,11 @@ fun EntrantMessageList(
             singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
 
         if (threads.isEmpty()) {
             Text("No conversations yet. Message an owner from a reservation or lottery.")
