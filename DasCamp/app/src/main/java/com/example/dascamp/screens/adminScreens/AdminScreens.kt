@@ -64,6 +64,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.example.dascamp.controllers.AdminController
 import com.example.dascamp.controllers.CampImages
@@ -169,6 +170,14 @@ fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
         ) {
             Button(
                 modifier = Modifier.fillMaxWidth(),
+                onClick = { navController.navigate(AdminRoutes.OWNER_APPLICATIONS) }
+            ) {
+                Icon(Icons.Default.HowToReg, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Owner applications")
+            }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
                 onClick = { navController.navigate(AdminRoutes.NOTIFICATION_LOG) }
             ) {
                 Icon(Icons.Default.Campaign, contentDescription = null)
@@ -177,7 +186,7 @@ fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
             }
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(AdminRoutes.MESSAGE_LIST) }
+                onClick = { navController.navigate(AdminRoutes.messageList()) }
             ) {
                 Icon(Icons.Default.ChatBubbleOutline, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -185,11 +194,11 @@ fun AdminDashboard(navController: NavController, onSignOut: () -> Unit = {}) {
             }
             Button(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { navController.navigate(AdminRoutes.OWNER_APPLICATIONS) }
+                onClick = { navController.navigate(AdminRoutes.IMAGE_GALLERY) }
             ) {
-                Icon(Icons.Default.HowToReg, contentDescription = null)
+                Icon(Icons.Default.Image, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Owner applications")
+                Text("Image gallery")
             }
             Button(
                 modifier = Modifier.fillMaxWidth(),
@@ -412,7 +421,6 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
                                 }
                                 campStore.updateUser(user.copy(profileImageUri = null))  //remove uri
                             }
-                            navController.navigate(AdminRoutes.PROFILE_LIST)
                         }
                     )
                 ){
@@ -436,7 +444,6 @@ fun AdminViewProfile(navController: NavController, profileType: ProfileType, cam
                         message = "Remove owner role? This can't be undone.",
                         onConfirm = {
                             adminController.revokeOwnership(user)  //remove ownership from owned campsites
-                            campStore.updateUser(user.copy(owner = false))
                         }
                     )
                 ) {
@@ -820,8 +827,8 @@ fun AdminViewCampsite(
     val reviews = repository?.reviews?.filter { it.campsiteId == campsiteId }.orEmpty()
     val scope = rememberCoroutineScope()  //for remove campsite image
 
-    //if no campsite, show cant be found message
-    if (campsite == null){
+    //if no repository or campsite, show cant be found message
+    if (repository == null || campsite == null){
         AdminPage(navController = navController, showBack = true) {
             Text("Campsite not found")
         }
@@ -869,7 +876,7 @@ fun AdminViewCampsite(
                         val path = campsite.imageUri
                         scope.launch {
                             withContext(Dispatchers.IO) {
-                                CampImages.delete(CampImages.profilePath(campsite.id))
+                                CampImages.delete(CampImages.campsitePath(campsite.id))
                                 if (!path.startsWith("firestore:") && !path.startsWith("http")) {
                                     File(path).delete()  //delete from firestoe
                                 }
@@ -1023,34 +1030,35 @@ fun AdminViewCampsite(
                         }
                     }
                 }
-                pendingRemoval?.let { (reviewId, kind) ->
-                    Dialog(onDismissRequest = { pendingRemoval = null }) {
-                        Column(
-                            modifier = Modifier
-                                .background(Color.DarkGray, RoundedCornerShape(8.dp))
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Text(
-                                if (kind == "rating") {
-                                    "Remove this rating? It will no longer count toward the campsite  and can't be undone."
-                                } else {
-                                    "Remove this review? This can't be undone."
-                                },
-                                color = Color.White
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                TextButton(onClick = { pendingRemoval = null }) { Text("Cancel") }
-                                TextButton(onClick = {
-                                    pendingRemoval = null
-                                    if (kind == "rating") admin?.removeRating(reviewId)
-                                    else admin?.removeReview(reviewId)
-                                }) { Text("Remove", color = Color.Red) }
-                            }
-                        }
+            }
+        }
+
+        pendingRemoval?.let { (reviewId, kind) ->
+            Dialog(onDismissRequest = { pendingRemoval = null }) {
+                Column(
+                    modifier = Modifier
+                        .background(Color.DarkGray, RoundedCornerShape(8.dp))
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        if (kind == "rating") {
+                            "Remove this rating? It will no longer count toward the campsite  and can't be undone."
+                        } else {
+                            "Remove this review? This can't be undone."
+                        },
+                        color = Color.White
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { pendingRemoval = null }) { Text("Cancel") }
+                        TextButton(onClick = {
+                            pendingRemoval = null
+                            if (kind == "rating") admin?.removeRating(reviewId)
+                            else admin?.removeReview(reviewId)
+                        }) { Text("Remove", color = Color.Red) }
                     }
                 }
             }
@@ -1111,7 +1119,7 @@ fun AdminViewCampsite(
                 message = "Remove this campsite? This can't be undone.",
                 onConfirm = {
                     repository.deleteCampsite(campsite)
-                    navController.navigate(AdminRoutes.CAMPSITE_LIST)
+                    navController.popBackStack()
                 }
             )
         ) {
@@ -1120,24 +1128,119 @@ fun AdminViewCampsite(
     }
 }
 
+
+/** An item in the image gallery contains the image, a label, and the screen it belongs to. */
+private data class GalleryImage(
+    val path: String,
+    val label: String,
+    val route: String
+)
 /**
- * Admin gallery of uploaded images. The list is still a placeholder card.
+ * Admin gallery of uploaded images (US 03.06.01).
+ * Contains all photos including profile photos and campsite photos.
+ * Clicking on an image brings open the page where it exists where it can be deleted (US 03.03.01).
  *
  * @param navController used for navigation
+ * @param repository used for getting the images
  */
 @Composable
-fun ImageGallery(navController: NavController) {
+fun ImageGallery(navController: NavController, repository: DasCampRepository? = null) {
+    val images = buildList{
+        //go through all campsite images
+        repository?.campsites.orEmpty().forEach{campsite ->
+            val path = campsite.imageUri
+            if(!path.isNullOrBlank()){  //if image exists
+                add(
+                    GalleryImage(
+                        path,
+                        "Campsite: ${campsite.name.ifBlank { "Untitled" }}",  //show camp name of where the image belongs
+                        AdminRoutes.campsite(campsite.id)  //where the image lives
+                    )
+                )
+            }
+        }
+        //go through all profile pictures
+        repository?.users.orEmpty().forEach{user ->
+            val path = user.profileImageUri
+            if(!path.isNullOrBlank()){  //if image exists
+                val type = if(user.admin){  //determine the user type of the clicked profile
+                    ProfileType.ADMIN
+                }else if(user.owner){
+                    ProfileType.OWNER
+                }else{
+                    ProfileType.ENTRANT
+                }
+                add(
+                    GalleryImage(
+                        path,
+                        "Profile: ${user.displayName().ifBlank{"N/A"}}",  //show profile name who the pfp belongs to
+                        AdminRoutes.profile(type,user.id)  //where the image lives
+                    )
+                )
+            }
+        }
+    }
     AdminPage(
         navController = navController,
         showBack = true,
-    ) {
-        // Title
+    ){
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
-        ) { Text(text = "Image Gallery", style = MaterialTheme.typography.titleLarge) }
-        EmptyCard {
-            navController.navigate(AdminRoutes.campsite("123"))
+        ){
+            Text(
+                text = "Image Gallery",
+                style = MaterialTheme.typography.titleLarge
+            )
+        }
+        if(images.isEmpty()){
+            Text("No images uploaded to firebase")
+        }else{
+            images.chunked(2).forEach{imageRow ->  //2 images per row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ){
+                    imageRow.forEach{image ->  //each image in the row
+                        Card(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable{navController.navigate(image.route)},
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        ){
+                            Column{
+                                StoredImage(
+                                    path = image.path,
+                                    contentDescription = image.label,
+                                    modifier = Modifier.fillMaxWidth().height(140.dp),
+                                    contentScale = ContentScale.Crop  //make sure every image is the same size
+                                ){
+                                    Box(
+                                        Modifier.fillMaxWidth().height(140.dp),
+                                        contentAlignment = Alignment.Center
+                                    ){
+                                        Icon(
+                                            Icons.Default.Image,
+                                            contentDescription = null
+                                        )
+                                    }
+                                }
+                                Text(
+                                    image.label,
+                                    modifier = Modifier.padding(8.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            }
+                        }
+                    }
+                    //if there is only 1 image in the row (odd number of total images)
+                    //keep the image the same size as the others -> dont strecth image to the whole width
+                    if(imageRow.size == 1){
+                        Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
         }
     }
 }
