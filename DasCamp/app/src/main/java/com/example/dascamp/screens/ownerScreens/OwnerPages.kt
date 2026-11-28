@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -68,6 +69,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -108,7 +110,9 @@ import com.example.dascamp.screens.DatePickerField
 import com.example.dascamp.screens.ProfileAction
 import com.example.dascamp.screens.StoredImage
 import com.example.dascamp.screens.entrantScreens.EntrantCalendarGrid
+import com.example.dascamp.screens.entrantScreens.readableCoordinates
 import com.example.dascamp.views.MessageView
+import com.example.dascamp.views.ProfileView
 import com.example.dascamp.views.ReservationView
 import com.google.zxing.common.BitMatrix
 import java.util.UUID
@@ -493,21 +497,42 @@ private fun CampsiteForm(
             startLongitude = -113.49
         }
 
-        CampsiteMap(
-            latitude = startLatitude,
-            longitude = startLongitude,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(180.dp),
-            onLocationPicked = {
-                pickedLatitude, pickedLongitude ->
-                form = form.copy(
-                    latitude = pickedLatitude.toString(),
-                    longitude = pickedLongitude.toString()
-                )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp)
+        ){
+            Column{
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .clipToBounds()
+                ){
+                    CampsiteMap(
+                        latitude = startLatitude,
+                        longitude = startLongitude,
+                        modifier = Modifier.fillMaxWidth(),
+                        onLocationPicked = {pickedLatitude, pickedLongitude ->
+                            form = form.copy(
+                                latitude = pickedLatitude.toString(),
+                                longitude = pickedLongitude.toString()
+                            )
+                        }
+                    )
+                }
+                Column(modifier = Modifier.padding(12.dp)){
+                    Text(
+                        text = form.location.ifBlank {"Campsite pin"},
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        text = "Picked: " + readableCoordinates(startLatitude, startLongitude),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-        )
-        Text("Picked: " + form.latitude + ", " + form.longitude)
+        }
 
         FormField("Amenities", form.description, onValueChange = { typed -> form = form.copy(description = typed) })
         FormField("Maximum occupancy", form.maxOccupancy, onValueChange = { typed -> form = form.copy(maxOccupancy = typed) })
@@ -670,7 +695,8 @@ fun OwnerMapLocation(navController: NavController, repository: DasCampRepository
             Box(modifier = Modifier
                 .fillMaxWidth()
                 .height(300.dp)
-                .clipToBounds()){
+                .clip(RoundedCornerShape(16.dp))
+            ){
                 CampsiteMap(
                     latitude = campsite.latitude,
                     longitude = campsite.longitude,
@@ -680,7 +706,7 @@ fun OwnerMapLocation(navController: NavController, repository: DasCampRepository
                 )
             }
 
-            Text("Location Coordinates: " + campsite.latitude + ", " + campsite.longitude)
+            Text("Location Coordinates: " + readableCoordinates(campsite.latitude, campsite.longitude))
 
             Button(
                 modifier = Modifier.fillMaxWidth(),
@@ -1921,10 +1947,14 @@ fun OwnerProfile(
     repository: DasCampRepository? = null,
     onSignOut: () -> Unit = {}
 ) {
+    if (repository == null) return
     val saved = repository?.currentUser
+    val ownerId = saved?.id ?: repository.uid
+    val view = remember(ownerId) { ProfileView(repository, ownerId) }
     val profileController = remember(repository) {
         repository?.let { ProfileController(it) }
     }
+    val controller = remember { ProfileController(repository) }
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -1932,6 +1962,28 @@ fun OwnerProfile(
     var notificationsOn by remember { mutableStateOf(true) }
     var loaded by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
+    val profile = view.profile
+    var imageMessage by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    // Photo picker. The picture is shrunk, then stored in Firestore.
+    val imagePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            imageMessage = "Uploading photo…"
+            val marker = withContext(Dispatchers.IO) {
+                CampImages.upload(context, uri, CampImages.profilePath(ownerId))
+            }
+            if (marker == null) {
+                imageMessage = "Could not save that picture"
+            } else {
+                controller.setProfileImage(marker)
+                imageMessage = null
+            }
+        }
+    }
 
     LaunchedEffect(saved?.id) {
         if (saved != null && !loaded) {
@@ -1946,19 +1998,38 @@ fun OwnerProfile(
 
     OwnerPage(navController, showBack = false, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Profile", style = MaterialTheme.typography.titleLarge)
-        Icon(
-            Icons.Default.Person,
-            contentDescription = null,
+        Box(
             modifier = Modifier
-                .size(96.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                .padding(18.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+                .size(112.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable {
+                    imagePicker.launch(
+                        androidx.activity.result.PickVisualMediaRequest(
+                            ActivityResultContracts.PickVisualMedia.ImageOnly
+                        )
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            StoredImage(
+                path = profile?.profileImageUri,
+                contentDescription = "Profile picture",
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Add a profile picture",
+                    modifier = Modifier.size(56.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
         Text(
             saved?.displayName()?.ifBlank { "Owner" } ?: "Owner",
             style = MaterialTheme.typography.headlineSmall
         )
+
         Text(
             "Signed in on this device",
             style = MaterialTheme.typography.bodySmall,
@@ -1997,6 +2068,15 @@ fun OwnerProfile(
             )
             Spacer(Modifier.width(8.dp))
             Text(if (editing) "Save" else "Edit details")
+        }
+        TextButton(onClick = {
+            imagePicker.launch(
+                androidx.activity.result.PickVisualMediaRequest(
+                    ActivityResultContracts.PickVisualMedia.ImageOnly
+                )
+            )
+        }) {
+            Text(if (profile?.profileImageUri.isNullOrBlank()) "Add photo" else "Change photo")
         }
         Surface(
             modifier = Modifier.fillMaxWidth(),
