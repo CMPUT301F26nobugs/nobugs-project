@@ -88,6 +88,14 @@ object EntrantRoutes {
     const val RESERVATION = "entrantReservation"
 }
 
+/** Navigate to a tab root, removing any detail screens above the dashboard. */
+fun NavController.openEntrantTab(route: String) {
+    navigate(route) {
+        popUpTo(EntrantRoutes.DASHBOARD) { inclusive = false }
+        launchSingleTop = true
+    }
+}
+
 /**
  * Common layout for entrant screens: the app scaffold with the entrant navigation
  * bar and role menu, wrapped around a scrollable, padded column.
@@ -214,27 +222,27 @@ fun EntrantNavBar(navController: NavController) {
 
             // Home Button
             IconButton(
-                onClick = { navController.navigate(EntrantRoutes.DASHBOARD) }
+                onClick = { navController.openEntrantTab(EntrantRoutes.DASHBOARD) }
             ) { Icon(imageVector = Icons.Default.Home, contentDescription = "Home", tint = MaterialTheme.colorScheme.onPrimary) }
 
             // Campsites Button
             IconButton(
-                onClick = { navController.navigate(EntrantRoutes.CAMPSITE_LIST) }
+                onClick = { navController.openEntrantTab(EntrantRoutes.CAMPSITE_LIST) }
             ) { Icon(imageVector = Icons.Default.Place, contentDescription = "Campsites", tint = MaterialTheme.colorScheme.onPrimary) }
 
             // Notifications Button
             IconButton(
-                onClick = { navController.navigate(EntrantRoutes.NOTIFICATION_LIST) }
+                onClick = { navController.openEntrantTab(EntrantRoutes.NOTIFICATION_LIST) }
             ) { Icon(imageVector = Icons.Default.Notifications, contentDescription = "Notifications", tint = MaterialTheme.colorScheme.onPrimary) }
 
             // Messages Button
             IconButton(
-                onClick = { navController.navigate(EntrantRoutes.MESSAGE_LIST) }
+                onClick = { navController.openEntrantTab(EntrantRoutes.MESSAGE_LIST) }
             ) { Icon(imageVector = Icons.Default.Email, contentDescription = "Messages", tint = MaterialTheme.colorScheme.onPrimary) }
 
             // Profile Button
             IconButton(
-                onClick = { navController.navigate(EntrantRoutes.PROFILE) }
+                onClick = { navController.openEntrantTab(EntrantRoutes.PROFILE) }
             ) { Icon(imageVector = Icons.Default.Person, contentDescription = "Profile", tint = MaterialTheme.colorScheme.onPrimary) }
         }
     }

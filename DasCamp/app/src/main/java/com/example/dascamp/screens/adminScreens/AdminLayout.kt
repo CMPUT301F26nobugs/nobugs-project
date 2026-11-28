@@ -79,6 +79,14 @@ object AdminRoutes {
     fun message(id: String ="default_id") = "adminViewMessage/$id"
 }
 
+/** Navigate to a tab root, removing any detail screens above the dashboard. */
+fun NavController.openAdminTab(route: String) {
+    navigate(route) {
+        popUpTo(AdminRoutes.DASHBOARD) { inclusive = false }
+        launchSingleTop = true
+    }
+}
+
 /**
  * Common layout for admin screens: the app scaffold with the admin navigation bar
  * and role menu, wrapped around a scrollable, padded column.
@@ -147,27 +155,27 @@ fun AdminNavBar(navController: NavController) {
 
             // Home Button
             IconButton(
-                onClick = { navController.navigate(AdminRoutes.DASHBOARD) }
+                onClick = { navController.openAdminTab(AdminRoutes.DASHBOARD) }
             ) { Icon(imageVector = Icons.Default.Home, contentDescription = "Home", tint = MaterialTheme.colorScheme.onPrimary) }
 
             // Campsites Button
             IconButton(
-                onClick = { navController.navigate(AdminRoutes.CAMPSITE_LIST) }
+                onClick = { navController.openAdminTab(AdminRoutes.CAMPSITE_LIST) }
             ) { Icon(imageVector = Icons.Default.Place, contentDescription = "Campsites", tint = MaterialTheme.colorScheme.onPrimary) }
 
             // Profiles Button
             IconButton(
-                onClick = { navController.navigate(AdminRoutes.PROFILE_LIST) }
+                onClick = { navController.openAdminTab(AdminRoutes.PROFILE_LIST) }
             ) { Icon(imageVector = Icons.Default.Person, contentDescription = "Profiles", tint = MaterialTheme.colorScheme.onPrimary) }
 
             // Notification Logs Button
             IconButton(
-                onClick = { navController.navigate(AdminRoutes.NOTIFICATION_LOG) }
+                onClick = { navController.openAdminTab(AdminRoutes.NOTIFICATION_LOG) }
             ) { Icon(imageVector = Icons.Default.Notifications, contentDescription = "Notification Logs", tint = MaterialTheme.colorScheme.onPrimary) }
 
             // Image Gallery Button
             IconButton(
-                onClick = { navController.navigate(AdminRoutes.IMAGE_GALLERY) }
+                onClick = { navController.openAdminTab(AdminRoutes.IMAGE_GALLERY) }
             ) { Icon(imageVector = Icons.Default.Image, contentDescription = "Image Gallery", tint = MaterialTheme.colorScheme.onPrimary) }
         }
     }
